@@ -11,7 +11,7 @@ export type Category =
 
 export const CATEGORY_EMOJI: Record<Category, string> = {
   stay: "🏨", food: "🍜", cafe: "☕", bar: "🍶", nightlife: "🎧", shrine: "⛩️", temple: "🛕", museum: "🖼️",
-  park: "🌳", nature: "🏞️", onsen: "♨️", shop: "🛍️", market: "🧺", station: "🚉", airport: "✈️", port: "⛴️",
+  park: "🌳", nature: "🏞️", onsen: "♨️", shop: "🛍️", market: "🧺", station: "🚉", airport: "🛬", port: "⚓",
   view: "🔭", castle: "🏯", event: "🎭", place: "📍",
 };
 
@@ -94,9 +94,9 @@ export const TRANSPORT_EMOJI: Record<Transport, string> = { walk: "🚶", bike: 
 export const TRANSIT_MODES: ReadonlySet<Transport> = new Set<Transport>(["bus", "train", "metro", "tram"]);
 
 const EMOJI_TRANSPORT: Record<string, Transport> = {
-  "🚶": "walk", "🚶‍♀️": "walk", "🚶‍♂️": "walk", "🚃": "train", "🚄": "train", "🚅": "train", "🚆": "train", "🚂": "train", "🚉": "train", "🚇": "metro", "🚈": "metro", "🚝": "metro", "🚊": "tram", "🚋": "tram",
-  "🚌": "bus", "🚍": "bus", "🚐": "bus", "🚕": "taxi", "🚖": "taxi", "🚗": "car", "🚙": "car", "✈️": "flight", "✈": "flight", "🛫": "flight", "🛬": "flight",
-  "⛴️": "boat", "⛴": "boat", "🚢": "boat", "⛵": "boat", "🚲": "bike", "🚴": "bike",
+  "🚶": "walk", "🚶‍♀️": "walk", "🚶‍♂️": "walk", "🚃": "train", "🚄": "train", "🚅": "train", "🚆": "train", "🚂": "train", "🚇": "metro", "🚈": "metro", "🚝": "metro", "🚊": "tram", "🚋": "tram",
+  "🚌": "bus", "🚍": "bus", "🚐": "bus", "🚕": "taxi", "🚖": "taxi", "🚗": "car", "🚙": "car", "✈️": "flight", "✈": "flight",
+  "⛴️": "boat", "⛴": "boat", "🚢": "boat", "⛵": "boat", "🛥️": "boat", "🛥": "boat", "🚲": "bike", "🚴": "bike",
 };
 
 /** A transport emoji the user typed before the link, e.g. "🚌 12:52 [中禪寺湖]". */

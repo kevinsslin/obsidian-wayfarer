@@ -282,7 +282,7 @@ export class WayfarerView extends ItemView {
           lineJoin: "round",
           className: cls,
         }).addTo(this.layer);
-        if (!dim) line.bindTooltip(legTooltip(leg), { sticky: true, className: "wf-tooltip" });
+        if (!dim) line.bindTooltip(tipEl(legTooltip(leg)), { sticky: true, className: "wf-tooltip" });
         this.drawArrow(pts, lineColor, cls);
         if (mode && !dim) {
           const mid = midpointOf(pts);
@@ -290,7 +290,7 @@ export class WayfarerView extends ItemView {
             icon: L.divIcon({ className: `wf-leg-glyph ${cls}`, html: `<span style="--wf-color:${lineColor}">${TRANSPORT_EMOJI[mode]}</span>`, iconSize: [24, 24], iconAnchor: [12, 12] }),
             interactive: true,
             keyboard: false,
-          }).bindTooltip(legTooltip(leg), { className: "wf-tooltip", direction: "top", offset: [0, -10] }).addTo(this.layer);
+          }).bindTooltip(tipEl(legTooltip(leg)), { className: "wf-tooltip", direction: "top", offset: [0, -10] }).addTo(this.layer);
         }
       }
     }
@@ -305,7 +305,7 @@ export class WayfarerView extends ItemView {
         popupAnchor: [0, -16],
       });
       const marker = L.marker([stop.lat, stop.lng], { icon, title: stop.name, zIndexOffset: focus ? 2000 : dim ? 0 : 1000 });
-      marker.bindTooltip(stop.time ? `${stop.time} ${stop.name}` : stop.name, { direction: "top", offset: [0, -14], className: "wf-tooltip", permanent: focus });
+      marker.bindTooltip(tipEl(stop.time ? `${stop.time} ${stop.name}` : stop.name), { direction: "top", offset: [0, -14], className: "wf-tooltip", permanent: focus });
       marker.bindPopup(() => this.popupEl(day, stop), { className: "wf-popup", closeButton: false, maxWidth: 320, minWidth: 260 });
       marker.on("click", () => {
         this.userMoved = true;
@@ -356,7 +356,7 @@ export class WayfarerView extends ItemView {
       else t2.setText(text);
       body.insertBefore(t2, actions);
     }
-    if (stop.meta?.website) actions.createEl("a", { cls: "wf-ext", text: t("website"), attr: { href: stop.meta.website } });
+    if (stop.meta?.website && /^https?:\/\//i.test(stop.meta.website)) actions.createEl("a", { cls: "wf-ext", text: t("website"), attr: { href: stop.meta.website } });
     actions.createEl("a", { text: t("to_line"), attr: { href: "#", "data-wf-jump": "1" } });
     return root;
   }
@@ -607,6 +607,13 @@ function midpointOf(pts: L.LatLng[]): L.LatLng {
     acc += seg;
   }
   return pts[Math.floor(pts.length / 2)];
+}
+
+/** Tooltip content as a node: Leaflet would otherwise set a string as innerHTML, and names come from the note. */
+function tipEl(text: string): HTMLElement {
+  const el = document.createElement("span");
+  el.textContent = text;
+  return el;
 }
 
 function legTooltip(leg: Leg): string {

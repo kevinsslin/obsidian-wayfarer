@@ -9,6 +9,8 @@ export function fmtMin(m: number): string {
 /* ---------- opening hours ---------- */
 
 export interface DayHours {
+  /** No recognisable hours on the line (e.g. "Hours unavailable"): nothing can be checked. */
+  unknown?: boolean;
   closed: boolean;
   allDay: boolean;
   /** [open, close] in minutes; close may exceed 1440 for past-midnight closing. */
@@ -47,7 +49,8 @@ export function parseDayHours(desc: string): DayHours {
     if (close <= open) close += 1440;
     ranges.push([open, close]);
   }
-  return { closed: ranges.length === 0, allDay: false, ranges };
+  if (ranges.length === 0) return { unknown: true, closed: false, allDay: false, ranges };
+  return { closed: false, allDay: false, ranges };
 }
 
 function toMin(h: string, mm: string | undefined, ap: string | undefined): number {
@@ -70,6 +73,7 @@ export function checkHours(hours: string[] | undefined, weekday: number, arrive:
   const line = hoursForWeekday(hours, weekday);
   if (!line || arrive === undefined) return null;
   const dh = parseDayHours(line);
+  if (dh.unknown) return null;
   if (dh.closed) return { kind: "closed-day" };
   if (dh.allDay) return { kind: "ok" };
   const inside = dh.ranges.find(([o, c]) => arrive >= o && arrive < c);

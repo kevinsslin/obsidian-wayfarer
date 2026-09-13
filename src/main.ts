@@ -233,10 +233,17 @@ export default class WayfarerPlugin extends Plugin {
     const md = this.activeMarkdown();
     if (!md) return;
     const editor = md.editor;
+    // The stop's block: its line plus every deeper-indented line under it (notes, images).
+    const indentOf = (l: string) => /^\s*/.exec(l)![0].replace(/\t/g, "    ").length;
     const takeWith = (ln: number): number => {
-      // an image-only line right below belongs to the stop
-      const next = editor.getLine(ln + 1);
-      return next !== undefined && /^\s*!\[/.test(next) ? 2 : 1;
+      const base = indentOf(editor.getLine(ln));
+      let n = 1;
+      while (ln + n < editor.lineCount()) {
+        const l = editor.getLine(ln + n);
+        if (!l.trim() || indentOf(l) <= base) break;
+        n++;
+      }
+      return n;
     };
     const count = takeWith(from);
     const lines = Array.from({ length: count }, (_, i) => editor.getLine(from + i));

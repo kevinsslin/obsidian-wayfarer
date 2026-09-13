@@ -104,6 +104,7 @@ describe("meta placement and day headings", () => {
     const patched = patchLineMeta(`- [赤沼](geo:1,2) 備註`, { via: "walk" });
     expect(patched).toBe(`- [赤沼](geo:1,2) %%wf:{"via":"walk"}%% 備註`);
     expect(patchLineMeta(patched, { via: undefined })).toBe(`- [赤沼](geo:1,2) 備註`);
+    expect(patchLineMeta(`    - [赤沼](geo:1,2)  兩個空格 %%wf:{"via":"bus"}%%`, { via: "walk" })).toBe(`    - [赤沼](geo:1,2)  兩個空格 %%wf:{"via":"walk"}%%`);
     expect(patchLineMeta(`- [赤沼](geo:1,2) %%wf:{"rating":4.4}%%`, { via: "train" })).toBe(`- [赤沼](geo:1,2) %%wf:{"rating":4.4,"via":"train"}%%`);
   });
   it("treats only the configured level as days when it exists", () => {

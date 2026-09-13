@@ -8,6 +8,8 @@ describe("hours", () => {
     expect(parseDayHours("Monday: 9:00 AM – 5:00 PM").ranges).toEqual([[540, 1020]]);
     expect(parseDayHours("星期一: 09:00 – 17:00, 18:00 – 22:00").ranges).toEqual([[540, 1020], [1080, 1320]]);
     expect(parseDayHours("Tuesday: Closed").closed).toBe(true);
+    expect(parseDayHours("Monday: Hours unavailable").unknown).toBe(true);
+    expect(checkHours(["Monday: Hours unavailable"], 1, 600)).toBeNull();
     expect(parseDayHours("星期三: 24 小時營業").allDay).toBe(true);
     expect(parseDayHours("Friday: 6:00 PM – 2:00 AM").ranges).toEqual([[1080, 1560]]);
   });

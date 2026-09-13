@@ -255,7 +255,7 @@ export function dayLabel(title: string): string {
 /**
  * Returns the line with `patch` merged into its `%%wf:{}%%` comment, adding
  * one after the link (and tags) when the line has none. Used when the user
- * changes transport or stay in the timeline.
+ * changes transport in the timeline. Everything outside the comment is kept byte for byte.
  */
 export function patchLineMeta(line: string, patch: Partial<PlaceMeta>): string {
   const mm = META.exec(line);
@@ -268,7 +268,16 @@ export function patchLineMeta(line: string, patch: Partial<PlaceMeta>): string {
     else (meta as Record<string, unknown>)[k] = v;
   }
   const text = Object.keys(meta).length ? `%%wf:${JSON.stringify(compactMeta(meta))}%%` : "";
-  if (mm) return (line.slice(0, mm.index) + text + line.slice(mm.index + mm[0].length)).replace(/\s{2,}/g, " ").replace(/\s+$/, "");
+  if (mm) {
+    // Replace only the metadata span; when it goes away take one adjacent space with it.
+    let start = mm.index;
+    let end = mm.index + mm[0].length;
+    if (!text) {
+      if (start > 0 && line[start - 1] === " ") start--;
+      else if (line[end] === " ") end++;
+    }
+    return line.slice(0, start) + text + line.slice(end);
+  }
   if (!text) return line;
   GEO_LINK.lastIndex = 0;
   let last: RegExpExecArray | null = null;
