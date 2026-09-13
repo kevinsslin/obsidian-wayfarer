@@ -39,7 +39,7 @@ locations:
 
 | Element | How the plugin reads it |
 |---|---|
-| `## 2026-09-17 週四 主題` | A day. One heading per day, date first, weekday second, theme last. Prefer the full `YYYY-MM-DD` so the year is kept; `9/17`, `9月17日` and `Sep 17` are read as the next such date; `Day 3` has no date, so no weekday checks. Level is a setting (default `##`). |
+| `## 2026-09-17 週四 主題` | A day. One heading per day, the full `YYYY-MM-DD` first, then anything. Only a full date counts as a date; a heading without one is a day with no weekday or hours checks. Level is a setting (default `##`). |
 | `[Name](geo:lat,lng)` | A stop. Same format as the Map View plugin. |
 | `07:53` at line start | The stop's time. |
 | Transport emoji before the link | How you get there: 🚶 walk, 🚲 bike, 🚗 car, 🚕 taxi, 🚌 bus, 🚆 🚄 🚃 train, 🚇 metro / MRT, 🚊 tram / light rail, ⛴️ boat, ✈️ flight. Words are not read; the user can also pick it on the arrow in the map pane, which is stored as `%%wf:{"via":"bus"}%%` on the line. |

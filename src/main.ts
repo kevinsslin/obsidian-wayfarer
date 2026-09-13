@@ -2,7 +2,7 @@ import { MarkdownView, Notice, Platform, Plugin, TFile, debounce, type Editor, t
 import { isGoogleMapsUrl } from "./core/gmaps-url";
 import { dayAtLine, parseItinerary, patchLineMeta, type Itinerary, type PlaceMeta, type Stop } from "./core/itinerary";
 import { ResolveError, resolveMapsUrl, type ResolveDeps } from "./core/resolve";
-import { expandShortUrl, googlePlaces, nominatim } from "./net";
+import { expandShortUrl, googlePlaces } from "./net";
 import { DEFAULT_SETTINGS, WayfarerSettingTab, type WayfarerSettings } from "./settings";
 import { findMapsUrl, metaDecorations, replaceUrlInEditor, stopText } from "./ui/editor";
 import { WayfarerView, VIEW_TYPE_WAYFARER } from "./ui/map-view";
@@ -271,7 +271,6 @@ export default class WayfarerPlugin extends Plugin {
     return {
       expandShortUrl: Platform.isDesktopApp ? expandShortUrl : undefined,
       places: this.settings.googleApiKey ? googlePlaces(this.settings.googleApiKey, this.settings.languageCode) : undefined,
-      nominatim,
     };
   }
 

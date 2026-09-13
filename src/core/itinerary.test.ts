@@ -81,6 +81,11 @@ describe("dayLabel", () => {
     expect(dayLabel("Day 3: Kyoto")).toBe("D3");
     expect(dayLabel("Arrival")).toBe("Arrival");
   });
+  it("only a full date is a date", () => {
+    expect(parseItinerary("## 2026-09-17 週四\n- [A](geo:1,2)").days[0].date).toEqual({ year: 2026, month: 9, day: 17 });
+    expect(parseItinerary("## 9/17 週四\n- [A](geo:1,2)").days[0].date).toBeNull();
+    expect(parseItinerary("## 2026-02-30\n- [A](geo:1,2)").days[0].date).toBeNull();
+  });
 });
 
 describe("formatStop", () => {

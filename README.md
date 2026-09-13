@@ -36,7 +36,7 @@ locations:
 3. https://maps.app.goo.gl/...        <- paste, it converts itself
 ```
 
-**One heading per day, date first.** The recommended form is `## YYYY-MM-DD 週X 主題`: the full date keeps the year, so weekday and opening-hours checks stay right after the trip and across New Year. `## 9/17 週四 主題` also works and is read as the next 9/17. The pane always shows the short form (`9/17`). Stops before the first heading form their own group; headings without stops are skipped; the heading level that starts a day is a setting (default `##`).
+**One `##` heading per day, starting with the full date:** `## 2026-09-17 週四 上山`. After the date write whatever you like. The date is what makes the weekday, opening-hours and departure-time checks possible; a heading without a full `YYYY-MM-DD` is still a day on the map, just with no date, so nothing is checked for it. The pane shows the date as `9/17`. Stops before the first heading form their own group; headings without stops are skipped; the heading level is a setting (default `##`).
 
 ## Sharing a plan
 
@@ -44,11 +44,11 @@ Send the `.md` file. Anyone with Obsidian and Wayfarer sees the same pins, order
 
 ## Google Maps links
 
-Without a key the plugin reads coordinates straight out of the link: the exact `!3d…!4d…` pin when present, else the `@lat,lng` viewport centre, `?q=lat,lng`, or `/maps/search/lat,lng`. The place name comes from the `/maps/place/<name>/` segment. Links that only carry text (`?q=Ichiran+Shibuya`) are geocoded with OpenStreetMap Nominatim.
+Wayfarer is built around Google Maps: you find the place there, tap *Share*, and paste the link. The link is the source of truth. Without a key the plugin reads the pin straight out of it: the exact `!3d…!4d…` coordinate when present, else the `@lat,lng` viewport centre, `?q=lat,lng`, or `/maps/search/lat,lng`. The place name comes from the `/maps/place/<name>/` segment. A link that carries only a search text and no coordinates is refused: share the place instead. The plugin never geocodes names through a third party.
 
 Short links (`maps.app.goo.gl`, `goo.gl/maps`, `g.co`) are expanded on desktop by following the redirect with a non-browser User-Agent, because Google serves browsers an interstitial page instead of a `Location` header. On mobile, paste the full link.
 
-With a key, a link that carries a place id is resolved exactly; otherwise the place name is looked up and the result is used only if it lands where the link points (within 300 m of an exact pin, 3 km of a viewport centre). A same-named branch elsewhere never replaces the place you shared.
+With a key, Google adds the canonical name, rating, hours, address, website and photo: by place id when the link has one, otherwise by looking the name up near the link's pin. A result that lands elsewhere (more than 300 m from an exact pin, 3 km from a viewport centre) is a different place and is dropped, and an exact pin is never moved. A same-named branch elsewhere never replaces the place you shared.
 
 ## Getting a Google API key
 

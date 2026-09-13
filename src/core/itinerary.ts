@@ -65,8 +65,8 @@ export interface Day {
   index: number;
   /** Short label such as "9/17" if the heading carries a date, else the title. */
   label: string;
-  /** The date in the heading, with the year when it was written. Null when the heading has none. */
-  date: { year?: number; month: number; day: number } | null;
+  /** The full date in the heading (`2026-09-17`), or null when the heading has none. */
+  date: { year: number; month: number; day: number } | null;
 }
 
 export interface Itinerary {
@@ -237,21 +237,17 @@ export function dayAtLine(it: Itinerary, line: number): number {
 }
 
 /** Pulls a compact date label out of a heading, e.g. "9/17 週四 上山" -> "9/17". */
-/** The date written in a heading: `2026-09-17`, `9/17`, `9月17日`, `Sep 17`. Null for `Day 3` or no date. */
+/**
+ * The date of a day heading. Only a full `YYYY-MM-DD` counts: anything
+ * shorter would need a guessed year, and the weekday, hours and departure
+ * checks all hang on the date being certain.
+ */
 export function dayDate(title: string): Day["date"] {
-  const valid = (y: number | undefined, m: number, d: number) => (m >= 1 && m <= 12 && d >= 1 && d <= 31 ? { ...(y ? { year: y } : {}), month: m, day: d } : null);
-  const iso = /(\d{4})-(\d{1,2})-(\d{1,2})/.exec(title);
-  if (iso) return valid(Number(iso[1]), Number(iso[2]), Number(iso[3]));
-  const slash = /(?:^|\D)(\d{1,2})\/(\d{1,2})(?!\d)/.exec(title);
-  if (slash) return valid(undefined, Number(slash[1]), Number(slash[2]));
-  const cjk = /(\d{1,2})\s*月\s*(\d{1,2})\s*日/.exec(title);
-  if (cjk) return valid(undefined, Number(cjk[1]), Number(cjk[2]));
-  const mon = /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\.?\s+(\d{1,2})\b/i.exec(title);
-  if (mon) {
-    const months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
-    return valid(undefined, months.indexOf(mon[1].slice(0, 3).toLowerCase()) + 1, Number(mon[2]));
-  }
-  return null;
+  const m = /(\d{4})-(\d{2})-(\d{2})/.exec(title);
+  if (!m) return null;
+  const [year, month, day] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const d = new Date(year, month - 1, day);
+  return d.getFullYear() === year && d.getMonth() === month - 1 && d.getDate() === day ? { year, month, day } : null;
 }
 
 export function dayLabel(title: string): string {

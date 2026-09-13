@@ -12,7 +12,7 @@ export interface ResolvedPlace {
   lng: number;
   meta?: PlaceMeta;
   /** Which step produced the coordinates, for the status message. */
-  source: "url" | "places" | "nominatim";
+  source: "url" | "places";
 }
 
 export interface ResolveDeps {
@@ -21,10 +21,9 @@ export interface ResolveDeps {
   /** Google Places (New) lookups. Undefined when no API key is configured. */
   places?: {
     details(placeId: string): Promise<ResolvedPlace | null>;
-    searchText(query: string): Promise<ResolvedPlace | null>;
+    /** Text lookup, biased to `near` when the link carries a pin. */
+    searchText(query: string, near?: { lat: number; lng: number }): Promise<ResolvedPlace | null>;
   };
-  /** Free OSM geocoder fallback. */
-  nominatim?: (query: string) => Promise<ResolvedPlace | null>;
 }
 
 export class ResolveError extends Error {}
@@ -43,9 +42,11 @@ export async function resolveMapsUrl(input: string, deps: ResolveDeps): Promise<
 
   const urlPin = parsed.lat !== undefined && parsed.lng !== undefined && isValidLatLng(parsed.lat, parsed.lng) ? { lat: parsed.lat, lng: parsed.lng } : null;
 
-  // With a key: a place id is exact. A text search is only trusted when it
-  // lands where the link points; otherwise a same-named branch elsewhere
-  // would quietly replace the place the user actually shared.
+  // The link is the source of truth. With a key, Google adds the canonical
+  // name, hours, rating and photo: by place id when the link has one, else
+  // by looking the name up near the link's pin. A result that lands
+  // elsewhere is a different place and is dropped; the pin itself is never
+  // moved away from an exact `!3d…!4d…` coordinate.
   if (deps.places) {
     if (parsed.placeId) {
       const p = await deps.places.details(parsed.placeId);
@@ -53,23 +54,18 @@ export async function resolveMapsUrl(input: string, deps: ResolveDeps): Promise<
     }
     const text = parsed.name ?? parsed.query;
     if (text) {
-      const p = await deps.places.searchText(text);
-      if (p && (!urlPin || distanceM(p, urlPin) <= (parsed.exact ? 300 : 3000))) return p;
+      const p = await deps.places.searchText(text, urlPin ?? undefined);
+      if (p && !urlPin) return p;
+      if (p && urlPin && distanceM(p, urlPin) <= (parsed.exact ? 300 : 3000)) return parsed.exact ? { ...p, ...urlPin } : p;
     }
   }
 
   if (urlPin) return { name: nameFor(parsed), ...urlPin, source: "url" };
 
-  const text = parsed.name ?? parsed.query;
-  if (text && deps.nominatim) {
-    const p = await deps.nominatim(text);
-    if (p) return p;
-  }
-
   throw new ResolveError(
     parsed.placeId || parsed.ftid
-      ? "This link only carries a place id. Add a Google Places API key in settings to resolve it."
-      : "No coordinates or place name found in the link",
+      ? "This link only carries a place id. Add a Google API key in settings to resolve it."
+      : "This link has no coordinates. Share the place from Google Maps instead of typing a search.",
   );
 }
 

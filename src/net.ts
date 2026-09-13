@@ -37,21 +37,6 @@ export async function expandShortUrl(url: string, maxHops = 5): Promise<string> 
   return current;
 }
 
-export async function nominatim(query: string): Promise<ResolvedPlace | null> {
-  const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(query)}`;
-  const res = await requestUrl({ url, headers: { "User-Agent": UA, Accept: "application/json" }, throw: false });
-  if (res.status !== 200) return null;
-  const hit = (res.json as Array<{ lat: string; lon: string; name?: string; display_name?: string }>)[0];
-  if (!hit) return null;
-  return {
-    name: hit.name || query,
-    lat: Number(hit.lat),
-    lng: Number(hit.lon),
-    meta: hit.display_name ? { address: hit.display_name } : undefined,
-    source: "nominatim",
-  };
-}
-
 const PLACE_FIELDS = "id,displayName,location,formattedAddress,rating,regularOpeningHours,websiteUri,primaryType,photos";
 
 interface PlaceJson {
@@ -100,12 +85,14 @@ export function googlePlaces(apiKey: string, languageCode: string): NonNullable<
       });
       return res.status === 200 ? toPlace(res.json as PlaceJson) : null;
     },
-    async searchText(query) {
+    async searchText(query, near) {
+      const body: Record<string, unknown> = { textQuery: query, languageCode, pageSize: 1 };
+      if (near) body.locationBias = { circle: { center: { latitude: near.lat, longitude: near.lng }, radius: 2000 } };
       const res = await requestUrl({
         url: "https://places.googleapis.com/v1/places:searchText",
         method: "POST",
         headers: { ...headers, "X-Goog-FieldMask": PLACE_FIELDS.split(",").map((f) => `places.${f}`).join(",") },
-        body: JSON.stringify({ textQuery: query, languageCode, pageSize: 1 }),
+        body: JSON.stringify(body),
         throw: false,
       });
       if (res.status !== 200) return null;

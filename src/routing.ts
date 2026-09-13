@@ -83,16 +83,7 @@ export function departureFor(dayDate: Date | null, from: Stop): Date | undefined
   return d;
 }
 
-/**
- * The calendar date of a day heading. A heading with a year is taken as
- * written; `9/17` without one is the next 9/17 from today (a trip already
- * three days past keeps its date so the note still reads right the week after).
- */
-export function dateForDay(day: { date: { year?: number; month: number; day: number } | null }, now = new Date()): Date | null {
-  if (!day.date) return null;
-  const { year, month, day: d } = day.date;
-  if (year) return new Date(year, month - 1, d);
-  const candidate = new Date(now.getFullYear(), month - 1, d);
-  if (candidate.getTime() < now.getTime() - 86400000 * 3) candidate.setFullYear(candidate.getFullYear() + 1);
-  return candidate;
+/** The calendar date of a day heading, or null when the heading has no full date. */
+export function dateForDay(day: { date: { year: number; month: number; day: number } | null }): Date | null {
+  return day.date ? new Date(day.date.year, day.date.month - 1, day.date.day) : null;
 }
