@@ -156,8 +156,18 @@ export default class WayfarerPlugin extends Plugin {
     for (const v of this.views) v.onCursor(line, day);
   }
 
+  /**
+   * The note the map should show: the active markdown view, or, when the
+   * active leaf is the map pane itself (as it is right after startup or a
+   * click on the map), the most recently used markdown leaf.
+   */
   private activeMarkdown(): MarkdownView | null {
-    return this.app.workspace.getActiveViewOfType(MarkdownView);
+    const active = this.app.workspace.getActiveViewOfType(MarkdownView);
+    if (active) return active;
+    const recent = this.app.workspace.getMostRecentLeaf();
+    if (recent?.view instanceof MarkdownView) return recent.view;
+    const first = this.app.workspace.getLeavesOfType("markdown")[0];
+    return first?.view instanceof MarkdownView ? first.view : null;
   }
 
   /* ---------- paste conversion ---------- */
