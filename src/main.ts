@@ -10,6 +10,7 @@ import { readingPostProcessor } from "./ui/reading";
 import { NewTripModal } from "./ui/new-trip-modal";
 import { tripSkeleton } from "./core/gmaps-out";
 import { firstEmoji } from "./core/category";
+import { LegRouter } from "./routing";
 
 /**
  * Wayfarer: the note is the plan, the pane is the map.
@@ -20,6 +21,7 @@ import { firstEmoji } from "./core/category";
 export default class WayfarerPlugin extends Plugin {
   settings: WayfarerSettings = { ...DEFAULT_SETTINGS };
   private views = new Set<WayfarerView>();
+  readonly router = new LegRouter(() => this.settings, () => { for (const v of this.views) v.redraw(); });
   private current: { file: TFile; itinerary: Itinerary } | null = null;
 
   async onload(): Promise<void> {

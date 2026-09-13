@@ -4,6 +4,8 @@ import { CATEGORY_EMOJI, TRANSPORT_EMOJI } from "../core/category";
 import { dayColor } from "../core/colors";
 import { directionsUrl, placeUrl } from "../core/gmaps-out";
 import type { Day, Itinerary, Stop } from "../core/itinerary";
+import { daySummary, formatDistance, formatDuration, type Leg } from "../core/legs";
+import { dateFromLabel } from "../routing";
 import type WayfarerPlugin from "../main";
 import { googlePhotoUrl } from "../net";
 
@@ -155,6 +157,15 @@ export class WayfarerView extends ItemView {
     }
   }
 
+  /** Redraw with the same data, e.g. when routed legs arrive. */
+  redraw(): void {
+    if (this.itinerary) this.draw();
+  }
+
+  private legsOf(day: Day): Leg[] {
+    return this.plugin.router.legsFor(day, dateFromLabel(day.label));
+  }
+
   /* ---------- drawing ---------- */
 
   /**
@@ -196,18 +207,31 @@ export class WayfarerView extends ItemView {
     const cls = dim ? "wf-dim" : "wf-active";
 
     if (this.plugin.settings.drawRoutes) {
-      for (let i = 1; i < day.stops.length; i++) {
-        const a = day.stops[i - 1];
-        const b = day.stops[i];
-        const mode = b.transport;
-        const dash = mode === "walk" ? "2 6" : mode === "flight" ? "12 8" : mode === "boat" ? "8 4 2 4" : "6 6";
-        L.polyline([L.latLng(a.lat, a.lng), L.latLng(b.lat, b.lng)], {
-          color,
-          weight: dim ? 2 : mode === "walk" ? 3 : 3,
-          opacity: dim ? 0.25 : 0.8,
+      for (const leg of this.legsOf(day)) {
+        const mode = leg.mode;
+        const dash = leg.source === "estimate" ? (mode === "walk" ? "2 6" : mode === "flight" ? "12 8" : "6 6") : mode === "walk" ? "1 5" : undefined;
+        const line = L.polyline(leg.geometry.map(([a, b]) => L.latLng(a, b)), {
+          color: leg.lateBy > 0 && !dim ? "#d0342c" : color,
+          weight: dim ? 2 : mode === "walk" ? 3.5 : 4,
+          opacity: dim ? 0.25 : leg.source === "estimate" ? 0.6 : 0.85,
           dashArray: dash,
+          lineCap: "round",
           className: cls,
         }).addTo(this.layer);
+        if (!dim) {
+          const mid = leg.geometry[Math.floor(leg.geometry.length / 2)];
+          const approx = leg.source === "estimate" ? "≈ " : "";
+          const text = `${TRANSPORT_EMOJI[mode]} ${approx}${formatDuration(leg.durationS)}`;
+          const label = L.marker(mid, {
+            icon: L.divIcon({ className: `wf-leg-label${leg.lateBy > 0 ? " is-late" : ""}`, html: `<span>${text}</span>`, iconSize: undefined }),
+            interactive: true,
+            keyboard: false,
+            zIndexOffset: 500,
+          });
+          label.bindTooltip(legTooltip(leg), { direction: "top", className: "wf-tooltip" });
+          label.addTo(this.layer);
+          line.bindTooltip(legTooltip(leg), { sticky: true, className: "wf-tooltip" });
+        }
       }
     }
     day.stops.forEach((stop, i) => {
@@ -259,6 +283,12 @@ export class WayfarerView extends ItemView {
     const actions = body.createDiv({ cls: "wf-card-actions" });
     actions.createEl("a", { cls: "wf-ext", text: "Google Maps ↗", attr: { href: placeUrl(stop) } });
     const prev = day.stops[stop.index - 1];
+    const leg = prev ? this.legsOf(day)[stop.index - 1] : undefined;
+    if (leg) {
+      const t = body.createDiv({ cls: `wf-card-leg${leg.lateBy > 0 ? " is-late" : ""}` });
+      t.setText(`${TRANSPORT_EMOJI[leg.mode]} 從 ${prev.name} ${leg.source === "estimate" ? "約 " : ""}${formatDuration(leg.durationS)} · ${formatDistance(leg.distanceM)}${leg.summary ? " · " + leg.summary : ""}${leg.lateBy ? `，晚到 ${leg.lateBy} 分` : ""}`);
+      body.insertBefore(t, actions);
+    }
     if (prev) actions.createEl("a", { cls: "wf-ext", text: `${TRANSPORT_EMOJI[stop.transport ?? "train"]} 從上一站 ↗`, attr: { href: directionsUrl([prev, stop], stop.transport === "walk" ? "walking" : stop.transport === "car" ? "driving" : "transit") ?? "#" } });
     if (stop.meta?.website) actions.createEl("a", { cls: "wf-ext", text: "網站 ↗", attr: { href: stop.meta.website } });
     actions.createEl("a", { text: "到這行", attr: { href: "#", "data-wf-jump": "1" } });
@@ -301,6 +331,14 @@ export class WayfarerView extends ItemView {
       this.draw();
       this.fitAll(it.stops);
     };
+    const activeDay = it.days.find((d) => d.index === this.activeDay);
+    if (activeDay) {
+      const sum = daySummary(activeDay, this.legsOf(activeDay));
+      const bits = [`${activeDay.stops.length} 站`, `移動 ${formatDuration(sum.movingS)}`];
+      if (sum.first && sum.last) bits.push(`${sum.first} 到 ${sum.last}`);
+      if (sum.late) bits.push(`${sum.late} 段趕不上`);
+      this.legendEl.createSpan({ cls: `wf-summary${sum.late ? " is-late" : ""}`, text: bits.join(" · ") });
+    }
     const right = this.legendEl.createDiv({ cls: "wf-legend-right" });
     const follow = right.createEl("button", { cls: "wf-chip wf-chip-icon", text: "📍" });
     follow.toggleClass("is-active", this.plugin.settings.followCursor);
@@ -327,14 +365,21 @@ export class WayfarerView extends ItemView {
     const days = day ? [day] : it.days;
     for (const d of days) {
       if (!day) this.stripEl.createDiv({ cls: "wf-strip-day", text: d.label || `Day ${d.index + 1}` }).style.setProperty("--wf-color", dayColor(d.index));
+      const legs = this.legsOf(d);
       d.stops.forEach((stop, i) => {
+        if (i > 0) {
+          const leg = legs[i - 1];
+          const conn = this.stripEl.createDiv({ cls: `wf-leg${leg.lateBy > 0 ? " is-late" : ""}` });
+          conn.createSpan({ cls: "wf-leg-mode", text: TRANSPORT_EMOJI[leg.mode] });
+          conn.createSpan({ cls: "wf-leg-time", text: `${leg.source === "estimate" ? "≈" : ""}${formatDuration(leg.durationS)}` });
+          conn.setAttr("aria-label", legTooltip(leg));
+        }
         const card = this.stripEl.createEl("button", { cls: "wf-stop" });
         card.style.setProperty("--wf-color", dayColor(d.index));
         card.toggleClass("is-focus", stop === this.focused);
         const top = card.createDiv({ cls: "wf-stop-top" });
         top.createSpan({ cls: "wf-stop-n", text: String(i + 1) });
         if (stop.time) top.createSpan({ cls: "wf-stop-time", text: stop.time });
-        if (stop.transport && i > 0) top.createSpan({ cls: "wf-stop-mode", text: TRANSPORT_EMOJI[stop.transport] });
         const main = card.createDiv({ cls: "wf-stop-main" });
         main.createSpan({ cls: "wf-stop-glyph", text: stop.emoji ?? CATEGORY_EMOJI[stop.category] });
         main.createSpan({ cls: "wf-stop-name", text: stop.name });
@@ -409,6 +454,14 @@ export class WayfarerView extends ItemView {
     view.editor.setCursor(pos);
     view.editor.scrollIntoView({ from: pos, to: { line: stop.line, ch: stop.to } }, true);
   }
+}
+
+function legTooltip(leg: Leg): string {
+  const src = leg.source === "estimate" ? "直線估算" : leg.source === "osrm" ? "OSRM 路線" : "Google 路線";
+  const bits = [`${TRANSPORT_EMOJI[leg.mode]} ${leg.from.name} → ${leg.to.name}`, `${formatDuration(leg.durationS)} · ${formatDistance(leg.distanceM)} · ${src}`];
+  if (leg.summary) bits.push(leg.summary);
+  if (leg.lateBy) bits.push(`比 ${leg.to.time} 晚 ${leg.lateBy} 分`);
+  return bits.join("\n");
 }
 
 /** Picks today's line from Google's weekdayDescriptions, e.g. "Wednesday: 9:00 AM – 5:00 PM". */

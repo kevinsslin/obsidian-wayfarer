@@ -113,3 +113,71 @@ export function googlePlaces(apiKey: string, languageCode: string): NonNullable<
     },
   };
 }
+
+/* ---------- routing ---------- */
+
+export interface RouteResult {
+  distanceM: number;
+  durationS: number;
+  geometry: [number, number][];
+  summary?: string;
+}
+
+/**
+ * Public OSRM demo server. It answers every profile with car routing, so
+ * only the geometry and distance are trusted; walking and cycling durations
+ * are derived from the distance by the caller.
+ */
+export async function osrmRoute(from: { lat: number; lng: number }, to: { lat: number; lng: number }): Promise<RouteResult | null> {
+  const url = `https://router.project-osrm.org/route/v1/driving/${from.lng},${from.lat};${to.lng},${to.lat}?overview=full&geometries=geojson`;
+  const res = await requestUrl({ url, headers: { "User-Agent": UA }, throw: false });
+  if (res.status !== 200) return null;
+  const route = (res.json as { code?: string; routes?: Array<{ distance: number; duration: number; geometry: { coordinates: [number, number][] } }> }).routes?.[0];
+  if (!route) return null;
+  return { distanceM: route.distance, durationS: route.duration, geometry: route.geometry.coordinates.map(([lng, lat]) => [lat, lng] as [number, number]) };
+}
+
+/**
+ * Google Routes API (New). Transit needs a departure time in the future;
+ * the caller passes the day's date and the stop's time when it has them.
+ */
+export async function googleRoute(
+  apiKey: string,
+  languageCode: string,
+  from: { lat: number; lng: number },
+  to: { lat: number; lng: number },
+  mode: "TRANSIT" | "WALK" | "DRIVE" | "BICYCLE",
+  departure?: Date,
+): Promise<RouteResult | null> {
+  const body: Record<string, unknown> = {
+    origin: { location: { latLng: { latitude: from.lat, longitude: from.lng } } },
+    destination: { location: { latLng: { latitude: to.lat, longitude: to.lng } } },
+    travelMode: mode,
+    languageCode,
+  };
+  if (mode === "TRANSIT" && departure && departure.getTime() > Date.now()) body.departureTime = departure.toISOString();
+  const res = await requestUrl({
+    url: "https://routes.googleapis.com/directions/v2:computeRoutes",
+    method: "POST",
+    headers: {
+      "X-Goog-Api-Key": apiKey,
+      "Content-Type": "application/json",
+      "X-Goog-FieldMask":
+        "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.legs.steps.travelMode,routes.legs.steps.transitDetails.transitLine.nameShort,routes.legs.steps.transitDetails.transitLine.name",
+    },
+    body: JSON.stringify(body),
+    throw: false,
+  });
+  if (res.status !== 200) return null;
+  interface Step { travelMode?: string; transitDetails?: { transitLine?: { nameShort?: string; name?: string } } }
+  const route = (res.json as { routes?: Array<{ duration?: string; distanceMeters?: number; polyline?: { encodedPolyline?: string }; legs?: Array<{ steps?: Step[] }> }> }).routes?.[0];
+  if (!route?.polyline?.encodedPolyline) return null;
+  const { decodePolyline } = await import("./core/legs");
+  const lines = (route.legs ?? []).flatMap((l) => l.steps ?? []).map((s) => s.transitDetails?.transitLine?.nameShort || s.transitDetails?.transitLine?.name).filter((x): x is string => !!x);
+  return {
+    distanceM: route.distanceMeters ?? 0,
+    durationS: Number.parseInt(route.duration ?? "0", 10),
+    geometry: decodePolyline(route.polyline.encodedPolyline),
+    summary: lines.length ? Array.from(new Set(lines)).join(" → ") : undefined,
+  };
+}

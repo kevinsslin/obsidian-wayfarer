@@ -13,4 +13,5 @@ First release.
 - Day strip under the map, popup cards with photo (vault image, URL or Google photo), note, hours, rating and directions from the previous stop.
 - Cursor follow: the map flies to the stop under the cursor and pauses while you drag.
 - `skills/wayfarer-plan-trip` skill for AI assistants, with the note format reference.
+- Routed legs between stops (OSRM for walking and driving, Google Routes for transit), midpoint labels, strip connectors, day summary, and late warnings from written times.
 - Optional Google Places (New) resolution; Nominatim fallback for text-only links.

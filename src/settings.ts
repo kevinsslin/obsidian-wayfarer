@@ -21,6 +21,10 @@ export interface WayfarerSettings {
   tileAttribution: string;
   /** Draw a line through each day's stops in order. */
   drawRoutes: boolean;
+  /** Fetch real routes between stops (OSRM for walking and driving, Google Routes for transit when a key is set). */
+  routeLegs: boolean;
+  /** With a Google key, use Google Routes for walking and driving too. */
+  preferGoogleRoutes: boolean;
   /** Open the map pane when a note with stops becomes active. */
   autoOpen: boolean;
 }
@@ -36,6 +40,8 @@ export const DEFAULT_SETTINGS: WayfarerSettings = {
   tileUrl: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
   tileAttribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
   drawRoutes: true,
+  routeLegs: true,
+  preferGoogleRoutes: false,
   autoOpen: true,
 };
 
@@ -81,6 +87,16 @@ export class WayfarerSettingTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName("Draw a line through each day")
       .addToggle((t) => t.setValue(s.drawRoutes).onChange((v) => { s.drawRoutes = v; save(); this.plugin.refresh(); }));
+
+    new Setting(containerEl)
+      .setName("Route between stops")
+      .setDesc("Walking and driving legs are routed on OpenStreetMap (OSRM). Transit legs need a Google key and use Google Routes; without one they are estimated from the straight-line distance.")
+      .addToggle((t) => t.setValue(s.routeLegs).onChange((v) => { s.routeLegs = v; save(); this.plugin.refresh(); }));
+
+    new Setting(containerEl)
+      .setName("Use Google Routes for walking and driving too")
+      .setDesc("Only with a Google key. Better in Japan and other places where OSRM data is thin.")
+      .addToggle((t) => t.setValue(s.preferGoogleRoutes).onChange((v) => { s.preferGoogleRoutes = v; save(); this.plugin.refresh(); }));
 
     new Setting(containerEl)
       .setName("Open the map automatically")

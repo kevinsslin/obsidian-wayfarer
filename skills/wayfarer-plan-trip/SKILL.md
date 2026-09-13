@@ -19,6 +19,7 @@ The user keeps trips as Markdown notes. The Wayfarer plugin reads a note and sho
 - Stops go under the heading as a list, in the order the user will visit them. Numbered lists for a fixed sequence, bullets for a loose one.
 - Every stop is `[Name](geo:lat,lng)` with 4 to 6 decimals. Use the name the user will see on signs (local script), optionally followed by a familiar name: `[湯滝](geo:36.7938,139.4316)`.
 - When you are not sure of coordinates, paste the full Google Maps URL of the place instead of guessing; the plugin converts it when the user opens the note on desktop. Never write a `geo:` link with made-up numbers.
+- Write times on stops that have a fixed departure or entry (buses, trains, reservations, last entry). The plugin computes each leg's duration and flags a red leg when the next written time cannot be reached, so real times on the anchors matter more than a time on every line.
 - Start the line with the time when it matters: `07:53 巴士到 [湯滝](geo:…)`. Say how the user gets there in plain words before the link (巴士, 走, 新幹線, 地鐵, 計程車, 飛, 船); the plugin reads those to style the route.
 - Put a category emoji before the link when the category is not obvious from the name (🍜 food, ☕ cafe, 🏨 stay, ⛩️ shrine, 🛕 temple, 🖼️ museum, 🏞️ nature, ♨️ onsen, 🛍️ shop, 🚉 station, ✈️ airport, 🔭 view, 🏯 castle, 🎭 event). Names that already say 神社, 寺, 駅, ホテル, 美術館 do not need one.
 - The rest of the line is the user's note: why go, what to order, the catch (`最後入場 16:30`, `週一休`, `要脫鞋`). Keep it to one line. Longer notes go on an indented line below.
