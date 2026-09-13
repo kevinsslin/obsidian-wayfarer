@@ -332,7 +332,6 @@ export class WayfarerView extends ItemView {
     title.createSpan({ text: stop.name });
     const sub = [day.label || `Day ${day.index + 1}`, `#${stop.index + 1}`];
     if (stop.time) sub.push(stop.time);
-    if (stop.transport) sub.push(TRANSPORT_EMOJI[stop.transport]);
     body.createDiv({ cls: "wf-card-sub", text: sub.join(" · ") });
     const { date } = this.plan(day);
     const facts: string[] = [];
@@ -349,10 +348,13 @@ export class WayfarerView extends ItemView {
     const prev = day.stops[stop.index - 1];
     const leg = prev ? this.legsOf(day)[stop.index - 1] : undefined;
     if (leg && prev) {
+      // One line for the leg: mode, where from, numbers. With a mode it is also the directions link.
       const t2 = body.createDiv({ cls: `wf-card-leg${leg.lateBy > 0 ? " is-late" : ""}` });
-      t2.setText(`${leg.mode ? TRANSPORT_EMOJI[leg.mode] + " " : ""}${t("from_prev", { name: prev.name })}: ${legText(leg)}${leg.lateBy ? ", " + t("late_by", { n: leg.lateBy }) : ""}`);
+      const text = `${leg.mode ? TRANSPORT_EMOJI[leg.mode] + " " : ""}${t("from_prev", { name: prev.name })} · ${legText(leg)}${leg.lateBy ? " · " + t("late_by", { n: leg.lateBy }) : ""}`;
+      const url = leg.mode ? directionsUrl([prev, stop], leg.mode === "walk" ? "walking" : leg.mode === "car" || leg.mode === "taxi" ? "driving" : "transit") : null;
+      if (url) t2.createEl("a", { cls: "wf-ext", text: `${text} ↗`, attr: { href: url, "aria-label": t("from_prev_dir") } });
+      else t2.setText(text);
       body.insertBefore(t2, actions);
-      if (leg.mode) actions.createEl("a", { cls: "wf-ext", text: `${TRANSPORT_EMOJI[leg.mode]} ${t("from_prev_dir")}`, attr: { href: directionsUrl([prev, stop], leg.mode === "walk" ? "walking" : leg.mode === "car" || leg.mode === "taxi" ? "driving" : "transit") ?? "#" } });
     }
     if (stop.meta?.website) actions.createEl("a", { cls: "wf-ext", text: t("website"), attr: { href: stop.meta.website } });
     actions.createEl("a", { text: t("to_line"), attr: { href: "#", "data-wf-jump": "1" } });
@@ -580,14 +582,15 @@ export class WayfarerView extends ItemView {
 }
 
 /**
- * The user's notes for a stop, verbatim: the rest of its line after the
- * name and time, then the indented lines under it.
+ * The user's notes for a stop, verbatim: its line as prose (time removed,
+ * the place name kept where it was written), then the indented lines under
+ * it. A line that is nothing but the name adds nothing.
  */
 export function stopNotes(stop: Stop): string[] {
-  let rest = stop.note.replace(stop.name, " ");
-  if (stop.time) rest = rest.replace(stop.time, " ");
-  rest = rest.replace(/\s+/g, " ").trim().replace(/^[,，、:：]+|[,，、:：]+$/g, "").trim();
-  return rest ? [rest, ...stop.notes] : [...stop.notes];
+  let line = stop.note;
+  if (stop.time) line = line.replace(stop.time, " ");
+  line = line.replace(/\s+/g, " ").trim();
+  return line && line !== stop.name ? [line, ...stop.notes] : [...stop.notes];
 }
 
 /** The point halfway along a polyline by length. */

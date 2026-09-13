@@ -787,12 +787,14 @@ svg.leaflet-image-layer.leaflet-interactive path {
 /* ---------- legs ---------- */
 .wayfarer-view .wf-tooltip { white-space: pre; }
 .wayfarer-view .wf-card-leg { margin-top: 6px; color: #555; font-size: 0.9em; }
+.wayfarer-view .wf-card-leg a { color: inherit; text-decoration: none; }
+.wayfarer-view .wf-card-leg a:hover { color: #2a62c9; }
 .wayfarer-view .wf-card-leg.is-late { color: #d0342c; }
 
 /* ---------- popup card ---------- */
 .wayfarer-view .wf-popup .leaflet-popup-content-wrapper { padding: 0; border-radius: 10px; overflow: hidden; }
 .wayfarer-view .wf-popup .leaflet-popup-content { margin: 0; width: auto !important; }
-.wayfarer-view .wf-card { font-family: var(--font-interface); font-size: var(--font-ui-small); line-height: 1.45; color: #222; }
+.wayfarer-view .wf-card { width: 280px; font-family: var(--font-interface); font-size: var(--font-ui-small); line-height: 1.45; color: #222; }
 .wayfarer-view .wf-card-imgwrap { position: relative; }
 .wayfarer-view .wf-card-img { display: block; width: 100%; height: 130px; object-fit: cover; }
 .wayfarer-view .wf-card-credit {
