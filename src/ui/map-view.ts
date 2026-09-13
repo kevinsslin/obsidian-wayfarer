@@ -74,6 +74,9 @@ export class WayfarerView extends ItemView {
       this.map?.invalidateSize();
     };
     this.mapEl = body.createDiv({ cls: "wf-map" });
+    // Set inline so Leaflet sees it at construction even before styles.css has loaded; otherwise it forces position: relative.
+    this.mapEl.style.position = "absolute";
+    this.mapEl.style.inset = "0";
     this.emptyEl = root.createDiv({ cls: "wf-empty" });
     this.emptyEl.setText(t("empty"));
     this.applySplit();
@@ -81,8 +84,8 @@ export class WayfarerView extends ItemView {
       down.preventDefault();
       divider.setPointerCapture(down.pointerId);
       const move = (e: PointerEvent) => {
-        const left = body.getBoundingClientRect().left;
-        this.plugin.settings.listWidth = Math.min(480, Math.max(160, Math.round(e.clientX - left)));
+        const left = body.getBoundingClientRect().left + 10;
+        this.plugin.settings.listWidth = Math.min(480, Math.max(180, Math.round(e.clientX - left)));
         this.applySplit();
         this.map?.invalidateSize();
       };
@@ -95,7 +98,9 @@ export class WayfarerView extends ItemView {
       divider.addEventListener("pointerup", up);
     };
 
-    this.map = L.map(this.mapEl, { zoomControl: true, attributionControl: true, worldCopyJump: true });
+    // The timeline floats over the map's left edge, so the zoom buttons go right.
+    this.map = L.map(this.mapEl, { zoomControl: false, attributionControl: true, worldCopyJump: true });
+    L.control.zoom({ position: "topright" }).addTo(this.map);
     this.map.setView([35.68, 139.76], 5);
     this.applyTiles();
     this.layer.addTo(this.map);
@@ -134,7 +139,7 @@ export class WayfarerView extends ItemView {
 
   private applySplit(): void {
     const open = this.plugin.settings.listOpen;
-    this.stripEl.style.flex = `0 0 ${this.plugin.settings.listWidth}px`;
+    this.contentEl.querySelector<HTMLElement>(".wf-body")?.style.setProperty("--wf-list-width", `${this.plugin.settings.listWidth}px`);
     this.stripEl.toggleClass("is-hidden", !open);
     const divider = this.contentEl.querySelector(".wf-divider");
     divider?.toggleClass("is-closed", !open);
@@ -277,7 +282,7 @@ export class WayfarerView extends ItemView {
         const line = L.polyline(pts, {
           color: lineColor,
           weight: dim ? 2 : leg.routed ? (mode === "walk" ? 3.5 : 4) : 2.5,
-          opacity: dim ? 0.25 : leg.routed ? 0.85 : 0.55,
+          opacity: dim ? 0.25 : leg.routed ? 0.9 : 0.7,
           lineCap: "round",
           lineJoin: "round",
           className: cls,
