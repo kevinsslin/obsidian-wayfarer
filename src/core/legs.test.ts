@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { setLocale } from "./i18n";
 import { parseItinerary } from "./itinerary";
-import { bareLeg, coordKey, decodePolyline, finishLeg, formatDuration, haversineM, legMetaFor, legText, minutesOf } from "./legs";
+import { bareLeg, coordKey, decodePolyline, finishLeg, formatDuration, haversineM, legMetaFor, legText, minutesOf, shortWayLng } from "./legs";
 
 beforeAll(() => setLocale("zh-TW"));
 
@@ -54,5 +54,13 @@ describe("legs", () => {
   it("decodes a polyline", () => {
     const pts = decodePolyline("_p~iF~ps|U_ulLnnqC_mqNvxq`@");
     expect(pts).toEqual([[38.5, -120.2], [40.7, -120.95], [43.252, -126.453]]);
+  });
+});
+
+describe("shortWayLng", () => {
+  it("crosses the antimeridian when that is shorter", () => {
+    expect(shortWayLng(139.77, -122.38)).toBeCloseTo(237.62);
+    expect(shortWayLng(-122.38, 139.77)).toBeCloseTo(-220.23);
+    expect(shortWayLng(121.55, 139.77)).toBe(139.77);
   });
 });

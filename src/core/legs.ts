@@ -40,7 +40,7 @@ export function haversineM(a: { lat: number; lng: number }, b: { lat: number; ln
  * mode, that route's duration, distance and line names.
  */
 export function bareLeg(from: Stop, to: Stop): Leg {
-  const straight: [number, number][] = [[from.lat, from.lng], [to.lat, to.lng]];
+  const straight: [number, number][] = [[from.lat, from.lng], [to.lat, shortWayLng(from.lng, to.lng)]];
   const saved = to.meta?.leg;
   if (saved && to.transport && saved.via === to.transport && saved.from === coordKey(from)) {
     return finishLeg({ from, to, mode: to.transport, distanceM: saved.m, durationS: saved.s, summary: saved.line, routed: true, source: "google", geometry: straight });
@@ -129,4 +129,16 @@ export function decodePolyline(str: string): [number, number][] {
     out.push([lat / 1e5, lng / 1e5]);
   }
   return out;
+}
+
+/**
+ * The destination longitude shifted by a full turn when that is the shorter
+ * way round, so a straight line 羽田 to SFO crosses the Pacific instead of
+ * being drawn the long way over Eurasia.
+ */
+export function shortWayLng(fromLng: number, toLng: number): number {
+  const d = toLng - fromLng;
+  if (d > 180) return toLng - 360;
+  if (d < -180) return toLng + 360;
+  return toLng;
 }
