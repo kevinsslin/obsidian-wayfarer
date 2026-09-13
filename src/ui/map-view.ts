@@ -4,7 +4,7 @@ import { CATEGORY_EMOJI, TRANSPORT_EMOJI, type Transport } from "../core/categor
 import { dayColor } from "../core/colors";
 import { directionsUrl, placeUrl } from "../core/gmaps-out";
 import type { Day, Itinerary, Stop } from "../core/itinerary";
-import { daySummary, formatDistance, formatDuration, type Leg } from "../core/legs";
+import { legText, type Leg } from "../core/legs";
 import { checkHours, describeHours } from "../core/schedule";
 import { minutesOf } from "../core/legs";
 import { dateFromLabel } from "../routing";
@@ -251,11 +251,12 @@ export class WayfarerView extends ItemView {
     if (this.plugin.settings.drawRoutes) {
       for (const leg of this.legsOf(day)) {
         const mode = leg.mode;
-        const dash = leg.source === "estimate" ? (mode === "walk" ? "2 6" : mode === "flight" ? "12 8" : "6 6") : mode === "walk" ? "1 5" : undefined;
+        // A routed leg follows the road; an unrouted one is the straight line, drawn dashed so it never reads as a route.
+        const dash = !leg.routed ? "6 6" : mode === "walk" ? "1 5" : undefined;
         const line = L.polyline(leg.geometry.map(([a, b]) => L.latLng(a, b)), {
           color: leg.lateBy > 0 && !dim ? "#d0342c" : color,
           weight: dim ? 2 : mode === "walk" ? 3.5 : 4,
-          opacity: dim ? 0.25 : leg.source === "estimate" ? 0.6 : 0.85,
+          opacity: dim ? 0.25 : leg.routed ? 0.85 : 0.5,
           dashArray: dash,
           lineCap: "round",
           className: cls,
@@ -311,20 +312,18 @@ export class WayfarerView extends ItemView {
     const today = todayHours(stop.meta?.hours);
     if (today) facts.push(today.replace(/^[^:]+:\s*/, ""));
     if (facts.length) body.createDiv({ cls: "wf-card-facts", text: facts.join(" · ") });
-    const note = stop.note.startsWith(stop.name) ? stop.note.slice(stop.name.length).replace(/^[\s,，、:：]+/, "") : stop.note;
-    if (note) body.createDiv({ cls: "wf-card-note", text: note });
+    for (const n of stopNotes(stop)) body.createDiv({ cls: "wf-card-note", text: n });
     if (stop.meta?.address) body.createDiv({ cls: "wf-card-addr", text: stop.meta.address });
     const actions = body.createDiv({ cls: "wf-card-actions" });
     actions.createEl("a", { cls: "wf-ext", text: t("open_gmaps"), attr: { href: placeUrl(stop) } });
     const prev = day.stops[stop.index - 1];
     const leg = prev ? this.legsOf(day)[stop.index - 1] : undefined;
-    if (leg) {
-      const tr = t;
+    if (leg && prev) {
       const t2 = body.createDiv({ cls: `wf-card-leg${leg.lateBy > 0 ? " is-late" : ""}` });
-      t2.setText(`${TRANSPORT_EMOJI[leg.mode]} ${tr("from_prev", { name: prev.name })} ${leg.source === "estimate" ? tr("approx") : ""}${formatDuration(leg.durationS)} · ${formatDistance(leg.distanceM)}${leg.summary ? " · " + leg.summary : ""}${leg.lateBy ? ", " + tr("late_by", { n: leg.lateBy }) : ""}`);
+      t2.setText(`${leg.mode ? TRANSPORT_EMOJI[leg.mode] + " " : ""}${t("from_prev", { name: prev.name })}: ${legText(leg)}${leg.lateBy ? ", " + t("late_by", { n: leg.lateBy }) : ""}`);
       body.insertBefore(t2, actions);
+      if (leg.mode) actions.createEl("a", { cls: "wf-ext", text: `${TRANSPORT_EMOJI[leg.mode]} ${t("from_prev_dir")}`, attr: { href: directionsUrl([prev, stop], leg.mode === "walk" ? "walking" : leg.mode === "car" ? "driving" : "transit") ?? "#" } });
     }
-    if (prev) actions.createEl("a", { cls: "wf-ext", text: `${TRANSPORT_EMOJI[leg?.mode ?? "train"]} ${t("from_prev_dir")}`, attr: { href: directionsUrl([prev, stop], stop.transport === "walk" ? "walking" : stop.transport === "car" ? "driving" : "transit") ?? "#" } });
     if (stop.meta?.website) actions.createEl("a", { cls: "wf-ext", text: t("website"), attr: { href: stop.meta.website } });
     actions.createEl("a", { text: t("to_line"), attr: { href: "#", "data-wf-jump": "1" } });
     return root;
@@ -354,17 +353,6 @@ export class WayfarerView extends ItemView {
       this.draw();
       this.fitAll(it.stops);
     };
-    const activeDay = it.days.find((d) => d.index === this.activeDay);
-    if (activeDay) {
-      const { legs, date } = this.plan(activeDay);
-      const sum = daySummary(activeDay, legs);
-      const bits = [t("stops", { n: activeDay.stops.length }), t("moving", { t: formatDuration(sum.movingS) })];
-      if (sum.first && sum.last) bits.push(t("span", { a: sum.first, b: sum.last }));
-      if (sum.late) bits.push(t("late_legs", { n: sum.late }));
-      const closed = activeDay.stops.filter((st) => this.hoursWarning(st, date)).length;
-      if (closed) bits.push(t("hours_issues", { n: closed }));
-      this.legendEl.createSpan({ cls: `wf-summary${sum.late || closed ? " is-late" : ""}`, text: bits.join(" · ") });
-    }
     const right = this.legendEl.createDiv({ cls: "wf-legend-right" });
     const follow = right.createEl("button", { cls: "wf-chip wf-chip-icon", text: "📍" });
     follow.toggleClass("is-active", this.plugin.settings.followCursor);
@@ -374,15 +362,6 @@ export class WayfarerView extends ItemView {
       void this.plugin.saveSettings();
       this.draw();
     };
-    const active = it.days.find((d) => d.index === this.activeDay);
-    if (active) {
-      const url = directionsUrl(active.stops);
-      if (url) {
-        const go = right.createEl("button", { cls: "wf-chip wf-chip-go", text: t("route") });
-        go.setAttr("aria-label", `${active.label}: open the day's stops as directions in Google Maps`);
-        go.onclick = () => window.open(url);
-      }
-    }
   }
 
   /** The active day's stops as a vertical timeline in the left column; the whole trip when no day is active. */
@@ -415,7 +394,7 @@ export class WayfarerView extends ItemView {
         main.createSpan({ cls: "wf-stop-glyph", text: stop.emoji ?? CATEGORY_EMOJI[stop.category] });
         main.createSpan({ cls: "wf-stop-name", text: stop.name });
         const warn = this.hoursWarning(stop, date);
-        const note = subNote(stop);
+        const [note] = stopNotes(stop);
         const sub = body.createDiv({ cls: "wf-stop-sub" });
         if (warn) sub.createSpan({ cls: "is-late", text: `⚠ ${warn}` });
         else if (note) sub.createSpan({ text: note });
@@ -444,19 +423,21 @@ export class WayfarerView extends ItemView {
     }
   }
 
-  /** The arrow between two cards. Clicking the transport emoji cycles the mode and writes it to the note. */
+  /**
+   * The arrow between two cards. The transport is the user's: chosen here,
+   * or a transport emoji written before the link. Until chosen, the row
+   * asks, and shows the straight-line distance only.
+   */
   private drawLegRow(leg: Leg, color: string): void {
-    const conn = this.stripEl.createDiv({ cls: `wf-leg${leg.lateBy > 0 ? " is-late" : ""}` });
+    const conn = this.stripEl.createDiv({ cls: `wf-leg${leg.lateBy > 0 ? " is-late" : ""}${leg.mode ? "" : " is-unknown"}` });
     conn.style.setProperty("--wf-color", color);
-    const mode = conn.createEl("a", { cls: `wf-leg-mode is-${leg.to.transportSource}`, text: TRANSPORT_EMOJI[leg.mode] });
-    const src = t(leg.to.transportSource === "chosen" ? "via_chosen" : leg.to.transportSource === "words" ? "via_words" : "via_guessed");
-    mode.setAttr("aria-label", `${src}. ${t("via_hint")}`);
+    const mode = conn.createEl("a", { cls: "wf-leg-mode", text: leg.mode ? TRANSPORT_EMOJI[leg.mode] : "?" });
+    mode.setAttr("aria-label", t("via_hint"));
     mode.onclick = (e) => {
       e.stopPropagation();
       this.pickTransport(mode, leg);
     };
-    const text = `${leg.source === "estimate" ? "≈" : ""}${formatDuration(leg.durationS)} · ${formatDistance(leg.distanceM)}${leg.summary ? " · " + leg.summary : ""}`;
-    conn.createSpan({ cls: "wf-leg-text", text });
+    conn.createSpan({ cls: "wf-leg-text", text: leg.mode ? legText(leg) : `${t("pick_mode")} · ${legText(leg)}` });
     if (leg.lateBy) conn.createSpan({ cls: "wf-leg-late", text: t("late_by", { n: leg.lateBy }) });
     conn.setAttr("aria-label", legTooltip(leg));
   }
@@ -542,21 +523,19 @@ export class WayfarerView extends ItemView {
 }
 
 /**
- * What is left of the line once the name, the time and the "how to get
- * there" phrase are gone: the user's actual remark, or nothing.
+ * The user's notes for a stop, verbatim: the rest of its line after the
+ * name and time, then the indented lines under it.
  */
-export function subNote(stop: Stop): string {
-  let r = stop.note.replace(stop.name, " ");
-  r = r.replace(/\d{1,2}:\d{2}/, " ").replace(/\s+/g, " ").trim();
-  r = r.replace(/^(.{0,8}?)(到|至|去|前往|→)\s*/u, "").replace(/^(回|去|到|再|然後|接著|then|to)\s*/iu, "").trim();
-  r = r.replace(/^[,，、:：.。]+|[,，、:：]+$/g, "").trim();
-  return r.length >= 2 ? r : "";
+export function stopNotes(stop: Stop): string[] {
+  let rest = stop.note.replace(stop.name, " ");
+  if (stop.time) rest = rest.replace(stop.time, " ");
+  rest = rest.replace(/\s+/g, " ").trim().replace(/^[,，、:：]+|[,，、:：]+$/g, "").trim();
+  return rest ? [rest, ...stop.notes] : [...stop.notes];
 }
 
 function legTooltip(leg: Leg): string {
-  const src = t(leg.source === "estimate" ? "src_estimate" : leg.source === "osrm" ? "src_osrm" : "src_google");
-  const bits = [`${TRANSPORT_EMOJI[leg.mode]} ${leg.from.name} → ${leg.to.name}`, `${formatDuration(leg.durationS)} · ${formatDistance(leg.distanceM)} · ${src}`];
-  if (leg.summary) bits.push(leg.summary);
+  const bits = [`${leg.mode ? TRANSPORT_EMOJI[leg.mode] + " " : ""}${leg.from.name} → ${leg.to.name}`, legText(leg)];
+  if (leg.routed) bits.push(leg.source === "google" ? "Google Routes" : "OpenStreetMap / OSRM");
   if (leg.lateBy) bits.push(t("late_vs", { t: leg.to.time ?? "", n: leg.lateBy }));
   return bits.join("\n");
 }

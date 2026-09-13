@@ -41,11 +41,12 @@ export interface Stop {
   category: Category;
   /** Leading "HH:MM" on the line, if any. */
   time?: string;
-  /** How one gets here: chosen in the timeline, read from words before the link, or guessed from distance. */
+  /** How one gets here: chosen in the timeline, or a transport emoji the user wrote before the link. Otherwise unknown. */
   transport?: Transport;
-  transportSource: "chosen" | "words" | "guessed";
   /** The line's prose with links reduced to their names and markup removed. */
   note: string;
+  /** Indented lines right under the stop, verbatim: the user's notes for it. */
+  notes: string[];
   /** Image on the same line or the line after: a vault `![[file]]` link or a URL. */
   image?: string;
   /** Index within its day, zero-based. */
@@ -82,8 +83,7 @@ export interface ParseOptions {
   maxHeadingLevel?: number;
 }
 
-import { firstEmoji, pickCategory, transportFrom, type Category, type Transport } from "./category";
-import { WRITTEN_LEG_RE } from "./schedule";
+import { firstEmoji, isTransportEmoji, pickCategory, transportEmoji, type Category, type Transport } from "./category";
 
 const GEO_LINK = /\[([^\]]*)\]\(geo:(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)(?:[^)]*)\)/g;
 const TRAILER = /^((?:\s+tag:[^\s%]+)*)/;
@@ -127,7 +127,7 @@ export function parseItinerary(markdown: string, opts: ParseOptions = {}): Itine
     let m: RegExpExecArray | null;
     let prevEnd = 0;
     const time = TIME.exec(line)?.[1];
-    const image = IMAGE.exec(line) ?? (lines[i + 1] && !HEADING.test(lines[i + 1]) ? IMAGE.exec(lines[i + 1]) : null);
+    const image = IMAGE.exec(line) ?? imageBelow(lines, i);
     while ((m = GEO_LINK.exec(line))) {
       const lat = Number(m[2]);
       const lng = Number(m[3]);
@@ -150,6 +150,7 @@ export function parseItinerary(markdown: string, opts: ParseOptions = {}): Itine
       const before = line.slice(prevEnd, m.index);
       prevEnd = m.index + m[0].length;
       const name = m[1] || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+      const emojiBefore = firstEmoji(before.replace(/\d{1,2}:\d{2}/, ""));
       current.stops.push({
         name,
         lat,
@@ -159,12 +160,12 @@ export function parseItinerary(markdown: string, opts: ParseOptions = {}): Itine
         to: m.index + m[0].length,
         tags,
         meta,
-        emoji: firstEmoji(before.replace(/\d{1,2}:\d{2}/, "")) ?? undefined,
+        emoji: emojiBefore && !isTransportEmoji(emojiBefore) ? emojiBefore : undefined,
         category: pickCategory({ tags, googleType: meta?.type, name }),
         time,
-        transport: meta?.via ?? transportFrom(before) ?? undefined,
-        transportSource: meta?.via ? "chosen" : transportFrom(before) ? "words" : "guessed",
+        transport: meta?.via ?? transportEmoji(before) ?? undefined,
         note: plainNote(line),
+        notes: continuationLines(lines, i),
         image: image ? (image[1] ?? image[2]) : undefined,
         index: current.stops.length,
         dayIndex: -1,
@@ -181,10 +182,42 @@ export function parseItinerary(markdown: string, opts: ParseOptions = {}): Itine
   return { days: withStops, stops: withStops.flatMap((d) => d.stops) };
 }
 
+/**
+ * Lines directly under `line` that are indented deeper than it, with list
+ * markers and leading whitespace removed. Image-only lines are left out
+ * (they become the stop's picture instead).
+ */
+export function continuationLines(lines: string[], line: number): string[] {
+  const indentOf = (l: string) => /^\s*/.exec(l)![0].replace(/\t/g, "    ").length;
+  const base = indentOf(lines[line]);
+  const out: string[] = [];
+  for (let j = line + 1; j < lines.length; j++) {
+    const l = lines[j];
+    if (!l.trim()) break;
+    if (indentOf(l) <= base || HEADING.test(l)) break;
+    const text = l.replace(/^\s*(?:[-*+]|\d+[.)])\s*/, "").trim();
+    if (IMAGE.test(text) && text.replace(IMAGE, "").trim() === "") continue;
+    out.push(text);
+  }
+  return out;
+}
+
+/** An image on one of the indented lines under `line`. */
+function imageBelow(lines: string[], line: number): RegExpExecArray | null {
+  const indentOf = (l: string) => /^\s*/.exec(l)![0].replace(/\t/g, "    ").length;
+  const base = indentOf(lines[line]);
+  for (let j = line + 1; j < lines.length; j++) {
+    const l = lines[j];
+    if (!l.trim() || indentOf(l) <= base || HEADING.test(l)) return null;
+    const m = IMAGE.exec(l);
+    if (m) return m;
+  }
+  return null;
+}
+
 /** The line as prose: list marker, time, links (kept as names), tags, meta and images removed. */
 export function plainNote(line: string): string {
   return line
-    .replace(WRITTEN_LEG_RE, "")
     .replace(/^\s*(?:[-*+]|\d+[.)])\s*/, "")
     .replace(/%%wf:\{.*?\}%%/g, "")
     .replace(/\s+tag:\S+/g, "")

@@ -5,7 +5,7 @@ description: Write or revise a day-by-day travel itinerary as an Obsidian note t
 
 # Plan a trip in Obsidian
 
-The user keeps trips as Markdown notes. The Wayfarer plugin reads a note and shows a map beside it: headings are days, `[Name](geo:lat,lng)` links are stops, the line's own words carry time, transport and notes. Your job is to write that note well. Read `FORMAT.md` in this folder once before writing.
+The user keeps trips as Markdown notes. The Wayfarer plugin reads a note and shows a map beside it: headings are days, `[Name](geo:lat,lng)` links are stops, the line carries the time, an optional transport emoji, and a short note. Your job is to write that note well. Read `FORMAT.md` in this folder once before writing.
 
 ## Before writing
 
@@ -20,9 +20,9 @@ The user keeps trips as Markdown notes. The Wayfarer plugin reads a note and sho
 - Every stop is `[Name](geo:lat,lng)` with 4 to 6 decimals. Use the name the user will see on signs (local script), optionally followed by a familiar name: `[湯滝](geo:36.7938,139.4316)`.
 - When you are not sure of coordinates, paste the full Google Maps URL of the place instead of guessing; the plugin converts it when the user opens the note on desktop. Never write a `geo:` link with made-up numbers.
 - Write times on stops that have a fixed departure or entry (buses, trains, reservations, last entry). The plugin computes each leg's duration and flags a red leg when two written times are too close for the leg between them.
-- Start the line with the time when it matters: `07:53 巴士到 [湯滝](geo:…)`. Say how the user gets there in plain words before the link (巴士, 走, 新幹線, 地鐵, 計程車, 飛, 船); the plugin reads those to style the route.
+- Start the line with the time when it matters: `07:53 🚌 [湯滝](geo:…)`. Put a transport emoji before the link only when the user said how they get there (🚶 🚃 🚌 🚗 🚲 ⛴️ ✈️); the plugin routes that leg and draws it. Do not guess a mode; leave it out and the user picks it on the map pane.
 - Put a category emoji before the link when the category is not obvious from the name (🍜 food, ☕ cafe, 🏨 stay, ⛩️ shrine, 🛕 temple, 🖼️ museum, 🏞️ nature, ♨️ onsen, 🛍️ shop, 🚉 station, ✈️ airport, 🔭 view, 🏯 castle, 🎭 event). Names that already say 神社, 寺, 駅, ホテル, 美術館 do not need one.
-- The rest of the line is the user's note: why go, what to order, the catch (`最後入場 16:30`, `週一休`, `要脫鞋`). Keep it to one line. Longer notes go on an indented line below.
+- The rest of the line is the user's note: why go, what to order, the catch (`最後入場 16:30`, `週一休`, `要脫鞋`). Keep it to one line. Longer notes go on indented lines directly below the stop; the plugin shows them as that stop's notes, verbatim.
 - The night's hotel is the last stop of the day. Write 🏨 before the link or let the name (ホテル, hotel, 旅館) say so.
 - An image for a stop goes on the same line or the next: `![[photo.jpg]]` or a URL. Do not add images the user did not provide.
 - Everything you were unsure about goes in a final `## 待確認` section as a checklist, not into the day plans as fact.

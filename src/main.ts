@@ -13,10 +13,7 @@ import { firstEmoji } from "./core/category";
 import { LegRouter } from "./routing";
 import { PhotoFinder } from "./photos";
 import type { FoundPhoto } from "./net";
-import { formatDistance, formatDuration } from "./core/legs";
-import { legTrailer, splitTrailer } from "./core/schedule";
-import { TRANSPORT_EMOJI } from "./core/category";
-import { localeFor, setLocale, t } from "./core/i18n";
+import { localeFor, setLocale } from "./core/i18n";
 
 /**
  * Wayfarer: the note is the plan, the pane is the map.
@@ -74,11 +71,6 @@ export default class WayfarerPlugin extends Plugin {
           const text = editor.getValue().trim() ? skeleton.replace(/^---\nlocations:\n---\n\n/, "") : skeleton;
           editor.replaceSelection(text);
         }).open(),
-    });
-    this.addCommand({
-      id: "write-legs",
-      name: "Write travel times into this note",
-      editorCallback: (editor) => this.writeLegs(editor),
     });
     this.addCommand({
       id: "convert-all-maps-links",
@@ -224,37 +216,7 @@ export default class WayfarerPlugin extends Plugin {
     return first?.view instanceof MarkdownView ? first.view : null;
   }
 
-  /* ---------- writing the plan back ---------- */
-
-  /**
-   * Appends ` · 🚶 34 分 · 2.5 km` to every stop that has a leg before it,
-   * replacing an earlier trailer.
-   */
-  writeLegs(editor: Editor): void {
-    const view = [...this.views][0];
-    const it = parseItinerary(editor.getValue(), { maxHeadingLevel: this.settings.dayHeadingLevel });
-    if (!view) {
-      new Notice(t("open_map_first"));
-      return;
-    }
-    let n = 0;
-    const edits: Array<{ line: number; text: string }> = [];
-    for (const day of it.days) {
-      const { legs } = view.plan(day);
-      day.stops.forEach((stop, i) => {
-        if (i === 0) return;
-        const leg = legs[i - 1];
-        const legText = `${TRANSPORT_EMOJI[leg.mode]} ${leg.source === "estimate" ? "≈" : ""}${formatDuration(leg.durationS)}`;
-        const trailer = legTrailer(legText, leg.source === "estimate" && leg.mode !== "walk" ? null : formatDistance(leg.distanceM));
-        const { base } = splitTrailer(editor.getLine(stop.line));
-        const text = base.replace(/\s+$/, "") + trailer;
-        if (text !== editor.getLine(stop.line)) edits.push({ line: stop.line, text });
-        n++;
-      });
-    }
-    for (const e of edits) editor.replaceRange(e.text, { line: e.line, ch: 0 }, { line: e.line, ch: editor.getLine(e.line).length });
-    new Notice(t("wrote_legs", { a: edits.length, b: n }));
-  }
+  /* ---------- state chosen on the map ---------- */
 
   /** Merges `patch` into the `%%wf:{}%%` comment of the stop on `line`. */
   setStopMeta(line: number, patch: Partial<PlaceMeta>): void {

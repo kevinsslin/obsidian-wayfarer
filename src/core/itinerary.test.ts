@@ -102,7 +102,6 @@ describe("meta placement and day headings", () => {
     const it2 = parseItinerary(`## 9/17\n- 走到 [赤沼](geo:1,2) 備註 %%wf:{"via":"bus"}%%`);
     const st = it2.stops[0];
     expect(st.transport).toBe("bus");
-    expect(st.transportSource).toBe("chosen");
     const patched = patchLineMeta(`- [赤沼](geo:1,2) tag:stay 備註`, { via: "walk" });
     expect(patched).toBe(`- [赤沼](geo:1,2) tag:stay %%wf:{"via":"walk"}%% 備註`);
     expect(patchLineMeta(patched, { via: undefined })).toBe(`- [赤沼](geo:1,2) tag:stay 備註`);
@@ -113,5 +112,22 @@ describe("meta placement and day headings", () => {
     expect(it2.days.map((d) => d.title)).toEqual(["", "9/16", "9/17"]);
     const single = parseItinerary(`# 9/16\n[B](geo:2,2)\n# 9/17\n[C](geo:3,3)`);
     expect(single.days.map((d) => d.title)).toEqual(["9/16", "9/17"]);
+  });
+});
+
+describe("continuation lines", () => {
+  it("collects indented lines under a stop as its notes, skipping image-only lines", () => {
+    const it2 = parseItinerary(`## 9/27
+- 🚌 [中洲屋台](geo:33.5930,130.4062) 晚上才熱鬧
+    上船前先買玉米
+    ![[nakasu.jpg]]
+    - 船 40 分一班
+- [根津神社](geo:35.7203,139.7610)`);
+    const [yatai, nezu] = it2.stops;
+    expect(yatai.notes).toEqual(["上船前先買玉米", "船 40 分一班"]);
+    expect(yatai.image).toBe("nakasu.jpg");
+    expect(yatai.transport).toBe("bus");
+    expect(yatai.emoji).toBeUndefined();
+    expect(nezu.notes).toEqual([]);
   });
 });

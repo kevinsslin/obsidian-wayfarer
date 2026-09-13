@@ -63,8 +63,7 @@ export type HoursStatus =
   | { kind: "ok" }
   | { kind: "closed-day" }
   | { kind: "not-open-yet"; opensAt: number }
-  | { kind: "already-closed"; closedAt: number }
-  | { kind: "closes-soon"; closedAt: number };
+  | { kind: "already-closed"; closedAt: number };
 
 /** Checks an arrival (minutes) against that weekday's hours. Null when there is nothing to check. */
 export function checkHours(hours: string[] | undefined, weekday: number, arrive: number | undefined): HoursStatus | null {
@@ -74,7 +73,7 @@ export function checkHours(hours: string[] | undefined, weekday: number, arrive:
   if (dh.closed) return { kind: "closed-day" };
   if (dh.allDay) return { kind: "ok" };
   const inside = dh.ranges.find(([o, c]) => arrive >= o && arrive < c);
-  if (inside) return inside[1] - arrive < 30 ? { kind: "closes-soon", closedAt: inside[1] } : { kind: "ok" };
+  if (inside) return { kind: "ok" };
   const next = dh.ranges.find(([o]) => o > arrive);
   if (next) return { kind: "not-open-yet", opensAt: next[0] };
   return { kind: "already-closed", closedAt: dh.ranges[dh.ranges.length - 1][1] };
@@ -86,21 +85,5 @@ export function describeHours(s: HoursStatus): string | null {
     case "closed-day": return t("closed_day");
     case "not-open-yet": return t("opens_at", { t: fmtMin(s.opensAt) });
     case "already-closed": return t("closed_at", { t: fmtMin(s.closedAt) });
-    case "closes-soon": return t("closes_soon", { t: fmtMin(s.closedAt) });
   }
-}
-
-/** Trailer this plugin writes at the end of a stop's line: ` · 🚶 34 分 · 2.5 km`. Older notes may carry an arrival too. */
-export const WRITTEN_LEG_RE = /\s·\s(?:🚶|🚃|🚌|🚕|✈️|⛴️|🚲)\s≈?[\d 時分間hmin]+(?:\s·\s[\d.]+\s?(?:m|km))?(?:\s·\s≈\d{2}:\d{2}[^·]{0,8})?\s*$/u;
-
-export function legTrailer(legText: string, distanceText: string | null): string {
-  const bits = [legText];
-  if (distanceText) bits.push(distanceText);
-  return ` · ${bits.join(" · ")}`;
-}
-
-/** Full-line pass: pulls a stop's line minus the trailer, and the trailer itself. */
-export function splitTrailer(line: string): { base: string; trailer: string } {
-  const m = WRITTEN_LEG_RE.exec(line);
-  return m ? { base: line.slice(0, m.index), trailer: m[0] } : { base: line, trailer: "" };
 }

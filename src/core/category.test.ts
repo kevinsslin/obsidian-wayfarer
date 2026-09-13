@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { categoryFromGoogleType, categoryFromName, firstEmoji, pickCategory, transportFrom } from "./category";
+import { categoryFromGoogleType, categoryFromName, firstEmoji, pickCategory, transportEmoji } from "./category";
 
 describe("firstEmoji", () => {
   it("finds emoji and ignores digits", () => {
@@ -36,12 +36,12 @@ describe("category", () => {
   });
 });
 
-describe("transportFrom", () => {
-  it("reads the mode from the words before a link", () => {
-    expect(transportFrom("07:53 巴士到 ")).toBe("bus");
-    expect(transportFrom("走木道到 ")).toBe("walk");
-    expect(transportFrom("11:55 スペーシアX 4 號 ")).toBe("train");
-    expect(transportFrom("下午 飛 ")).toBe("flight");
-    expect(transportFrom("看宮神輿 ")).toBeNull();
+describe("transportEmoji", () => {
+  it("reads a transport emoji before the link and ignores other emoji", () => {
+    expect(transportEmoji("07:53 🚌 ")).toBe("bus");
+    expect(transportEmoji("🚶‍♀️ 走木道到 ")).toBe("walk");
+    expect(transportEmoji("✈️ 下午 ")).toBe("flight");
+    expect(transportEmoji("⛩️ ")).toBeNull();
+    expect(transportEmoji("巴士到 ")).toBeNull();
   });
 });

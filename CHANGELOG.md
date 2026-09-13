@@ -13,7 +13,8 @@ First release.
 - Day strip under the map, popup cards with photo (vault image, URL or Google photo), note, hours, rating and directions from the previous stop.
 - Cursor follow: the map flies to the stop under the cursor and pauses while you drag.
 - `skills/wayfarer-plan-trip` skill for AI assistants, with the note format reference.
-- Routed legs between stops (OSRM for walking and driving, Google Routes for transit), midpoint labels, strip connectors, day summary, and late warnings from written times.
+- Routed legs between stops (OSRM for walking, cycling and driving, Google Routes for transit) once the mode is chosen; timeline arrows with a transport picker; late warnings from written times. Nothing is estimated or guessed, and the plugin never edits note text.
+- Indented lines under a stop are its notes, shown verbatim.
 - Opening-hours check against written times, write-back command for legs, drag to reorder stops.
 - Automatic photos from Wikipedia and Wikimedia Commons (no key), cached in plugin data; thumbnails in the strip.
 - Timeline column beside the map with a resizable divider; transport is chosen by clicking and saved to the line; the note title heading is no longer a day.

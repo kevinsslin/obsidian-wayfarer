@@ -104,21 +104,25 @@ export function pickCategory(input: { tags: string[]; googleType?: string; name:
 
 export type Transport = "walk" | "train" | "bus" | "car" | "flight" | "boat" | "bike";
 
-const TRANSPORT_RULES: Array<[RegExp, Transport]> = [
-  [/✈|飛|フライト|flight|fly|航班/, "flight"],
-  [/⛴|🚢|船|フェリー|ferry|boat|渡輪/, "boat"],
-  [/🚲|自転車|腳踏車|单车|bike|cycle|レンタサイクル/, "bike"],
-  [/🚌|巴士|バス|\bbus\b|公車/, "bus"],
-  [/🚕|🚗|タクシー|計程車|taxi|車で|開車|drive|レンタカー|uber/, "car"],
-  [/🚃|🚄|🚆|🚇|電車|新幹線|特急|地鐵|地下鉄|メトロ|metro|train|jr|スペーシア|ロマンスカー|線|line\b|搭車|轉乘/, "train"],
-  [/🚶|走|步行|徒步|歩|walk|散策|散步/, "walk"],
-];
+export const TRANSPORT_EMOJI: Record<Transport, string> = { walk: "🚶", train: "🚃", bus: "🚌", car: "🚕", flight: "✈️", boat: "⛴️", bike: "🚲" };
 
-/** Detects how one gets to a stop from the words before its link on the same line. */
-export function transportFrom(text: string): Transport | null {
-  const t = text.toLowerCase();
-  for (const [re, m] of TRANSPORT_RULES) if (re.test(t)) return m;
+const EMOJI_TRANSPORT: Record<string, Transport> = {
+  "🚶": "walk", "🚶‍♀️": "walk", "🚶‍♂️": "walk", "🚃": "train", "🚄": "train", "🚅": "train", "🚆": "train", "🚇": "train", "🚈": "train", "🚊": "train", "🚉": "train",
+  "🚌": "bus", "🚍": "bus", "🚕": "car", "🚗": "car", "🚙": "car", "✈️": "flight", "✈": "flight", "🛫": "flight", "🛬": "flight",
+  "⛴️": "boat", "⛴": "boat", "🚢": "boat", "⛵": "boat", "🚲": "bike", "🚴": "bike",
+};
+
+/** A transport emoji the user typed before the link, e.g. "🚌 12:52 [中禪寺湖]". */
+export function transportEmoji(text: string): Transport | null {
+  const re = /\p{Extended_Pictographic}(?:️|‍\p{Extended_Pictographic})*/gu;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text))) {
+    const hit = EMOJI_TRANSPORT[m[0]] ?? EMOJI_TRANSPORT[m[0].replace(/️/g, "")];
+    if (hit) return hit;
+  }
   return null;
 }
 
-export const TRANSPORT_EMOJI: Record<Transport, string> = { walk: "🚶", train: "🚃", bus: "🚌", car: "🚕", flight: "✈️", boat: "⛴️", bike: "🚲" };
+export function isTransportEmoji(e: string): boolean {
+  return e in EMOJI_TRANSPORT || e.replace(/️/g, "") in EMOJI_TRANSPORT;
+}

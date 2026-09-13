@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { setLocale } from "./i18n";
 beforeAll(() => setLocale("zh-TW"));
-import { checkHours, fmtMin, parseDayHours, splitTrailer } from "./schedule";
+import { checkHours, fmtMin, parseDayHours } from "./schedule";
 
 describe("hours", () => {
   it("parses english and chinese lines", () => {
@@ -17,19 +17,9 @@ describe("hours", () => {
     expect(checkHours(hours, 1, 600)).toEqual({ kind: "ok" });
     expect(checkHours(hours, 1, 480)).toEqual({ kind: "not-open-yet", opensAt: 540 });
     expect(checkHours(hours, 1, 1100)).toEqual({ kind: "already-closed", closedAt: 1020 });
-    expect(checkHours(hours, 1, 1000)).toEqual({ kind: "closes-soon", closedAt: 1020 });
     expect(checkHours(hours, 1, undefined)).toBeNull();
   });
   it("formats minutes", () => {
     expect(fmtMin(605)).toBe("10:05");
-  });
-});
-
-describe("splitTrailer", () => {
-  it("separates the written leg trailer", () => {
-    const r = splitTrailer("- 走木道到 [赤沼](geo:1,2) ~1h45 · 🚶 34 分 · 2.5 km · ≈10:05 到");
-    expect(r.base).toBe("- 走木道到 [赤沼](geo:1,2) ~1h45");
-    expect(r.trailer).toBe(" · 🚶 34 分 · 2.5 km · ≈10:05 到");
-    expect(splitTrailer("- plain [x](geo:1,2)").trailer).toBe("");
   });
 });

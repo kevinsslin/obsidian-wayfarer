@@ -1,20 +1,27 @@
 import type { Transport } from "./category";
 import { t } from "./i18n";
-import type { Day, Stop } from "./itinerary";
+import type { Stop } from "./itinerary";
 
-/** One move between consecutive stops of a day. */
+/**
+ * One move between consecutive stops of a day. The mode is known only when
+ * the user chose it (in the timeline, or by writing a transport emoji before
+ * the link); the duration is known only when a router answered for that
+ * mode. Nothing here is estimated.
+ */
 export interface Leg {
   from: Stop;
   to: Stop;
-  mode: Transport;
+  mode?: Transport;
+  /** Straight-line distance until a router supplies the routed one. */
   distanceM: number;
-  durationS: number;
+  routed: boolean;
+  durationS?: number;
   /** Route geometry when a router supplied one; otherwise the straight line. */
   geometry: [number, number][];
   /** Transit line names, e.g. "東武日光線 → 日光 2 號". */
   summary?: string;
-  source: "osrm" | "google" | "estimate";
-  /** Minutes the user would arrive after the next stop's written time; 0 when on time or unknown. */
+  source?: "osrm" | "google";
+  /** Minutes the leg overruns the gap between the two written times; 0 when on time or unknown. */
   lateBy: number;
 }
 
@@ -27,40 +34,17 @@ export function haversineM(a: { lat: number; lng: number }, b: { lat: number; ln
   return 2 * r * Math.asin(Math.sqrt(h));
 }
 
-/** The mode to route with: the word the user wrote, else walk for short hops and train beyond. */
-export function legMode(to: Stop, distanceM: number): Transport {
-  if (to.transport) return to.transport;
-  if (to.category === "airport" && distanceM > 150_000) return "flight";
-  return distanceM < 1500 ? "walk" : "train";
+/** A leg with only what is known before any router is asked. */
+export function bareLeg(from: Stop, to: Stop): Leg {
+  return finishLeg({ from, to, mode: to.transport, distanceM: haversineM(from, to), routed: false, geometry: [[from.lat, from.lng], [to.lat, to.lng]] });
 }
 
-/** Rough duration when no router answered: straight-line speed plus a fixed overhead. */
-export function estimateDurationS(mode: Transport, distanceM: number): number {
-  const table: Record<Transport, [mPerMin: number, overheadMin: number]> = {
-    walk: [75, 0],
-    bike: [230, 2],
-    car: [450, 5],
-    bus: [280, 8],
-    train: [650, 12],
-    boat: [400, 15],
-    flight: [11000, 120],
-  };
-  const [speed, overhead] = table[mode];
-  return Math.round((distanceM / speed + overhead) * 60);
-}
-
-export function estimateLeg(from: Stop, to: Stop): Leg {
-  const distanceM = haversineM(from, to);
-  const mode = legMode(to, distanceM);
-  return finishLeg({ from, to, mode, distanceM, durationS: estimateDurationS(mode, distanceM), geometry: [[from.lat, from.lng], [to.lat, to.lng]], source: "estimate" });
-}
-
-/** Fills in lateness from the stops' written times. */
+/** Fills in lateness from the stops' written times, when the duration is known. */
 export function finishLeg(leg: Omit<Leg, "lateBy">): Leg {
   const a = minutesOf(leg.from.time);
   const b = minutesOf(leg.to.time);
   let lateBy = 0;
-  if (a !== null && b !== null) {
+  if (a !== null && b !== null && leg.durationS !== undefined) {
     const gap = (b - a + 1440) % 1440;
     lateBy = Math.max(0, Math.round(leg.durationS / 60 - gap));
   }
@@ -91,15 +75,13 @@ export function formatDistance(m: number): string {
   return m < 1000 ? `${Math.round(m / 10) * 10} m` : `${(m / 1000).toFixed(m < 10000 ? 1 : 0)} km`;
 }
 
-/** Totals for a day: moving time and the span from first to last written time. */
-export function daySummary(day: Day, legs: Leg[]): { movingS: number; first?: string; last?: string; late: number } {
-  const times = day.stops.map((s) => s.time).filter((t): t is string => !!t);
-  return {
-    movingS: legs.reduce((a, l) => a + l.durationS, 0),
-    first: times[0],
-    last: times.length > 1 ? times[times.length - 1] : undefined,
-    late: legs.filter((l) => l.lateBy > 0).length,
-  };
+/** Numbers for a leg, without the mode: duration when routed, distance, transit lines. */
+export function legText(leg: Leg): string {
+  const bits: string[] = [];
+  if (leg.durationS !== undefined) bits.push(formatDuration(leg.durationS));
+  bits.push(formatDistance(leg.distanceM));
+  if (leg.summary) bits.push(leg.summary);
+  return bits.join(" · ");
 }
 
 /** Decodes a Google encoded polyline into [lat, lng] pairs. */
