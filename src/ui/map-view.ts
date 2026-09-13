@@ -157,6 +157,28 @@ export class ItineraryMapView extends ItemView {
 
   /* ---------- drawing ---------- */
 
+  /**
+   * Focus a stop without rebuilding the layers, so the popup that opened on
+   * the click survives. If the stop's day is not the emphasised one, the
+   * whole pane redraws and the popup reopens.
+   */
+  private setFocus(stop: Stop): void {
+    const prev = this.focused;
+    this.focused = stop;
+    if (this.pinnedDay < 0 && this.activeDay !== -1 && this.activeDay !== stop.dayIndex) {
+      this.activeDay = stop.dayIndex;
+      this.draw();
+      this.markers.get(stop)?.openPopup();
+      return;
+    }
+    for (const s of [prev, stop]) {
+      const el = s && this.markers.get(s)?.getElement();
+      if (el) el.toggleClass("is-focus", s === stop);
+    }
+    this.stripEl.empty();
+    if (this.itinerary) this.drawStrip(this.itinerary);
+  }
+
   private draw(): void {
     this.layer.clearLayers();
     this.markers.clear();
@@ -202,8 +224,8 @@ export class ItineraryMapView extends ItemView {
       marker.bindTooltip(stop.time ? `${stop.time} ${stop.name}` : stop.name, { direction: "top", offset: [0, -14], className: "im-tooltip", permanent: focus });
       marker.bindPopup(() => this.popupEl(day, stop), { className: "im-popup", closeButton: false, maxWidth: 280, minWidth: 220 });
       marker.on("click", () => {
-        this.focused = stop;
         this.userMoved = true;
+        this.setFocus(stop);
         void this.jumpTo(stop, false);
       });
       marker.addTo(this.layer);

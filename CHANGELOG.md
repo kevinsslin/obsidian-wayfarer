@@ -12,4 +12,5 @@ First release.
 - Category emoji on pins and converted stops, time and transport parsed from the line, transport-styled route segments.
 - Day strip under the map, popup cards with photo (vault image, URL or Google photo), note, hours, rating and directions from the previous stop.
 - Cursor follow: the map flies to the stop under the cursor and pauses while you drag.
+- `skills/plan-trip-in-obsidian` skill for AI assistants, with the note format reference.
 - Optional Google Places (New) resolution; Nominatim fallback for text-only links.

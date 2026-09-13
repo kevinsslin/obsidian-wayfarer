@@ -52,6 +52,16 @@ With a **Google Places (New) API key** in settings, links are resolved through t
 
 Paste conversion on/off, day heading level, per-day `tag:d1` tagging for Map View, route lines, auto-open, Google API key and language, tile URL and attribution (OpenStreetMap by default).
 
+## Planning with an AI assistant
+
+`skills/plan-trip-in-obsidian/` is a skill for Claude Code, Codex and similar agents: how to research, what to check (closed weekdays, real coordinates), and exactly how to write the note so the plugin reads it. Install by copying the folder:
+
+```bash
+cp -r skills/plan-trip-in-obsidian ~/.claude/skills/
+```
+
+Then ask the assistant to plan a trip into a note in your vault. The same folder documents the note format for people in `FORMAT.md`.
+
 ## Development
 
 ```bash
