@@ -1,6 +1,7 @@
 import { MarkdownView, Notice, Platform, Plugin, TFile, debounce, type Editor, type MarkdownFileInfo, type WorkspaceLeaf } from "obsidian";
 import { isGoogleMapsUrl } from "./core/gmaps-url";
-import { dayAtLine, parseItinerary, patchLineMeta, type Itinerary, type PlaceMeta, type Stop } from "./core/itinerary";
+import { dayAtLine, parseItinerary, patchLineMeta, setTransportOnLine, type Itinerary, type PlaceMeta, type Stop } from "./core/itinerary";
+import type { Transport } from "./core/category";
 import { ResolveError, resolveMapsUrl, type ResolveDeps } from "./core/resolve";
 import { GoogleApiError, expandShortUrl, googlePlaces } from "./net";
 import { DEFAULT_SETTINGS, WayfarerSettingTab, type WayfarerSettings } from "./settings";
@@ -260,6 +261,18 @@ export default class WayfarerPlugin extends Plugin {
     if (quiet && !/\]\(geo:/.test(text)) return;
     const next = patchLineMeta(text, patch);
     if (next !== text) md.editor.replaceRange(next, { line, ch: 0 }, { line, ch: text.length });
+    this.refresh();
+  }
+
+  /** Writes the transport picked in the pane as the emoji before the stop's link, so the text says what the map says. */
+  setStopTransport(stop: Stop, mode: Transport): void {
+    const md = this.activeMarkdown();
+    if (!md) return;
+    const text = md.editor.getLine(stop.line);
+    // The link must still be where the pane saw it; otherwise the note changed under us.
+    if (!/^\[[^\]]*\]\(geo:/.test(text.slice(stop.from, stop.to))) return;
+    const next = setTransportOnLine(text, stop, mode);
+    if (next !== text) md.editor.replaceRange(next, { line: stop.line, ch: 0 }, { line: stop.line, ch: text.length });
     this.refresh();
   }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dayAtLine, dayDateEnd, dayLabel, formatStop, parseItinerary, patchLineMeta } from "./itinerary";
+import { dayAtLine, dayDateEnd, dayLabel, formatStop, parseItinerary, patchLineMeta, setTransportOnLine } from "./itinerary";
 
 const NOTE = `---
 locations:
@@ -155,5 +155,28 @@ describe("continuation lines", () => {
     expect(yatai.transport).toBe("bus");
     expect(yatai.emoji).toBeUndefined();
     expect(nezu.notes).toEqual([]);
+  });
+});
+
+describe("setTransportOnLine", () => {
+  const stopOf = (md: string, i = 0) => parseItinerary(`## 2026-09-17\n${md}\n`).days[0].stops[i];
+  it("replaces the transport emoji already before the link", () => {
+    const line = "- 12:52 🚌 [中禅寺温泉](geo:36.7389,139.4995) 下山";
+    expect(setTransportOnLine(line, stopOf(line), "walk")).toBe("- 12:52 🚶 [中禅寺温泉](geo:36.7389,139.4995) 下山");
+  });
+  it("inserts one before the link when there is none and keeps a category emoji", () => {
+    const line = "- ⛩️ [根津神社](geo:35.72,139.7607) 例大祭";
+    expect(setTransportOnLine(line, stopOf(line), "metro")).toBe("- ⛩️ 🚇 [根津神社](geo:35.72,139.7607) 例大祭");
+  });
+  it("only touches the segment before its own link", () => {
+    const line = "- 🚆 [A](geo:1,2) 到 🚌 [B](geo:3,4)";
+    expect(setTransportOnLine(line, stopOf(line, 1), "taxi")).toBe("- 🚆 [A](geo:1,2) 到 🚕 [B](geo:3,4)");
+  });
+  it("drops a legacy via so the text is the only source", () => {
+    const line = `- [A](geo:1,2) %%wf:{"via":"bus","rating":4.1}%%`;
+    expect(setTransportOnLine(line, stopOf(line), "walk")).toBe(`- 🚶 [A](geo:1,2) %%wf:{"rating":4.1}%%`);
+  });
+  it("the emoji wins over an older via when both are present", () => {
+    expect(stopOf(`- 🚶 [A](geo:1,2) %%wf:{"via":"bus"}%%`).transport).toBe("walk");
   });
 });

@@ -11,7 +11,7 @@ First release.
 - Map pane beside the note: pins coloured and numbered per day heading, category emoji on pins, lines with arrowheads between a day's stops, click a pin for a card.
 - Cursor follow: the map flies to the stop under the cursor and reframes the day; pauses while you drag.
 - Timeline column: the day's stops top to bottom with thumbnails, times and notes; a transport picker on each arrow; drag to reorder (the stop's notes move with it); resizable and collapsible.
-- Transport is only what you chose or wrote as an emoji before the link; the choice is stored as `%%wf:{"via":"bus"}%%` on the line. Nothing is guessed and the plugin never edits your text.
+- Transport is the emoji before the link, written by you or by picking on the arrow in the pane (the pick replaces the emoji in the text, so note and map never disagree). Nothing is guessed.
 - Routes between stops from Google Routes when a key is set (walk, bike, drive, transit with line names), drawn along the way with the mode's emoji at the midpoint; distance only otherwise. Late warning when a routed leg cannot fit between two written times.
 - Opening-hours check against the written time for the heading's weekday.
 - Indented lines under a stop are its notes, shown verbatim.

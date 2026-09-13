@@ -529,7 +529,7 @@ export class WayfarerView extends ItemView {
   }
 
   private pickTransport(anchor: HTMLElement, leg: Leg): void {
-    this.popover(anchor, MODES.map((m) => ({ label: `${TRANSPORT_EMOJI[m]} ${t(`m_${m}` as const)}`, active: m === leg.mode, pick: () => this.plugin.setStopMeta(leg.to.line, { via: m }) })));
+    this.popover(anchor, MODES.map((m) => ({ label: `${TRANSPORT_EMOJI[m]} ${t(`m_${m}` as const)}`, active: m === leg.mode, pick: () => this.plugin.setStopTransport(leg.to, m) })));
   }
 
   /** A small menu anchored under an element; one click picks and closes. */

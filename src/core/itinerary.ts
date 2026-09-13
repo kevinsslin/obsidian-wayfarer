@@ -51,6 +51,8 @@ export interface Stop {
   /** Character offsets of the whole `[..](geo:..)` link within the line. */
   from: number;
   to: number;
+  /** Where the text before this link starts on the line (line start, or the end of the previous link). */
+  beforeFrom: number;
   meta?: PlaceMeta;
   /** Emoji the user wrote before the link on this line, if any. */
   emoji?: string;
@@ -106,7 +108,7 @@ export interface ParseOptions {
   maxHeadingLevel?: number;
 }
 
-import { firstEmoji, isTransportEmoji, pickCategory, transportEmoji, type Category, type Transport } from "./category";
+import { TRANSPORT_EMOJI, firstEmoji, isTransportEmoji, pickCategory, transportEmoji, type Category, type Transport } from "./category";
 
 const GEO_LINK = /\[([^\]]*)\]\(geo:(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)(?:[^)]*)\)/g;
 const META = /%%wf:(\{.*?\})%%/;
@@ -177,12 +179,14 @@ export function parseItinerary(markdown: string, opts: ParseOptions = {}): Itine
         lng,
         line: i,
         from: m.index,
+        beforeFrom: m.index - before.length,
         to: m.index + m[0].length,
         meta,
         emoji: emojiBefore && !isTransportEmoji(emojiBefore) ? emojiBefore : undefined,
         category: pickCategory({ googleType: meta?.type, name }),
         time,
-        transport: meta?.via ?? transportEmoji(before) ?? undefined,
+        // The emoji in the text is what everyone reads, so it wins; `via` is only read from older notes.
+        transport: transportEmoji(before) ?? meta?.via ?? undefined,
         note: plainNote(line),
         notes: continuationLines(lines, i),
         image: image ? (image[1] ?? image[2]) : undefined,
@@ -307,6 +311,28 @@ export function dayLabel(title: string): string {
   const dayWord = /\bday\s*(\d{1,2})\b/i.exec(title);
   if (dayWord) return `D${dayWord[1]}`;
   return title.length > 12 ? title.slice(0, 12) : title;
+}
+
+const TRANSPORT_TOKEN = /\p{Extended_Pictographic}(?:️|‍\p{Extended_Pictographic})*/gu;
+
+/**
+ * Returns the line with the stop's transport written as the emoji before its
+ * link: the transport emoji already there is replaced in place, otherwise
+ * one is inserted right before the link. A legacy `via` in the metadata is
+ * dropped so the text is the only place the choice lives. Nothing else moves.
+ */
+export function setTransportOnLine(line: string, stop: Pick<Stop, "from" | "beforeFrom">, mode: Transport): string {
+  const emoji = TRANSPORT_EMOJI[mode];
+  const before = line.slice(stop.beforeFrom, stop.from);
+  let out: string | null = null;
+  for (const m of before.matchAll(TRANSPORT_TOKEN)) {
+    if (!isTransportEmoji(m[0])) continue;
+    const at = stop.beforeFrom + (m.index ?? 0);
+    out = line.slice(0, at) + emoji + line.slice(at + m[0].length);
+    break;
+  }
+  if (out === null) out = line.slice(0, stop.from) + emoji + " " + line.slice(stop.from);
+  return patchLineMeta(out, { via: undefined });
 }
 
 /**
