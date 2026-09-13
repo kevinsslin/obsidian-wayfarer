@@ -1,5 +1,6 @@
 import type { Category } from "./category";
 import type { Day } from "./itinerary";
+import { t } from "./i18n";
 import { minutesOf, type Leg } from "./legs";
 
 /** `~1h30`, `~45m`, `~45分`, `~2h` anywhere on a stop's line. */
@@ -142,20 +143,20 @@ export function checkHours(hours: string[] | undefined, weekday: number, arrive:
 export function describeHours(s: HoursStatus): string | null {
   switch (s.kind) {
     case "ok": return null;
-    case "closed-day": return "當天休";
-    case "not-open-yet": return `${fmtMin(s.opensAt)} 才開`;
-    case "already-closed": return `${fmtMin(s.closedAt)} 已關`;
-    case "closes-soon": return `${fmtMin(s.closedAt)} 關，時間不夠`;
+    case "closed-day": return t("closed_day");
+    case "not-open-yet": return t("opens_at", { t: fmtMin(s.opensAt) });
+    case "already-closed": return t("closed_at", { t: fmtMin(s.closedAt) });
+    case "closes-soon": return t("closes_soon", { t: fmtMin(s.closedAt) });
   }
 }
 
 /** Trailer this plugin writes at the end of a stop's line: ` · 🚶 34 分 · 2.5 km · ≈10:05 到`. */
-export const WRITTEN_LEG_RE = /\s·\s(?:🚶|🚃|🚌|🚕|✈️|⛴️|🚲)\s≈?[\d 時分]+(?:\s·\s[\d.]+\s?(?:m|km))?(?:\s·\s≈\d{2}:\d{2} 到)?\s*$/u;
+export const WRITTEN_LEG_RE = /\s·\s(?:🚶|🚃|🚌|🚕|✈️|⛴️|🚲)\s≈?[\d 時分間hmin]+(?:\s·\s[\d.]+\s?(?:m|km))?(?:\s·\s≈\d{2}:\d{2}[^·]{0,8})?\s*$/u;
 
 export function legTrailer(legText: string, distanceText: string | null, arrive: number | undefined, inferred: boolean): string {
   const bits = [legText];
   if (distanceText) bits.push(distanceText);
-  if (inferred && arrive !== undefined) bits.push(`≈${fmtMin(arrive)} 到`);
+  if (inferred && arrive !== undefined) bits.push(t("arrive_at", { t: fmtMin(arrive) }));
   return ` · ${bits.join(" · ")}`;
 }
 

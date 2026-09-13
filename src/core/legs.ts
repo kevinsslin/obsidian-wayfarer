@@ -1,4 +1,5 @@
 import type { Transport } from "./category";
+import { t } from "./i18n";
 import type { Day, Stop } from "./itinerary";
 
 /** One move between consecutive stops of a day. */
@@ -80,10 +81,10 @@ export function legKey(from: Stop, to: Stop, mode: Transport): string {
 
 export function formatDuration(s: number): string {
   const min = Math.round(s / 60);
-  if (min < 60) return `${min} 分`;
+  if (min < 60) return t("min", { n: min });
   const h = Math.floor(min / 60);
   const m = min % 60;
-  return m ? `${h} 時 ${m} 分` : `${h} 時`;
+  return m ? t("hours_min", { h, m }) : t("hours", { h });
 }
 
 export function formatDistance(m: number): string {

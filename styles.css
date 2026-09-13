@@ -719,8 +719,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 .wayfarer-view .wf-chip.is-active { opacity: 1; background: var(--background-secondary); }
 .wayfarer-view .wf-chip.is-pinned { outline: 2px solid var(--wf-color); outline-offset: 1px; }
 .wayfarer-view .wf-map {
-  flex: 1 1 auto;
-  min-height: 160px;
+  min-height: 120px;
   background: var(--background-secondary);
   z-index: 0;
 }
@@ -780,38 +779,9 @@ svg.leaflet-image-layer.leaflet-interactive path {
 }
 
 /* ---------- legs ---------- */
-.wayfarer-view .wf-leg-label { background: transparent; border: 0; width: auto !important; height: auto !important; transform: translate(-50%, -50%); }
-.wayfarer-view .wf-leg-label > span {
-  display: inline-block;
-  white-space: nowrap;
-  padding: 1px 7px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.92);
-  color: #333;
-  font: 500 11px/1.5 var(--font-interface);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-}
-.wayfarer-view .wf-leg-label.is-late > span { background: #d0342c; color: #fff; }
 .wayfarer-view .wf-tooltip { white-space: pre; }
 .wayfarer-view .wf-card-leg { margin-top: 6px; color: #555; font-size: 0.9em; }
 .wayfarer-view .wf-card-leg.is-late { color: #d0342c; }
-.wayfarer-view .wf-leg {
-  flex: 0 0 auto;
-  align-self: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1px;
-  min-width: 34px;
-  font-size: var(--font-ui-smaller);
-  color: var(--text-muted);
-  position: relative;
-}
-.wayfarer-view .wf-leg::after { content: "›"; position: absolute; right: -4px; top: 50%; transform: translateY(-50%); color: var(--background-modifier-border); font-size: 16px; }
-.wayfarer-view .wf-leg-time { white-space: nowrap; font-variant-numeric: tabular-nums; }
-.wayfarer-view .wf-leg.is-late { color: #d0342c; font-weight: 600; }
-.wayfarer-view .wf-summary { font-size: var(--font-ui-smaller); color: var(--text-muted); white-space: nowrap; padding-left: 4px; }
-.wayfarer-view .wf-summary.is-late { color: #d0342c; }
 
 /* ---------- popup card ---------- */
 .wayfarer-view .wf-popup .leaflet-popup-content-wrapper { padding: 0; border-radius: 10px; overflow: hidden; }
@@ -833,37 +803,54 @@ svg.leaflet-image-layer.leaflet-interactive path {
 .wayfarer-view .wf-card-actions { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 8px; font-size: 0.9em; }
 .wayfarer-view .wf-card-actions a { text-decoration: none; color: #2a62c9; white-space: nowrap; }
 
-/* ---------- day strip ---------- */
-.wayfarer-view .wf-strip {
-  display: flex;
-  gap: 6px;
-  align-items: stretch;
-  padding: 8px 10px;
-  overflow-x: auto;
-  overflow-y: hidden;
+/* ---------- divider + timeline ---------- */
+.wayfarer-view .wf-map { flex: 0.55 1 0; min-height: 120px; }
+.wayfarer-view .wf-divider {
+  flex: 0 0 7px;
+  cursor: row-resize;
+  background: var(--background-primary);
   border-top: 1px solid var(--background-modifier-border);
+  position: relative;
+  touch-action: none;
+}
+.wayfarer-view .wf-divider::after {
+  content: ""; position: absolute; left: 50%; top: 2px; width: 36px; height: 3px; margin-left: -18px;
+  border-radius: 2px; background: var(--background-modifier-border);
+}
+.wayfarer-view .wf-divider:hover::after { background: var(--text-muted); }
+.wayfarer-view .wf-strip {
+  flex: 0.45 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  padding: 8px 12px 12px;
+  overflow-y: auto;
+  overflow-x: hidden;
   background: var(--background-primary);
   scrollbar-width: thin;
 }
 .wayfarer-view .wf-strip:empty { display: none; }
 .wayfarer-view .wf-strip-day {
-  align-self: center;
-  writing-mode: vertical-rl;
-  transform: rotate(180deg);
   font-size: var(--font-ui-smaller);
+  font-weight: 600;
   color: var(--wf-color);
-  padding: 2px 0;
-  border-left: 2px solid var(--wf-color);
-  margin-right: 2px;
+  padding: 10px 0 6px 2px;
+  display: flex; align-items: center; gap: 6px;
 }
+.wayfarer-view .wf-strip-day::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--wf-color); }
+.wayfarer-view .wf-strip-day:first-child { padding-top: 2px; }
 .wayfarer-view .wf-stop {
   --wf-color: var(--text-muted);
-  flex: 0 0 auto;
-  width: 132px;
-  padding: 6px 8px;
-  position: relative;
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  padding: 8px 10px;
   text-align: left;
-  border-radius: 8px;
+  border-radius: 10px;
   border: 1px solid var(--background-modifier-border);
   border-left: 3px solid var(--wf-color);
   background: var(--background-secondary);
@@ -871,57 +858,56 @@ svg.leaflet-image-layer.leaflet-interactive path {
   cursor: pointer;
   box-shadow: none;
   height: auto;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  justify-content: flex-start;
-  gap: 2px;
-  min-width: 0;
-  overflow: hidden;
   font-weight: normal;
   transition: background 120ms ease, border-color 120ms ease;
 }
-.wayfarer-view .wf-stop.has-thumb { width: 188px; padding-left: 62px; min-height: 58px; justify-content: center; }
-.wayfarer-view .wf-stop-thumb {
-  position: absolute; left: 6px; top: 6px; bottom: 6px; width: 48px; height: calc(100% - 12px);
-  object-fit: cover; border-radius: 6px; background: var(--background-modifier-border);
-}
 .wayfarer-view .wf-stop:hover { background: var(--background-modifier-hover); }
 .wayfarer-view .wf-stop.is-focus { border-color: var(--wf-color); background: color-mix(in srgb, var(--wf-color) 14%, var(--background-secondary)); }
-.wayfarer-view .wf-stop-top { display: flex; align-items: center; justify-content: flex-start; gap: 5px; width: 100%; font-size: var(--font-ui-smaller); color: var(--text-muted); }
+.wayfarer-view .wf-stop.is-dragging { opacity: 0.4; }
+.wayfarer-view .wf-stop.is-drop { outline: 2px dashed var(--text-accent); outline-offset: 1px; }
+.wayfarer-view .wf-stop-thumb { flex: 0 0 56px; width: 56px; height: 56px; object-fit: cover; border-radius: 8px; background: var(--background-modifier-border); align-self: center; }
+.wayfarer-view .wf-stop-body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; justify-content: center; }
+.wayfarer-view .wf-stop-top { display: flex; align-items: center; gap: 6px; font-size: var(--font-ui-smaller); color: var(--text-muted); }
 .wayfarer-view .wf-stop-n {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 15px;
-  height: 15px;
-  border-radius: 50%;
-  background: var(--wf-color);
-  color: #fff;
-  font-size: 9.5px;
-  font-weight: 700;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--wf-color); color: #fff; font-size: 10px; font-weight: 700;
 }
 .wayfarer-view .wf-stop-time { font-variant-numeric: tabular-nums; }
 .wayfarer-view .wf-stop-time.is-inferred { opacity: 0.7; }
-.wayfarer-view .wf-stop-dwell { margin-left: auto; opacity: 0.7; }
-.wayfarer-view .wf-stop.is-dragging { opacity: 0.4; }
-.wayfarer-view .wf-stop.is-drop { outline: 2px dashed var(--text-accent); outline-offset: 1px; }
-.wayfarer-view .wf-stop-sub.is-late { color: #d0342c; }
-.wayfarer-view .wf-card-time { margin-top: 4px; color: #444; }
-.wayfarer-view .wf-card-warn { margin-top: 4px; color: #d0342c; font-weight: 600; }
-.wayfarer-view .wf-stop-mode { margin-left: auto; }
-.wayfarer-view .wf-stop-main { display: flex; align-items: baseline; gap: 5px; min-width: 0; width: 100%; }
+.wayfarer-view .wf-stop-dwell { margin-left: auto; opacity: 0.7; white-space: nowrap; }
+.wayfarer-view .wf-stop-main { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
 .wayfarer-view .wf-stop-glyph { flex: 0 0 auto; font-size: 1.05em; }
-.wayfarer-view .wf-stop-name {
-  flex: 1 1 auto;
-  min-width: 0;
-  font-size: var(--font-ui-small);
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.wayfarer-view .wf-stop-name { flex: 1 1 auto; min-width: 0; font-size: var(--font-ui-small); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wayfarer-view .wf-stop-sub { font-size: var(--font-ui-smaller); color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wayfarer-view .wf-stop-sub.is-late { color: #d0342c; }
+
+/* the arrow between two cards */
+.wayfarer-view .wf-leg {
+  --wf-color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0 2px 18px;
+  min-height: 26px;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  position: relative;
 }
-.wayfarer-view .wf-stop-sub { font-size: var(--font-ui-smaller); color: var(--text-muted); text-align: left; }
+.wayfarer-view .wf-leg::before {
+  content: "";
+  position: absolute; left: 9px; top: 0; bottom: 0;
+  border-left: 2px dashed color-mix(in srgb, var(--wf-color) 60%, transparent);
+}
+.wayfarer-view .wf-leg::after {
+  content: "";
+  position: absolute; left: 6px; bottom: -1px;
+  border: 4px solid transparent; border-top: 6px solid color-mix(in srgb, var(--wf-color) 80%, transparent); border-bottom: 0;
+}
+.wayfarer-view .wf-leg-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wayfarer-view .wf-leg-late { color: #d0342c; font-weight: 600; white-space: nowrap; }
+.wayfarer-view .wf-leg.is-late { color: #d0342c; }
+.wayfarer-view .wf-leg.is-late::before { border-color: #d0342c; }
 
 /* ---------- in the note ---------- */
 .wf-meta {

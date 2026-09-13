@@ -16,6 +16,7 @@ import type { FoundPhoto } from "./net";
 import { formatDistance, formatDuration } from "./core/legs";
 import { legTrailer, splitTrailer } from "./core/schedule";
 import { TRANSPORT_EMOJI } from "./core/category";
+import { localeFor, setLocale, t } from "./core/i18n";
 
 /**
  * Wayfarer: the note is the plan, the pane is the map.
@@ -43,6 +44,7 @@ export default class WayfarerPlugin extends Plugin {
 
   async onload(): Promise<void> {
     await this.loadSettings();
+    this.applyLocale();
     this.addSettingTab(new WayfarerSettingTab(this.app, this));
 
     this.registerView(VIEW_TYPE_WAYFARER, (leaf) => new WayfarerView(leaf, this));
@@ -100,6 +102,14 @@ export default class WayfarerPlugin extends Plugin {
   }
 
   /* ---------- settings ---------- */
+
+  applyLocale(): void {
+    let code: string | null = this.settings.uiLanguage;
+    if (code === "auto") {
+      try { code = window.localStorage?.getItem("language") ?? null; } catch { code = null; }
+    }
+    setLocale(localeFor(code));
+  }
 
   async loadSettings(): Promise<void> {
     const data = ((await this.loadData()) ?? {}) as Partial<WayfarerSettings> & { photoCache?: Record<string, FoundPhoto | null> };
@@ -225,7 +235,7 @@ export default class WayfarerPlugin extends Plugin {
     const view = [...this.views][0];
     const it = parseItinerary(editor.getValue(), { maxHeadingLevel: this.settings.dayHeadingLevel });
     if (!view) {
-      new Notice("Wayfarer: open the map pane first so legs can be routed.");
+      new Notice(t("open_map_first"));
       return;
     }
     let n = 0;
@@ -245,7 +255,7 @@ export default class WayfarerPlugin extends Plugin {
       });
     }
     for (const e of edits) editor.replaceRange(e.text, { line: e.line, ch: 0 }, { line: e.line, ch: editor.getLine(e.line).length });
-    new Notice(`Wayfarer: wrote ${edits.length} of ${n} legs`);
+    new Notice(t("wrote_legs", { a: edits.length, b: n }));
   }
 
   /** Moves the stop line at `from` to sit where `to` is (before it when moving up, after it when moving down). */

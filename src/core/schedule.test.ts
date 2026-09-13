@@ -1,4 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
+import { setLocale } from "./i18n";
+beforeAll(() => setLocale("zh-TW"));
 import { parseItinerary } from "./itinerary";
 import { estimateLeg } from "./legs";
 import { buildSchedule, checkHours, fmtMin, parseDayHours, parseDwell, splitTrailer } from "./schedule";

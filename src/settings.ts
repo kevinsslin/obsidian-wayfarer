@@ -6,6 +6,10 @@ export interface WayfarerSettings {
   googleApiKey: string;
   /** BCP-47 language for place names and hours from Google, e.g. zh-TW, ja, en. */
   languageCode: string;
+  /** Interface language: "auto" follows Obsidian. */
+  uiLanguage: "auto" | "en" | "zh-TW" | "ja";
+  /** Share of the pane given to the map; the rest is the timeline. */
+  mapSplit: number;
   /** Headings at this level or shallower start a new day. */
   dayHeadingLevel: number;
   /** Convert Google Maps links automatically on paste. */
@@ -34,6 +38,8 @@ export interface WayfarerSettings {
 export const DEFAULT_SETTINGS: WayfarerSettings = {
   googleApiKey: "",
   languageCode: "zh-TW",
+  uiLanguage: "auto",
+  mapSplit: 0.55,
   dayHeadingLevel: 2,
   convertOnPaste: true,
   addDayTag: false,
@@ -58,6 +64,14 @@ export class WayfarerSettingTab extends PluginSettingTab {
     containerEl.empty();
     const s = this.plugin.settings;
     const save = () => void this.plugin.saveSettings();
+
+    new Setting(containerEl)
+      .setName("Interface language")
+      .setDesc("Also used for text the plugin writes into notes (travel times).")
+      .addDropdown((d) => {
+        d.addOption("auto", "Follow Obsidian").addOption("en", "English").addOption("zh-TW", "繁體中文").addOption("ja", "日本語");
+        d.setValue(s.uiLanguage).onChange((v) => { s.uiLanguage = v as WayfarerSettings["uiLanguage"]; save(); this.plugin.applyLocale(); this.plugin.refresh(); });
+      });
 
     new Setting(containerEl)
       .setName("Convert Google Maps links on paste")
