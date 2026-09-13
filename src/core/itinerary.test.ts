@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dayAtLine, dayLabel, formatStop, parseItinerary, patchLineMeta } from "./itinerary";
+import { dayAtLine, dayDateEnd, dayLabel, formatStop, parseItinerary, patchLineMeta } from "./itinerary";
 
 const NOTE = `---
 locations:
@@ -80,6 +80,27 @@ describe("dayLabel", () => {
     expect(dayLabel("Sep 17, hike")).toBe("9/17");
     expect(dayLabel("Day 3: Kyoto")).toBe("D3");
     expect(dayLabel("Arrival")).toBe("Arrival");
+  });
+  it("labels a range heading with both ends", () => {
+    expect(dayLabel("2026-09-19 ~ 2026-09-26 東京")).toBe("9/19~9/26");
+    expect(dayLabel("2026-09-19～2026-09-26")).toBe("9/19~9/26");
+    expect(dayLabel("2026-09-19 to 2026-09-26")).toBe("9/19~9/26");
+  });
+});
+
+describe("dayDateEnd", () => {
+  it("reads the end of a range and rejects a backwards or missing one", () => {
+    expect(dayDateEnd("2026-09-19 ~ 2026-09-26 東京")).toEqual({ year: 2026, month: 9, day: 26 });
+    expect(dayDateEnd("2026-09-19 到 2026-10-02")).toEqual({ year: 2026, month: 10, day: 2 });
+    expect(dayDateEnd("2026-09-26 ~ 2026-09-19")).toBeNull();
+    expect(dayDateEnd("2026-09-19 週六")).toBeNull();
+    expect(dayDateEnd("2026-09-19 ~ 2026-02-30")).toBeNull();
+  });
+  it("a range is one block whose weekday is unknown", () => {
+    const it = parseItinerary("## 2026-09-19 ~ 2026-09-26 東京\n- [A](geo:35.68,139.76)\n");
+    expect(it.days[0].date).toEqual({ year: 2026, month: 9, day: 19 });
+    expect(it.days[0].dateEnd).toEqual({ year: 2026, month: 9, day: 26 });
+    expect(it.days[0].label).toBe("9/19~9/26");
   });
   it("only a full date is a date", () => {
     expect(parseItinerary("## 2026-09-17 週四\n- [A](geo:1,2)").days[0].date).toEqual({ year: 2026, month: 9, day: 17 });

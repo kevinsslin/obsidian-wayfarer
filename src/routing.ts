@@ -92,7 +92,10 @@ export function departureFor(dayDate: Date | null, from: Stop): Date | undefined
   return d;
 }
 
-/** The calendar date of a day heading, or null when the heading has no full date. */
-export function dateForDay(day: { date: { year: number; month: number; day: number } | null }): Date | null {
-  return day.date ? new Date(day.date.year, day.date.month - 1, day.date.day) : null;
+/**
+ * The calendar date of a day heading, or null when the heading has no full
+ * date or spans a range (then the weekday is unknown, so nothing is checked).
+ */
+export function dateForDay(day: { date: { year: number; month: number; day: number } | null; dateEnd?: { year: number; month: number; day: number } | null }): Date | null {
+  return day.date && !day.dateEnd ? new Date(day.date.year, day.date.month - 1, day.date.day) : null;
 }

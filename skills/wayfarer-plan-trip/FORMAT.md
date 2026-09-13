@@ -24,6 +24,12 @@ locations:
 4. [華嚴瀑布](geo:36.7383,139.5030) 最後上電梯 17:00
 5. 回 ♨️ [湯元溫泉](geo:36.7955,139.4247)
 
+## 2026-09-19 ~ 2026-09-26 東京
+
+還沒排到每天。連假 9/19 到 9/23 不出城。
+
+- [根津神社](geo:35.7203,139.7610) 9/26 起例大祭
+
 ## 2026-09-27 週日 福岡
 
 - [根津神社](geo:35.7203,139.7610) 早上看宮神輿
@@ -40,6 +46,7 @@ locations:
 | Element | How the plugin reads it |
 |---|---|
 | `## 2026-09-17 週四 主題` | A day. One heading per day, the full `YYYY-MM-DD` first, then anything. Only a full date counts as a date; a heading without one is a day with no weekday or hours checks. Level is a setting (default `##`). |
+| `## 2026-09-19 ~ 2026-09-26 東京` | A range: several days kept as one block, for a stretch not yet planned day by day. Two full dates joined by `~`, `～`, `to` or `到`. One chip (`9/19~9/26`), no weekday checks. Split it into day headings once the days are decided. |
 | `[Name](geo:lat,lng)` | A stop. Same format as the Map View plugin. |
 | `07:53` at line start | The stop's time. |
 | Transport emoji before the link | How you get there: 🚶 walk, 🚲 bike, 🚗 car, 🚕 taxi, 🚌 bus, 🚆 🚄 🚃 train, 🚇 metro / MRT, 🚊 tram / light rail, ⛴️ boat, ✈️ flight. Words are not read; the user can also pick it on the arrow in the map pane, which is stored as `%%wf:{"via":"bus"}%%` on the line. |

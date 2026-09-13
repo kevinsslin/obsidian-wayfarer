@@ -36,7 +36,7 @@ locations:
 3. https://maps.app.goo.gl/...        <- paste, it converts itself
 ```
 
-**One `##` heading per day, starting with the full date:** `## 2026-09-17 週四 上山`. After the date write whatever you like. The date is what makes the weekday, opening-hours and departure-time checks possible; a heading without a full `YYYY-MM-DD` is still a day on the map, just with no date, so nothing is checked for it. The pane shows the date as `9/17`. Stops before the first heading form their own group; headings without stops are skipped; the heading level is a setting (default `##`).
+**One `##` heading per day, starting with the full date:** `## 2026-09-17 週四 上山`. After the date write whatever you like. The date is what makes the weekday, opening-hours and departure-time checks possible; a heading without a full `YYYY-MM-DD` is still a day on the map, just with no date, so nothing is checked for it. The pane shows the date as `9/17`. A stretch you have not planned day by day yet, or want to keep as one block, gets a range heading: `## 2026-09-19 ~ 2026-09-26 東京` (also `～`, `to` or `到`). It is one chip and one section, shown as `9/19~9/26`; since the day is not certain, nothing in it is checked against a weekday. Stops before the first heading form their own group; headings without stops are skipped; the heading level is a setting (default `##`).
 
 ## Sharing a plan
 

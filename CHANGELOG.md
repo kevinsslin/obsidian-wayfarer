@@ -5,6 +5,7 @@
 First release.
 
 - Google Maps link conversion on paste and by command, including `maps.app.goo.gl` short links on desktop. With a Google key, exact pins with rating, opening hours, address, website and photo; a text lookup is only accepted when it lands where the link points.
+- Range headings (`## 2026-09-19 ~ 2026-09-26 東京`) keep several days as one block for a stretch not yet planned day by day: one chip, one section, no weekday checks.
 - Map pane beside the note: pins coloured and numbered per day heading, category emoji on pins, lines with arrowheads between a day's stops, click a pin for a card.
 - Cursor follow: the map flies to the stop under the cursor and reframes the day; pauses while you drag.
 - Timeline column: the day's stops top to bottom with thumbnails, times and notes; a transport picker on each arrow; drag to reorder (the stop's notes move with it); resizable and collapsible.

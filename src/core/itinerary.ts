@@ -84,6 +84,11 @@ export interface Day {
   label: string;
   /** The full date in the heading (`2026-09-17`), or null when the heading has none. */
   date: { year: number; month: number; day: number } | null;
+  /**
+   * Last date of a range heading (`2026-09-19 ~ 2026-09-26 東京`), or null.
+   * A range is one block on the map; since the day is not certain, nothing is checked against a weekday.
+   */
+  dateEnd: { year: number; month: number; day: number } | null;
 }
 
 export interface Itinerary {
@@ -116,7 +121,7 @@ export function parseItinerary(markdown: string, opts: ParseOptions = {}): Itine
   const hasExact = lines.some((l) => { const h = HEADING.exec(l); return h && h[1].length === maxLevel; });
   const isDayHeading = (level: number) => (hasExact ? level === maxLevel : level <= maxLevel);
   const days: Day[] = [];
-  let current: Day = { title: "", headingLine: -1, endLine: lines.length, stops: [], index: -1, label: "", date: null };
+  let current: Day = { title: "", headingLine: -1, endLine: lines.length, stops: [], index: -1, label: "", date: null, dateEnd: null };
   let inFence = false;
   let inFrontmatter = lines[0] === "---";
 
@@ -136,7 +141,7 @@ export function parseItinerary(markdown: string, opts: ParseOptions = {}): Itine
     if (h && isDayHeading(h[1].length)) {
       current.endLine = i;
       days.push(current);
-      current = { title: h[2], headingLine: i, endLine: lines.length, stops: [], index: -1, label: dayLabel(h[2]), date: dayDate(h[2]) };
+      current = { title: h[2], headingLine: i, endLine: lines.length, stops: [], index: -1, label: dayLabel(h[2]), date: dayDate(h[2]), dateEnd: dayDateEnd(h[2]) };
       continue;
     }
 
@@ -253,22 +258,42 @@ export function dayAtLine(it: Itinerary, line: number): number {
   return -1;
 }
 
-/** Pulls a compact date label out of a heading, e.g. "9/17 週四 上山" -> "9/17". */
 /**
  * The date of a day heading. Only a full `YYYY-MM-DD` counts: anything
  * shorter would need a guessed year, and the weekday, hours and departure
  * checks all hang on the date being certain.
  */
 export function dayDate(title: string): Day["date"] {
-  const m = /(\d{4})-(\d{2})-(\d{2})/.exec(title);
+  return validDate(/(\d{4})-(\d{2})-(\d{2})/.exec(title));
+}
+
+/**
+ * The end of a range heading: a second full date after the first, joined by
+ * `~`, `～`, `-`, `–`, `to` or `到` (`2026-09-19 ~ 2026-09-26 東京`). Null when
+ * there is none or it is not after the start.
+ */
+export function dayDateEnd(title: string): Day["date"] {
+  const m = /(\d{4})-(\d{2})-(\d{2})\s*(?:[~～\-–]|to|到)\s*(\d{4})-(\d{2})-(\d{2})/.exec(title);
+  if (!m) return null;
+  const start = validDate([m[0], m[1], m[2], m[3]] as unknown as RegExpExecArray);
+  const end = validDate([m[0], m[4], m[5], m[6]] as unknown as RegExpExecArray);
+  if (!start || !end) return null;
+  const key = (d: NonNullable<Day["date"]>) => d.year * 10000 + d.month * 100 + d.day;
+  return key(end) > key(start) ? end : null;
+}
+
+function validDate(m: RegExpExecArray | null): Day["date"] {
   if (!m) return null;
   const [year, month, day] = [Number(m[1]), Number(m[2]), Number(m[3])];
   const d = new Date(year, month - 1, day);
   return d.getFullYear() === year && d.getMonth() === month - 1 && d.getDate() === day ? { year, month, day } : null;
 }
 
+/** Pulls a compact date label out of a heading, e.g. "2026-09-17 週四 上山" -> "9/17", a range -> "9/19~9/26". */
 export function dayLabel(title: string): string {
+  const end = dayDateEnd(title);
   const iso = /(\d{4})-(\d{1,2})-(\d{1,2})/.exec(title);
+  if (iso && end) return `${Number(iso[2])}/${Number(iso[3])}~${end.month}/${end.day}`;
   if (iso) return `${Number(iso[2])}/${Number(iso[3])}`;
   const slash = /(?:^|\D)(\d{1,2})\/(\d{1,2})(?!\d)/.exec(title);
   if (slash) return `${Number(slash[1])}/${Number(slash[2])}`;
