@@ -20,7 +20,7 @@ export interface Leg {
   geometry: [number, number][];
   /** Transit line names, e.g. "東武日光線 → 日光 2 號". */
   summary?: string;
-  source?: "osrm" | "google";
+  source?: "google";
   /** Minutes the leg overruns the gap between the two written times; 0 when on time or unknown. */
   lateBy: number;
 }

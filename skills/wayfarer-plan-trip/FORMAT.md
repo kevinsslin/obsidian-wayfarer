@@ -8,14 +8,14 @@ locations:
 
 行前：[羽田機場](geo:35.5494,139.7798) 落地後直接搭京急到淺草。
 
-## 9/16 週三 日光市區
+## 2026-09-16 週三 日光市區
 
 搭 19:19 的リバティけごん 47 號。
 
 - [東武日光站](geo:36.7509,139.6187)
 - 🏨 [日光ステーションホテルクラシック](geo:36.7512,139.6201)
 
-## 9/17 週四 上山，走戰場之原，睡湯元
+## 2026-09-17 週四 上山，走戰場之原，睡湯元
 
 1. 07:53 🚌 [湯滝](geo:36.7938,139.4316)
 2. 🚶 [赤沼](geo:36.7754,139.4432) 走木道
@@ -24,7 +24,7 @@ locations:
 4. [華嚴瀑布](geo:36.7383,139.5030) 最後上電梯 17:00
 5. 回 ♨️ [湯元溫泉](geo:36.7955,139.4247)
 
-## 9/27 週日 福岡
+## 2026-09-27 週日 福岡
 
 - [根津神社](geo:35.7203,139.7610) 早上看宮神輿
 - 下午 [羽田](geo:35.5494,139.7798) 飛 [福岡機場](geo:33.5859,130.4507)
@@ -39,10 +39,9 @@ locations:
 
 | Element | How the plugin reads it |
 |---|---|
-| `## 9/17 …` | A day. Date formats: `9/17`, `2026-09-17`, `9月17日`, `Sep 17`, `Day 3`. Level is a setting (default `##`; `#` also counts). |
+| `## 2026-09-17 週四 主題` | A day. One heading per day, date first, weekday second, theme last. Prefer the full `YYYY-MM-DD` so the year is kept; `9/17`, `9月17日` and `Sep 17` are read as the next such date; `Day 3` has no date, so no weekday checks. Level is a setting (default `##`). |
 | `[Name](geo:lat,lng)` | A stop. Same format as the Map View plugin. |
 | `07:53` at line start | The stop's time. |
-| ` · 🚶 34 分 · 2.5 km` at line end | Written by the plugin's write-back command. Do not author by hand. |
 | Transport emoji before the link | How you get there: 🚶 walk, 🚲 bike, 🚗 car, 🚕 taxi, 🚌 bus, 🚆 🚄 🚃 train, 🚇 metro / MRT, 🚊 tram / light rail, ⛴️ boat, ✈️ flight. Words are not read; the user can also pick it on the arrow in the map pane, which is stored as `%%wf:{"via":"bus"}%%` on the line. |
 | Indented lines under a stop | The stop's notes, shown verbatim on its card and popup. No format inside them is interpreted. |
 | Emoji before the link | The pin's icon. Otherwise from the Google type or the name. Airports are 🛬 and ports ⚓ so they never read as a flight or boat leg. |

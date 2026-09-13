@@ -41,8 +41,11 @@ export async function resolveMapsUrl(input: string, deps: ResolveDeps): Promise<
     if (!parsed || parsed.isShort) throw new ResolveError("Could not expand the short link");
   }
 
-  // With a key we prefer the API even when the URL has coordinates: it gives
-  // the exact pin, the canonical name, and opening hours.
+  const urlPin = parsed.lat !== undefined && parsed.lng !== undefined && isValidLatLng(parsed.lat, parsed.lng) ? { lat: parsed.lat, lng: parsed.lng } : null;
+
+  // With a key: a place id is exact. A text search is only trusted when it
+  // lands where the link points; otherwise a same-named branch elsewhere
+  // would quietly replace the place the user actually shared.
   if (deps.places) {
     if (parsed.placeId) {
       const p = await deps.places.details(parsed.placeId);
@@ -51,13 +54,11 @@ export async function resolveMapsUrl(input: string, deps: ResolveDeps): Promise<
     const text = parsed.name ?? parsed.query;
     if (text) {
       const p = await deps.places.searchText(text);
-      if (p) return p;
+      if (p && (!urlPin || distanceM(p, urlPin) <= (parsed.exact ? 300 : 3000))) return p;
     }
   }
 
-  if (parsed.lat !== undefined && parsed.lng !== undefined && isValidLatLng(parsed.lat, parsed.lng)) {
-    return { name: nameFor(parsed), lat: parsed.lat, lng: parsed.lng, source: "url" };
-  }
+  if (urlPin) return { name: nameFor(parsed), ...urlPin, source: "url" };
 
   const text = parsed.name ?? parsed.query;
   if (text && deps.nominatim) {
@@ -70,6 +71,14 @@ export async function resolveMapsUrl(input: string, deps: ResolveDeps): Promise<
       ? "This link only carries a place id. Add a Google Places API key in settings to resolve it."
       : "No coordinates or place name found in the link",
   );
+}
+
+function distanceM(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * 6371000 * Math.asin(Math.sqrt(h));
 }
 
 function nameFor(p: ParsedMapsUrl): string {

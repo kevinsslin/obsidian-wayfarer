@@ -15,7 +15,7 @@ The user keeps trips as Markdown notes. The Wayfarer plugin reads a note and sho
 
 ## Writing rules
 
-- One `##` heading per day, in date order: `## 9/17 週四 上山，走戰場之原，睡湯元`. Date first, weekday second, a short theme last. The plugin reads the date from the heading.
+- One `##` heading per day, in date order: `## 2026-09-17 週四 上山，走戰場之原，睡湯元`. Full date first (year included, so the weekday is never ambiguous), weekday second, a short theme last. The plugin reads the date from the heading.
 - Stops go under the heading as a list, in the order the user will visit them. Numbered lists for a fixed sequence, bullets for a loose one.
 - Every stop is `[Name](geo:lat,lng)` with 4 to 6 decimals. Use the name the user will see on signs (local script), optionally followed by a familiar name: `[湯滝](geo:36.7938,139.4316)`.
 - When you are not sure of coordinates, paste the full Google Maps URL of the place instead of guessing; the plugin converts it when the user opens the note on desktop. Never write a `geo:` link with made-up numbers.
@@ -42,7 +42,7 @@ Read the whole note first. Keep the user's headings, order and wording. Add stop
 
 ## Checklist before handing back
 
-- Every day heading has a date the plugin can read (9/17, 2026-09-17, 9月17日, Sep 17, or Day 3).
+- Every day heading starts with a full date (`2026-09-17`).
 - Every stop has real coordinates or a full Google Maps URL.
 - Times are in 24-hour `HH:MM`.
 - Closed days checked for every museum, shop and restaurant.

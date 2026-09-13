@@ -124,20 +124,6 @@ export interface RouteResult {
 }
 
 /**
- * Public OSRM demo server. It answers every profile with car routing, so
- * only the geometry and distance are trusted; walking and cycling durations
- * are derived from the distance by the caller.
- */
-export async function osrmRoute(from: { lat: number; lng: number }, to: { lat: number; lng: number }): Promise<RouteResult | null> {
-  const url = `https://router.project-osrm.org/route/v1/driving/${from.lng},${from.lat};${to.lng},${to.lat}?overview=full&geometries=geojson`;
-  const res = await requestUrl({ url, headers: { "User-Agent": UA }, throw: false });
-  if (res.status !== 200) return null;
-  const route = (res.json as { code?: string; routes?: Array<{ distance: number; duration: number; geometry: { coordinates: [number, number][] } }> }).routes?.[0];
-  if (!route) return null;
-  return { distanceM: route.distance, durationS: route.duration, geometry: route.geometry.coordinates.map(([lng, lat]) => [lat, lng] as [number, number]) };
-}
-
-/**
  * Google Routes API (New). Transit needs a departure time in the future;
  * the caller passes the day's date and the stop's time when it has them.
  */
@@ -180,59 +166,4 @@ export async function googleRoute(
     geometry: decodePolyline(route.polyline.encodedPolyline),
     summary: lines.length ? Array.from(new Set(lines)).join(" → ") : undefined,
   };
-}
-
-/* ---------- photos without a key ---------- */
-
-export interface FoundPhoto {
-  url: string;
-  /** Article or file title, for attribution. */
-  title: string;
-  source: "wikipedia" | "commons";
-}
-
-interface WikiPage { title: string; missing?: string; thumbnail?: { source: string } }
-
-async function wikiQuery(host: string, params: Record<string, string>): Promise<WikiPage[]> {
-  const q = new URLSearchParams({ action: "query", format: "json", origin: "*", ...params });
-  const res = await requestUrl({ url: `https://${host}/w/api.php?${q.toString()}`, headers: { "User-Agent": UA }, throw: false });
-  if (res.status !== 200) return [];
-  const pages = (res.json as { query?: { pages?: Record<string, WikiPage> } }).query?.pages;
-  return pages ? Object.values(pages) : [];
-}
-
-/** The article's lead image when a Wikipedia in one of `langs` has an article titled like the stop. */
-export async function wikipediaByTitle(name: string, langs: string[]): Promise<FoundPhoto | null> {
-  for (const lang of langs) {
-    const pages = await wikiQuery(`${lang}.wikipedia.org`, { titles: name, redirects: "1", prop: "pageimages", piprop: "thumbnail", pithumbsize: "640" });
-    const hit = pages.find((p) => !p.missing && p.thumbnail);
-    if (hit?.thumbnail) return { url: hit.thumbnail.source, title: hit.title, source: "wikipedia" };
-  }
-  return null;
-}
-
-/** The nearest Wikipedia article with an image, within `radiusM`. */
-export async function wikipediaNearby(lat: number, lng: number, langs: string[], radiusM = 400): Promise<FoundPhoto | null> {
-  for (const lang of langs) {
-    const pages = await wikiQuery(`${lang}.wikipedia.org`, {
-      generator: "geosearch", ggscoord: `${lat}|${lng}`, ggsradius: String(radiusM), ggslimit: "5",
-      prop: "pageimages", piprop: "thumbnail", pithumbsize: "640",
-    });
-    const hit = pages.find((p) => p.thumbnail);
-    if (hit?.thumbnail) return { url: hit.thumbnail.source, title: hit.title, source: "wikipedia" };
-  }
-  return null;
-}
-
-/** The nearest photo on Wikimedia Commons, within `radiusM`. Street scenes are common; last resort. */
-export async function commonsNearby(lat: number, lng: number, radiusM = 120): Promise<FoundPhoto | null> {
-  const q = new URLSearchParams({
-    action: "query", format: "json", origin: "*", generator: "geosearch", ggscoord: `${lat}|${lng}`, ggsradius: String(radiusM),
-    ggsnamespace: "6", ggslimit: "5", prop: "imageinfo", iiprop: "url|mime", iiurlwidth: "640",
-  });
-  const res = await requestUrl({ url: `https://commons.wikimedia.org/w/api.php?${q.toString()}`, headers: { "User-Agent": UA }, throw: false });
-  if (res.status !== 200) return null;
-  const pages = (res.json as { query?: { pages?: Record<string, { title: string; imageinfo?: Array<{ thumburl?: string; mime?: string }> }> } }).query?.pages;
-  const hit = pages && Object.values(pages).find((p) => p.imageinfo?.[0]?.mime === "image/jpeg" && p.imageinfo[0].thumburl);
-  return hit ? { url: hit.imageinfo![0].thumburl!, title: hit.title.replace(/^File:/, ""), source: "commons" } : null;
 }

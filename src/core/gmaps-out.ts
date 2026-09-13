@@ -20,12 +20,17 @@ export function directionsUrl(stops: Pick<Stop, "lat" | "lng">[], mode: "transit
   return `https://www.google.com/maps/dir/?${params.toString()}`;
 }
 
-/** Day headings for a trip, one per day, e.g. "## 9/16 週三". */
-export function tripSkeleton(start: Date, days: number, weekdayNames = ["日", "一", "二", "三", "四", "五", "六"], level = 2): string {
+/**
+ * Day headings for a trip, one per day: `## 2026-09-16 週三`. The full date
+ * keeps the year, so weekday and hours checks stay right after the trip and
+ * across New Year; the pane shows it as `9/16`.
+ */
+export function tripSkeleton(start: Date, days: number, weekdayNames = ["週日", "週一", "週二", "週三", "週四", "週五", "週六"], level = 2): string {
   const out: string[] = ["---", "locations:", "---", ""];
+  const pad = (n: number) => String(n).padStart(2, "0");
   for (let i = 0; i < days; i++) {
     const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
-    out.push(`${"#".repeat(level)} ${d.getMonth() + 1}/${d.getDate()} 週${weekdayNames[d.getDay()]}`, "", "- ", "");
+    out.push(`${"#".repeat(level)} ${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${weekdayNames[d.getDay()]}`, "", "- ", "");
   }
   return out.join("\n");
 }

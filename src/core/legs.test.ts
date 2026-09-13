@@ -27,7 +27,7 @@ describe("legs", () => {
     const leg = bareLeg(yudaki, akanuma);
     expect(leg.durationS).toBeUndefined();
     expect(leg.lateBy).toBe(0);
-    const routed = finishLeg({ ...leg, durationS: 34 * 60, routed: true, source: "osrm" });
+    const routed = finishLeg({ ...leg, durationS: 34 * 60, routed: true, source: "google" });
     expect(routed.lateBy).toBe(17);
   });
   it("formats", () => {

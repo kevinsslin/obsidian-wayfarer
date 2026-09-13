@@ -65,6 +65,8 @@ export interface Day {
   index: number;
   /** Short label such as "9/17" if the heading carries a date, else the title. */
   label: string;
+  /** The date in the heading, with the year when it was written. Null when the heading has none. */
+  date: { year?: number; month: number; day: number } | null;
 }
 
 export interface Itinerary {
@@ -97,7 +99,7 @@ export function parseItinerary(markdown: string, opts: ParseOptions = {}): Itine
   const hasExact = lines.some((l) => { const h = HEADING.exec(l); return h && h[1].length === maxLevel; });
   const isDayHeading = (level: number) => (hasExact ? level === maxLevel : level <= maxLevel);
   const days: Day[] = [];
-  let current: Day = { title: "", headingLine: -1, endLine: lines.length, stops: [], index: -1, label: "" };
+  let current: Day = { title: "", headingLine: -1, endLine: lines.length, stops: [], index: -1, label: "", date: null };
   let inFence = false;
   let inFrontmatter = lines[0] === "---";
 
@@ -117,7 +119,7 @@ export function parseItinerary(markdown: string, opts: ParseOptions = {}): Itine
     if (h && isDayHeading(h[1].length)) {
       current.endLine = i;
       days.push(current);
-      current = { title: h[2], headingLine: i, endLine: lines.length, stops: [], index: -1, label: dayLabel(h[2]) };
+      current = { title: h[2], headingLine: i, endLine: lines.length, stops: [], index: -1, label: dayLabel(h[2]), date: dayDate(h[2]) };
       continue;
     }
 
@@ -235,6 +237,23 @@ export function dayAtLine(it: Itinerary, line: number): number {
 }
 
 /** Pulls a compact date label out of a heading, e.g. "9/17 週四 上山" -> "9/17". */
+/** The date written in a heading: `2026-09-17`, `9/17`, `9月17日`, `Sep 17`. Null for `Day 3` or no date. */
+export function dayDate(title: string): Day["date"] {
+  const valid = (y: number | undefined, m: number, d: number) => (m >= 1 && m <= 12 && d >= 1 && d <= 31 ? { ...(y ? { year: y } : {}), month: m, day: d } : null);
+  const iso = /(\d{4})-(\d{1,2})-(\d{1,2})/.exec(title);
+  if (iso) return valid(Number(iso[1]), Number(iso[2]), Number(iso[3]));
+  const slash = /(?:^|\D)(\d{1,2})\/(\d{1,2})(?!\d)/.exec(title);
+  if (slash) return valid(undefined, Number(slash[1]), Number(slash[2]));
+  const cjk = /(\d{1,2})\s*月\s*(\d{1,2})\s*日/.exec(title);
+  if (cjk) return valid(undefined, Number(cjk[1]), Number(cjk[2]));
+  const mon = /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\.?\s+(\d{1,2})\b/i.exec(title);
+  if (mon) {
+    const months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+    return valid(undefined, months.indexOf(mon[1].slice(0, 3).toLowerCase()) + 1, Number(mon[2]));
+  }
+  return null;
+}
+
 export function dayLabel(title: string): string {
   const iso = /(\d{4})-(\d{1,2})-(\d{1,2})/.exec(title);
   if (iso) return `${Number(iso[2])}/${Number(iso[3])}`;

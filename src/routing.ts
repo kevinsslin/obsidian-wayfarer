@@ -1,13 +1,14 @@
 import { TRANSIT_MODES, type Transport } from "./core/category";
 import type { Day, Stop } from "./core/itinerary";
 import { bareLeg, finishLeg, legKey, type Leg } from "./core/legs";
-import { googleRoute, osrmRoute } from "./net";
+import { googleRoute } from "./net";
 import type { WayfarerSettings } from "./settings";
 
 /**
  * Turns a day's stops into legs. Answers synchronously with what is known
- * (distance, and cached routes), then fetches routes for legs whose mode the
- * user has chosen and calls `onUpdate` once per batch so the pane redraws.
+ * (distance, and cached routes), then asks Google Routes for legs whose mode
+ * the user has chosen and calls `onUpdate` once per batch so the pane
+ * redraws. Without a Google key nothing is fetched: a leg is its distance.
  */
 export class LegRouter {
   private cache = new Map<string, Pick<Leg, "distanceM" | "durationS" | "geometry" | "summary" | "source">>();
@@ -22,7 +23,7 @@ export class LegRouter {
       const from = day.stops[i - 1];
       const to = day.stops[i];
       const leg = bareLeg(from, to);
-      if (!leg.mode) {
+      if (!leg.mode || !routable(leg.mode) || !this.settings().googleApiKey) {
         legs.push(leg);
         continue;
       }
@@ -31,7 +32,7 @@ export class LegRouter {
       if (hit) legs.push(finishLeg({ ...leg, ...hit, routed: true }));
       else {
         legs.push(leg);
-        if (this.settings().routeLegs && !this.inflight.has(key)) missing.push({ from, to, mode: leg.mode, key, departure: departureFor(dayDate, from) });
+        if (!this.inflight.has(key)) missing.push({ from, to, mode: leg.mode, key, departure: departureFor(dayDate, from) });
       }
     }
     if (missing.length) void this.fetch(missing);
@@ -44,9 +45,10 @@ export class LegRouter {
     await Promise.all(
       items.map(async (it) => {
         try {
-          const r = await this.route(it.from, it.to, it.mode, it.departure);
+          const s = this.settings();
+          const r = await googleRoute(s.googleApiKey, s.languageCode, it.from, it.to, googleMode(it.mode), it.departure);
           if (r) {
-            this.cache.set(it.key, r);
+            this.cache.set(it.key, { ...r, source: "google" });
             changed = true;
           }
         } catch {
@@ -58,28 +60,18 @@ export class LegRouter {
     );
     if (changed) this.onUpdate();
   }
+}
 
-  /**
-   * Walking, cycling and driving are routed on OSRM; transit on Google when a
-   * key is set. Flights and boats have no router. The public OSRM server
-   * routes every profile as a car, so walking and cycling times are the
-   * routed distance at a steady 4.5 km/h and 14 km/h.
-   */
-  private async route(from: Stop, to: Stop, mode: Transport, departure?: Date): Promise<Pick<Leg, "distanceM" | "durationS" | "geometry" | "summary" | "source"> | null> {
-    const s = this.settings();
-    if (mode === "flight" || mode === "boat") return null;
-    const transit = TRANSIT_MODES.has(mode);
-    if (s.googleApiKey && (transit || s.preferGoogleRoutes)) {
-      const gm = transit ? "TRANSIT" : mode === "walk" ? "WALK" : mode === "bike" ? "BICYCLE" : "DRIVE";
-      const r = await googleRoute(s.googleApiKey, s.languageCode, from, to, gm, departure);
-      if (r) return { ...r, source: "google" };
-    }
-    if (transit) return null;
-    const r = await osrmRoute(from, to);
-    if (!r) return null;
-    const durationS = mode === "car" || mode === "taxi" ? r.durationS : mode === "bike" ? Math.round(r.distanceM / (14000 / 3600)) : Math.round(r.distanceM / (4500 / 3600));
-    return { distanceM: r.distanceM, durationS, geometry: r.geometry, source: "osrm" };
-  }
+/** Flights and boats have no router; everything else goes to Google Routes. */
+export function routable(mode: Transport): boolean {
+  return mode !== "flight" && mode !== "boat";
+}
+
+function googleMode(mode: Transport): "TRANSIT" | "WALK" | "DRIVE" | "BICYCLE" {
+  if (TRANSIT_MODES.has(mode)) return "TRANSIT";
+  if (mode === "walk") return "WALK";
+  if (mode === "bike") return "BICYCLE";
+  return "DRIVE";
 }
 
 /** Departure for a transit query: the day's date with the stop's written time, else undefined. */
@@ -91,11 +83,16 @@ export function departureFor(dayDate: Date | null, from: Stop): Date | undefined
   return d;
 }
 
-/** Turns a heading label such as "9/17" into the next occurrence of that date. */
-export function dateFromLabel(label: string, now = new Date()): Date | null {
-  const m = /^(\d{1,2})\/(\d{1,2})$/.exec(label);
-  if (!m) return null;
-  const d = new Date(now.getFullYear(), Number(m[1]) - 1, Number(m[2]));
-  if (d.getTime() < now.getTime() - 86400000 * 3) d.setFullYear(d.getFullYear() + 1);
-  return d;
+/**
+ * The calendar date of a day heading. A heading with a year is taken as
+ * written; `9/17` without one is the next 9/17 from today (a trip already
+ * three days past keeps its date so the note still reads right the week after).
+ */
+export function dateForDay(day: { date: { year?: number; month: number; day: number } | null }, now = new Date()): Date | null {
+  if (!day.date) return null;
+  const { year, month, day: d } = day.date;
+  if (year) return new Date(year, month - 1, d);
+  const candidate = new Date(now.getFullYear(), month - 1, d);
+  if (candidate.getTime() < now.getTime() - 86400000 * 3) candidate.setFullYear(candidate.getFullYear() + 1);
+  return candidate;
 }

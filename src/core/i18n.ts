@@ -14,7 +14,7 @@ const TABLE = {
     closed_day: "closed that day", opens_at: "opens {t}", closed_at: "closed at {t}", empty: "No stops in this note yet. Paste a Google Maps link under a day heading.",
     day: "Day {n}", other: "Other", via_hint: "Click to change how you get there", pick_mode: "how do you get there?",
     m_walk: "walk", m_bike: "bike", m_car: "car", m_taxi: "taxi", m_bus: "bus", m_train: "train", m_metro: "metro / MRT", m_tram: "tram / light rail", m_boat: "boat / ferry", m_flight: "flight",
-    list_hide: "Hide the timeline", list_show: "Show the timeline",
+    list_hide: "Hide the timeline", list_show: "Show the timeline", key_needed: "add a Google key for the route",
   },
   "zh-TW": {
     all: "全部", follow_on: "地圖跟著游標（點一下停止）", follow_off: "地圖不動（點一下開始跟隨）",
@@ -24,7 +24,7 @@ const TABLE = {
     closed_day: "當天休", opens_at: "{t} 才開", closed_at: "{t} 已關", empty: "這份筆記還沒有地點。在某一天的標題下貼一個 Google Maps 連結。",
     day: "第 {n} 天", other: "其他", via_hint: "點一下換交通方式", pick_mode: "怎麼去？",
     m_walk: "走路", m_bike: "單車", m_car: "開車", m_taxi: "計程車", m_bus: "巴士", m_train: "火車 / 新幹線", m_metro: "地鐵 / 捷運", m_tram: "路面電車 / 輕軌", m_boat: "船", m_flight: "飛機",
-    list_hide: "收起時間軸", list_show: "展開時間軸",
+    list_hide: "收起時間軸", list_show: "展開時間軸", key_needed: "填 Google key 才有路線",
   },
 } as const;
 

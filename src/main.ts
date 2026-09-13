@@ -1,6 +1,6 @@
 import { MarkdownView, Notice, Platform, Plugin, TFile, debounce, type Editor, type MarkdownFileInfo, type WorkspaceLeaf } from "obsidian";
 import { isGoogleMapsUrl } from "./core/gmaps-url";
-import { dayAtLine, parseItinerary, patchLineMeta, type Itinerary, type PlaceMeta } from "./core/itinerary";
+import { dayAtLine, parseItinerary, patchLineMeta, type Itinerary, type PlaceMeta, type Stop } from "./core/itinerary";
 import { ResolveError, resolveMapsUrl, type ResolveDeps } from "./core/resolve";
 import { expandShortUrl, googlePlaces, nominatim } from "./net";
 import { DEFAULT_SETTINGS, WayfarerSettingTab, type WayfarerSettings } from "./settings";
@@ -11,9 +11,8 @@ import { NewTripModal } from "./ui/new-trip-modal";
 import { tripSkeleton } from "./core/gmaps-out";
 import { firstEmoji } from "./core/category";
 import { LegRouter } from "./routing";
-import { PhotoFinder } from "./photos";
-import type { FoundPhoto } from "./net";
-import { localeFor, setLocale } from "./core/i18n";
+import { photoFor, type StopPhoto } from "./photos";
+import { getLocale, localeFor, setLocale } from "./core/i18n";
 
 /**
  * Wayfarer: the note is the plan, the pane is the map.
@@ -25,18 +24,13 @@ export default class WayfarerPlugin extends Plugin {
   settings: WayfarerSettings = { ...DEFAULT_SETTINGS };
   private views = new Set<WayfarerView>();
   readonly router = new LegRouter(() => this.settings, () => { for (const v of this.views) v.redraw(); });
-  private photoCache: Record<string, FoundPhoto | null> = {};
-  readonly photos = new PhotoFinder(
-    () => this.settings,
-    this.photoCache,
-    () => { for (const v of this.views) v.redraw(); },
-    debounce(() => void this.saveSettings(), 2000, true),
-    (link) => {
+  photoFor(stop: Stop): StopPhoto | null {
+    return photoFor(stop, this.settings, (link) => {
       const from = this.current?.file.path ?? "";
       const f = this.app.metadataCache.getFirstLinkpathDest(link, from);
       return f ? this.app.vault.getResourcePath(f) : null;
-    },
-  );
+    });
+  }
   private current: { file: TFile; itinerary: Itinerary } | null = null;
 
   async onload(): Promise<void> {
@@ -66,7 +60,7 @@ export default class WayfarerPlugin extends Plugin {
       name: "Insert day headings for a trip",
       editorCallback: (editor) =>
         new NewTripModal(this.app, (start, days) => {
-          const skeleton = tripSkeleton(start, days, undefined, this.settings.dayHeadingLevel);
+          const skeleton = tripSkeleton(start, days, getLocale() === "en" ? ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] : undefined, this.settings.dayHeadingLevel);
           // A blank note takes the frontmatter too; a note with content only gets the headings.
           const text = editor.getValue().trim() ? skeleton.replace(/^---\nlocations:\n---\n\n/, "") : skeleton;
           editor.replaceSelection(text);
@@ -104,16 +98,13 @@ export default class WayfarerPlugin extends Plugin {
   }
 
   async loadSettings(): Promise<void> {
-    const data = ((await this.loadData()) ?? {}) as Partial<WayfarerSettings> & { photoCache?: Record<string, FoundPhoto | null> };
-    const { photoCache, ...rest } = data;
-    this.settings = { ...DEFAULT_SETTINGS, ...rest };
-    if (photoCache) Object.assign(this.photoCache, photoCache);
+    const data = ((await this.loadData()) ?? {}) as Partial<WayfarerSettings> & Record<string, unknown>;
+    // Settings that no longer exist (photo cache, routing toggles) are dropped on the next save.
+    const known = Object.fromEntries(Object.entries(data).filter(([k]) => k in DEFAULT_SETTINGS));
+    this.settings = { ...DEFAULT_SETTINGS, ...known };
   }
   async saveSettings(): Promise<void> {
-    // keep the cache bounded; newest entries are at the end of insertion order
-    const keys = Object.keys(this.photoCache);
-    for (const k of keys.slice(0, Math.max(0, keys.length - 400))) delete this.photoCache[k];
-    await this.saveData({ ...this.settings, photoCache: this.photoCache });
+    await this.saveData(this.settings);
   }
 
   /* ---------- map pane ---------- */

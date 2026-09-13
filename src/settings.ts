@@ -2,7 +2,7 @@ import { PluginSettingTab, Setting, type App } from "obsidian";
 import type WayfarerPlugin from "./main";
 
 export interface WayfarerSettings {
-  /** Google Places (New) API key. Optional; without it links resolve from their own coordinates or OSM. */
+  /** Google API key with Places API (New) and Routes API enabled. Without it: pins from the link only, no routes, no photos. */
   googleApiKey: string;
   /** BCP-47 language for place names and hours from Google, e.g. zh-TW, ja, en. */
   languageCode: string;
@@ -18,8 +18,6 @@ export interface WayfarerSettings {
   convertOnPaste: boolean;
   /** Prefix converted stops with a category emoji (⛩️ 🍜 🏨 ...). */
   addEmoji: boolean;
-  /** Look up a photo for every stop from Wikipedia and Wikimedia Commons; Google when a key is set. */
-  autoPhotos: boolean;
   /** The map flies to the stop on the cursor line. */
   followCursor: boolean;
   /** Raster tile URL template. */
@@ -27,10 +25,6 @@ export interface WayfarerSettings {
   tileAttribution: string;
   /** Draw a line through each day's stops in order. */
   drawRoutes: boolean;
-  /** Fetch real routes between stops (OSRM for walking and driving, Google Routes for transit when a key is set). */
-  routeLegs: boolean;
-  /** With a Google key, use Google Routes for walking and driving too. */
-  preferGoogleRoutes: boolean;
   /** Open the map pane when a note with stops becomes active. */
   autoOpen: boolean;
 }
@@ -45,12 +39,9 @@ export const DEFAULT_SETTINGS: WayfarerSettings = {
   convertOnPaste: true,
   addEmoji: true,
   followCursor: true,
-  autoPhotos: true,
   tileUrl: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
   tileAttribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
   drawRoutes: true,
-  routeLegs: true,
-  preferGoogleRoutes: false,
   autoOpen: true,
 };
 
@@ -83,11 +74,6 @@ export class WayfarerSettingTab extends PluginSettingTab {
       .addToggle((t) => t.setValue(s.addEmoji).onChange((v) => { s.addEmoji = v; save(); }));
 
     new Setting(containerEl)
-      .setName("Find photos automatically")
-      .setDesc("From Wikipedia and Wikimedia Commons. No key needed.")
-      .addToggle((t) => t.setValue(s.autoPhotos).onChange((v) => { s.autoPhotos = v; save(); this.plugin.refresh(); }));
-
-    new Setting(containerEl)
       .setName("Map follows the cursor")
       .addToggle((t) => t.setValue(s.followCursor).onChange((v) => { s.followCursor = v; save(); }));
 
@@ -96,9 +82,15 @@ export class WayfarerSettingTab extends PluginSettingTab {
       .addToggle((t) => t.setValue(s.autoOpen).onChange((v) => { s.autoOpen = v; save(); }));
 
     new Setting(containerEl).setName("Google").setHeading();
+    const keyDesc = document.createDocumentFragment();
+    keyDesc.append("Your own key. It unlocks exact pins with ratings, opening hours and photos, and routes between stops (walking, cycling, driving and transit with line names). Without it the plugin still reads pins from pasted links, and legs show their distance only. Stored in this vault's plugin data, never in a note. ");
+    const how = document.createElement("a");
+    how.href = "https://github.com/kevinsslin/obsidian-wayfarer#getting-a-google-api-key";
+    how.textContent = "How to get one";
+    keyDesc.append(how, ".");
     new Setting(containerEl)
       .setName("Google API key")
-      .setDesc("Optional. Adds ratings, opening hours, Google's own photos, and real transit routes with line names. Places API (New) and Routes API must be enabled on the key. Stored only in this vault's plugin data.")
+      .setDesc(keyDesc)
       .addText((t) => {
         t.inputEl.type = "password";
         t.setPlaceholder("AIza...").setValue(s.googleApiKey).onChange((v) => { s.googleApiKey = v.trim(); save(); });
@@ -116,14 +108,6 @@ export class WayfarerSettingTab extends PluginSettingTab {
         for (const n of [1, 2, 3, 4]) d.addOption(String(n), "#".repeat(n));
         d.setValue(String(s.dayHeadingLevel)).onChange((v) => { s.dayHeadingLevel = Number(v); save(); this.plugin.refresh(); });
       });
-    new Setting(containerEl)
-      .setName("Route between places")
-      .setDesc("Walking and driving via OpenStreetMap (OSRM). Transit via Google when a key is set, otherwise estimated from distance.")
-      .addToggle((t) => t.setValue(s.routeLegs).onChange((v) => { s.routeLegs = v; save(); this.plugin.refresh(); }));
-    new Setting(containerEl)
-      .setName("Use Google for walking and driving too")
-      .setDesc("Needs a key. Better where OpenStreetMap is thin.")
-      .addToggle((t) => t.setValue(s.preferGoogleRoutes).onChange((v) => { s.preferGoogleRoutes = v; save(); this.plugin.refresh(); }));
     new Setting(containerEl)
       .setName("Draw lines between places")
       .addToggle((t) => t.setValue(s.drawRoutes).onChange((v) => { s.drawRoutes = v; save(); this.plugin.refresh(); }));

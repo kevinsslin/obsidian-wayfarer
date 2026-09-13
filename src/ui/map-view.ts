@@ -7,7 +7,7 @@ import type { Day, Itinerary, Stop } from "../core/itinerary";
 import { legText, type Leg } from "../core/legs";
 import { checkHours, describeHours } from "../core/schedule";
 import { minutesOf } from "../core/legs";
-import { dateFromLabel } from "../routing";
+import { dateForDay, routable } from "../routing";
 import { t } from "../core/i18n";
 import type WayfarerPlugin from "../main";
 
@@ -217,7 +217,7 @@ export class WayfarerView extends ItemView {
 
   /** Legs for a day plus the date read from its heading. */
   plan(day: Day): { legs: Leg[]; date: Date | null } {
-    const date = dateFromLabel(day.label);
+    const date = dateForDay(day);
     return { legs: this.plugin.router.legsFor(day, date), date };
   }
 
@@ -319,7 +319,7 @@ export class WayfarerView extends ItemView {
 
   private popupEl(day: Day, stop: Stop): HTMLElement {
     const root = createDiv({ cls: "wf-card" });
-    const photo = this.plugin.photos.get(stop);
+    const photo = this.plugin.photoFor(stop);
     if (photo) {
       const wrap = root.createDiv({ cls: "wf-card-imgwrap" });
       const el = wrap.createEl("img", { cls: "wf-card-img", attr: { src: photo.url, alt: "" } });
@@ -440,7 +440,7 @@ export class WayfarerView extends ItemView {
         const card = this.stripEl.createEl("button", { cls: "wf-stop" });
         card.style.setProperty("--wf-color", color);
         card.toggleClass("is-focus", stop === this.focused);
-        const photo = this.plugin.photos.get(stop);
+        const photo = this.plugin.photoFor(stop);
         if (photo) {
           const th = card.createEl("img", { cls: "wf-stop-thumb", attr: { src: photo.url, alt: "", loading: "lazy" } });
           th.onerror = () => { th.remove(); card.removeClass("has-thumb"); };
@@ -497,7 +497,9 @@ export class WayfarerView extends ItemView {
       e.stopPropagation();
       this.pickTransport(mode, leg);
     };
-    conn.createSpan({ cls: "wf-leg-text", text: leg.mode ? legText(leg) : `${t("pick_mode")} · ${legText(leg)}` });
+    let text = leg.mode ? legText(leg) : `${t("pick_mode")} · ${legText(leg)}`;
+    if (leg.mode && !leg.routed && routable(leg.mode) && !this.plugin.settings.googleApiKey) text += ` · ${t("key_needed")}`;
+    conn.createSpan({ cls: "wf-leg-text", text });
     if (leg.lateBy) conn.createSpan({ cls: "wf-leg-late", text: t("late_by", { n: leg.lateBy }) });
     conn.setAttr("aria-label", legTooltip(leg));
   }
@@ -618,7 +620,7 @@ function tipEl(text: string): HTMLElement {
 
 function legTooltip(leg: Leg): string {
   const bits = [`${leg.mode ? TRANSPORT_EMOJI[leg.mode] + " " : ""}${leg.from.name} → ${leg.to.name}`, legText(leg)];
-  if (leg.routed) bits.push(leg.source === "google" ? "Google Routes" : "OpenStreetMap / OSRM");
+  if (leg.routed) bits.push("Google Routes");
   if (leg.lateBy) bits.push(t("late_vs", { t: leg.to.time ?? "", n: leg.lateBy }));
   return bits.join("\n");
 }

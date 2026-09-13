@@ -26,12 +26,12 @@ describe("directionsUrl", () => {
 describe("tripSkeleton", () => {
   it("writes one heading per day with weekday", () => {
     const s = tripSkeleton(new Date(2026, 8, 16), 3);
-    expect(s).toContain("## 9/16 週三");
-    expect(s).toContain("## 9/17 週四");
-    expect(s).toContain("## 9/18 週五");
+    expect(s).toContain("## 2026-09-16 週三");
+    expect(s).toContain("## 2026-09-17 週四");
+    expect(s).toContain("## 2026-09-18 週五");
     expect(s.startsWith("---\nlocations:\n---")).toBe(true);
   });
   it("crosses a month boundary", () => {
-    expect(tripSkeleton(new Date(2026, 8, 30), 2)).toContain("## 10/1 週四");
+    expect(tripSkeleton(new Date(2026, 8, 30), 2)).toContain("## 2026-10-01 週四");
   });
 });

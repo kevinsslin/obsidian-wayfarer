@@ -11,6 +11,8 @@ export interface ParsedMapsUrl {
   isShort: boolean;
   lat?: number;
   lng?: number;
+  /** True when lat/lng are the place pin (`!3d…!4d…`, `q=lat,lng`), false for a viewport centre. */
+  exact?: boolean;
   /** Human-readable place name taken from the `/maps/place/<name>/` path segment. */
   name?: string;
   /** Places API place id (`ChIJ...`). */
@@ -56,6 +58,7 @@ export function parseGoogleMapsUrl(text: string): ParsedMapsUrl | null {
   if (exact) {
     out.lat = Number(exact[1]);
     out.lng = Number(exact[2]);
+    out.exact = true;
   } else if (at) {
     out.lat = Number(at[1]);
     out.lng = Number(at[2]);
@@ -80,6 +83,7 @@ export function parseGoogleMapsUrl(text: string): ParsedMapsUrl | null {
   if (searchText) {
     const pair = LATLNG_PAIR.exec(searchText);
     if (pair && out.lat === undefined) {
+      out.exact = true;
       out.lat = Number(pair[1]);
       out.lng = Number(pair[2]);
     } else if (!pair && !searchText.startsWith("place_id:")) {

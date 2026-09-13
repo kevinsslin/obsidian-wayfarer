@@ -23,9 +23,15 @@ describe("resolveMapsUrl", () => {
     const r1 = await resolveMapsUrl("https://www.google.com/maps/search/?api=1&query=Sydney&query_place_id=ChIJabc", { places: { details, searchText } });
     expect(r1.name).toBe("By id");
     expect(searchText).not.toHaveBeenCalled();
-    const r2 = await resolveMapsUrl("https://www.google.com/maps/place/Senkoji+Temple/@34.409,133.205,17z", { places: { details, searchText } });
+    const near = vi.fn(async () => ({ ...place("By text"), lat: 34.41, lng: 133.206 }));
+    const r2 = await resolveMapsUrl("https://www.google.com/maps/place/Senkoji+Temple/@34.409,133.205,17z", { places: { details, searchText: near } });
     expect(r2.name).toBe("By text");
-    expect(searchText).toHaveBeenCalledWith("Senkoji Temple");
+    expect(near).toHaveBeenCalledWith("Senkoji Temple");
+  });
+  it("keeps the link's own pin when the text search lands somewhere else", async () => {
+    const far = vi.fn(async () => ({ ...place("Another branch"), lat: 35.68, lng: 139.76 }));
+    const r = await resolveMapsUrl("https://www.google.com/maps/place/Senkoji+Temple/@34.409,133.205,17z", { places: { details: async () => null, searchText: far } });
+    expect(r).toEqual({ name: "Senkoji Temple", lat: 34.409, lng: 133.205, source: "url" });
   });
   it("falls back to URL coordinates when Places finds nothing", async () => {
     const places = { details: async () => null, searchText: async () => null };
