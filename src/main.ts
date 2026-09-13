@@ -131,7 +131,21 @@ export default class WayfarerPlugin extends Plugin {
     this.current = { file: md.file, itinerary };
     for (const v of this.views) v.applyTiles();
     this.pushToViews();
-    if (this.settings.autoOpen && itinerary.stops.length > 0 && this.views.size === 0 && !Platform.isMobile && !this.mapLeaf()) void this.openMap();
+    if (this.settings.autoOpen && itinerary.stops.length > 0 && this.views.size === 0 && !Platform.isMobile) this.autoOpenSoon();
+  }
+
+  /**
+   * Obsidian restores a plugin's saved panes shortly after the plugin loads,
+   * so opening one immediately at startup or reload would leave two. Wait a
+   * moment and open only if no pane has appeared.
+   */
+  private autoOpenTimer: number | null = null;
+  private autoOpenSoon(): void {
+    if (this.autoOpenTimer !== null) return;
+    this.autoOpenTimer = window.setTimeout(() => {
+      this.autoOpenTimer = null;
+      if (this.views.size === 0 && !this.mapLeaf()) void this.openMap();
+    }, 600);
   }
 
   private pushToViews(): void {

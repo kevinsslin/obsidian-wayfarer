@@ -116,6 +116,8 @@ const app = {
     getActiveViewOfType: () => null,
     getLeavesOfType: () => [],
     getRightLeaf: () => null,
+    getMostRecentLeaf: () => null,
+    iterateAllLeaves: () => {},
   },
   metadataCache: { on: () => ({}) },
 };
