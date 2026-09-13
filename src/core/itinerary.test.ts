@@ -12,7 +12,7 @@ locations:
 
 搭 19:19 的車。
 - [東武日光站](geo:36.7509,139.6187) tag:d1
-- [日光ステーションホテル](geo:36.7512,139.6201) tag:d1 tag:stay %%im:{"rating":4.1,"hours":["Monday: Open 24 hours"]}%%
+- [日光ステーションホテル](geo:36.7512,139.6201) tag:d1 tag:stay %%wf:{"rating":4.1,"hours":["Monday: Open 24 hours"]}%%
 
 ## 9/17 週四 上山
 
@@ -87,7 +87,7 @@ describe("dayLabel", () => {
 describe("formatStop", () => {
   it("round-trips through the parser", () => {
     const text = formatStop("千光寺 [本堂]", 34.40891234567, 133.20445678, ["d3"], { rating: 4.55, hours: ["Mon: 9–17"], website: "https://x" });
-    expect(text).toBe('[千光寺 本堂](geo:34.408912,133.204457) tag:d3 %%im:{"rating":4.6,"hours":["Mon: 9–17"],"website":"https://x"}%%');
+    expect(text).toBe('[千光寺 本堂](geo:34.408912,133.204457) tag:d3 %%wf:{"rating":4.6,"hours":["Mon: 9–17"],"website":"https://x"}%%');
     const parsed = parseItinerary(text);
     expect(parsed.stops[0]).toMatchObject({ name: "千光寺 本堂", lat: 34.408912, lng: 133.204457, tags: ["d3"] });
     expect(parsed.stops[0].meta?.rating).toBe(4.6);

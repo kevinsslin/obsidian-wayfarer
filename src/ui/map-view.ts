@@ -4,17 +4,17 @@ import { CATEGORY_EMOJI, TRANSPORT_EMOJI } from "../core/category";
 import { dayColor } from "../core/colors";
 import { directionsUrl, placeUrl } from "../core/gmaps-out";
 import type { Day, Itinerary, Stop } from "../core/itinerary";
-import type ItineraryMapPlugin from "../main";
+import type WayfarerPlugin from "../main";
 import { googlePhotoUrl } from "../net";
 
-export const VIEW_TYPE_ITINERARY_MAP = "itinerary-map";
+export const VIEW_TYPE_WAYFARER = "wayfarer";
 
 /**
  * The map pane. Three bands: day chips on top, the map, and a strip of the
  * active day's stops along the bottom. The day under the editor cursor is
  * drawn at full strength; when the cursor sits on a stop the map flies there.
  */
-export class ItineraryMapView extends ItemView {
+export class WayfarerView extends ItemView {
   private map: L.Map | null = null;
   private tiles: L.TileLayer | null = null;
   private layer: L.LayerGroup = L.layerGroup();
@@ -35,15 +35,15 @@ export class ItineraryMapView extends ItemView {
   private flying = false;
   private lastCursorLine = -1;
 
-  constructor(leaf: WorkspaceLeaf, private plugin: ItineraryMapPlugin) {
+  constructor(leaf: WorkspaceLeaf, private plugin: WayfarerPlugin) {
     super(leaf);
   }
 
   getViewType(): string {
-    return VIEW_TYPE_ITINERARY_MAP;
+    return VIEW_TYPE_WAYFARER;
   }
   getDisplayText(): string {
-    return this.file ? `Map: ${this.file.basename}` : "Itinerary map";
+    return this.file ? `Map: ${this.file.basename}` : "Wayfarer map";
   }
   getIcon(): string {
     return "map";
@@ -52,11 +52,11 @@ export class ItineraryMapView extends ItemView {
   async onOpen(): Promise<void> {
     const root = this.contentEl;
     root.empty();
-    root.addClass("itinerary-map-view");
-    this.legendEl = root.createDiv({ cls: "im-legend" });
-    this.mapEl = root.createDiv({ cls: "im-map" });
-    this.stripEl = root.createDiv({ cls: "im-strip" });
-    this.emptyEl = root.createDiv({ cls: "im-empty" });
+    root.addClass("wayfarer-view");
+    this.legendEl = root.createDiv({ cls: "wf-legend" });
+    this.mapEl = root.createDiv({ cls: "wf-map" });
+    this.stripEl = root.createDiv({ cls: "wf-strip" });
+    this.emptyEl = root.createDiv({ cls: "wf-empty" });
     this.emptyEl.setText("No stops in this note yet. Paste a Google Maps link, or write [Name](geo:lat,lng).");
 
     this.map = L.map(this.mapEl, { zoomControl: true, attributionControl: true, worldCopyJump: true });
@@ -75,13 +75,13 @@ export class ItineraryMapView extends ItemView {
     // Popup anchors live inside Leaflet's DOM, outside Obsidian's link handling.
     this.registerDomEvent(this.mapEl, "click", (evt) => {
       const t = evt.target as HTMLElement;
-      const a = t.closest?.("a.im-ext");
+      const a = t.closest?.("a.wf-ext");
       if (a instanceof HTMLAnchorElement) {
         evt.preventDefault();
         window.open(a.href);
         return;
       }
-      const jump = t.closest?.("[data-im-jump]");
+      const jump = t.closest?.("[data-wf-jump]");
       if (jump instanceof HTMLElement && this.focused) void this.jumpTo(this.focused);
     });
 
@@ -193,7 +193,7 @@ export class ItineraryMapView extends ItemView {
   private drawDay(day: Day): void {
     const color = dayColor(day.index);
     const dim = this.activeDay >= 0 && this.activeDay !== day.index;
-    const cls = dim ? "im-dim" : "im-active";
+    const cls = dim ? "wf-dim" : "wf-active";
 
     if (this.plugin.settings.drawRoutes) {
       for (let i = 1; i < day.stops.length; i++) {
@@ -214,15 +214,15 @@ export class ItineraryMapView extends ItemView {
       const focus = stop === this.focused;
       const glyph = stop.emoji ?? CATEGORY_EMOJI[stop.category];
       const icon = L.divIcon({
-        className: `im-pin ${cls}${focus ? " is-focus" : ""}`,
-        html: `<span class="im-pin-body" style="--im-color:${color}"><span class="im-pin-glyph">${glyph}</span><span class="im-pin-n">${i + 1}</span></span>`,
+        className: `wf-pin ${cls}${focus ? " is-focus" : ""}`,
+        html: `<span class="wf-pin-body" style="--wf-color:${color}"><span class="wf-pin-glyph">${glyph}</span><span class="wf-pin-n">${i + 1}</span></span>`,
         iconSize: [34, 34],
         iconAnchor: [17, 17],
         popupAnchor: [0, -16],
       });
       const marker = L.marker([stop.lat, stop.lng], { icon, title: stop.name, zIndexOffset: focus ? 2000 : dim ? 0 : 1000 });
-      marker.bindTooltip(stop.time ? `${stop.time} ${stop.name}` : stop.name, { direction: "top", offset: [0, -14], className: "im-tooltip", permanent: focus });
-      marker.bindPopup(() => this.popupEl(day, stop), { className: "im-popup", closeButton: false, maxWidth: 280, minWidth: 220 });
+      marker.bindTooltip(stop.time ? `${stop.time} ${stop.name}` : stop.name, { direction: "top", offset: [0, -14], className: "wf-tooltip", permanent: focus });
+      marker.bindPopup(() => this.popupEl(day, stop), { className: "wf-popup", closeButton: false, maxWidth: 280, minWidth: 220 });
       marker.on("click", () => {
         this.userMoved = true;
         this.setFocus(stop);
@@ -234,34 +234,34 @@ export class ItineraryMapView extends ItemView {
   }
 
   private popupEl(day: Day, stop: Stop): HTMLElement {
-    const root = createDiv({ cls: "im-card" });
+    const root = createDiv({ cls: "wf-card" });
     const img = this.imageUrl(stop);
     if (img) {
-      const el = root.createEl("img", { cls: "im-card-img", attr: { src: img, alt: "" } });
+      const el = root.createEl("img", { cls: "wf-card-img", attr: { src: img, alt: "" } });
       el.onerror = () => el.remove();
     }
-    const body = root.createDiv({ cls: "im-card-body" });
-    const title = body.createDiv({ cls: "im-card-title" });
+    const body = root.createDiv({ cls: "wf-card-body" });
+    const title = body.createDiv({ cls: "wf-card-title" });
     title.createSpan({ text: `${stop.emoji ?? CATEGORY_EMOJI[stop.category]} ` });
     title.createSpan({ text: stop.name });
     const sub = [day.label || `Day ${day.index + 1}`, `#${stop.index + 1}`];
     if (stop.time) sub.push(stop.time);
     if (stop.transport) sub.push(TRANSPORT_EMOJI[stop.transport]);
-    body.createDiv({ cls: "im-card-sub", text: sub.join(" · ") });
+    body.createDiv({ cls: "wf-card-sub", text: sub.join(" · ") });
     const facts: string[] = [];
     if (stop.meta?.rating) facts.push(`★ ${stop.meta.rating.toFixed(1)}`);
     const today = todayHours(stop.meta?.hours);
     if (today) facts.push(today.replace(/^[^:]+:\s*/, ""));
-    if (facts.length) body.createDiv({ cls: "im-card-facts", text: facts.join(" · ") });
+    if (facts.length) body.createDiv({ cls: "wf-card-facts", text: facts.join(" · ") });
     const note = stop.note.startsWith(stop.name) ? stop.note.slice(stop.name.length).replace(/^[\s,，、:：]+/, "") : stop.note;
-    if (note) body.createDiv({ cls: "im-card-note", text: note });
-    if (stop.meta?.address) body.createDiv({ cls: "im-card-addr", text: stop.meta.address });
-    const actions = body.createDiv({ cls: "im-card-actions" });
-    actions.createEl("a", { cls: "im-ext", text: "Google Maps ↗", attr: { href: placeUrl(stop) } });
+    if (note) body.createDiv({ cls: "wf-card-note", text: note });
+    if (stop.meta?.address) body.createDiv({ cls: "wf-card-addr", text: stop.meta.address });
+    const actions = body.createDiv({ cls: "wf-card-actions" });
+    actions.createEl("a", { cls: "wf-ext", text: "Google Maps ↗", attr: { href: placeUrl(stop) } });
     const prev = day.stops[stop.index - 1];
-    if (prev) actions.createEl("a", { cls: "im-ext", text: `${TRANSPORT_EMOJI[stop.transport ?? "train"]} 從上一站 ↗`, attr: { href: directionsUrl([prev, stop], stop.transport === "walk" ? "walking" : stop.transport === "car" ? "driving" : "transit") ?? "#" } });
-    if (stop.meta?.website) actions.createEl("a", { cls: "im-ext", text: "網站 ↗", attr: { href: stop.meta.website } });
-    actions.createEl("a", { text: "到這行", attr: { href: "#", "data-im-jump": "1" } });
+    if (prev) actions.createEl("a", { cls: "wf-ext", text: `${TRANSPORT_EMOJI[stop.transport ?? "train"]} 從上一站 ↗`, attr: { href: directionsUrl([prev, stop], stop.transport === "walk" ? "walking" : stop.transport === "car" ? "driving" : "transit") ?? "#" } });
+    if (stop.meta?.website) actions.createEl("a", { cls: "wf-ext", text: "網站 ↗", attr: { href: stop.meta.website } });
+    actions.createEl("a", { text: "到這行", attr: { href: "#", "data-wf-jump": "1" } });
     return root;
   }
 
@@ -279,8 +279,8 @@ export class ItineraryMapView extends ItemView {
 
   private drawLegend(it: Itinerary): void {
     for (const day of it.days) {
-      const chip = this.legendEl.createEl("button", { cls: "im-chip", text: day.label || `Day ${day.index + 1}` });
-      chip.style.setProperty("--im-color", dayColor(day.index));
+      const chip = this.legendEl.createEl("button", { cls: "wf-chip", text: day.label || `Day ${day.index + 1}` });
+      chip.style.setProperty("--wf-color", dayColor(day.index));
       chip.toggleClass("is-active", this.activeDay === day.index);
       chip.toggleClass("is-pinned", this.pinnedDay === day.index);
       chip.setAttr("aria-label", `${day.title} (${day.stops.length})`);
@@ -292,7 +292,7 @@ export class ItineraryMapView extends ItemView {
         this.fitAll(this.pinnedDay >= 0 ? day.stops : it.stops);
       };
     }
-    const all = this.legendEl.createEl("button", { cls: "im-chip im-chip-all", text: "全部" });
+    const all = this.legendEl.createEl("button", { cls: "wf-chip wf-chip-all", text: "全部" });
     all.toggleClass("is-active", this.activeDay === -1);
     all.onclick = () => {
       this.pinnedDay = -1;
@@ -301,8 +301,8 @@ export class ItineraryMapView extends ItemView {
       this.draw();
       this.fitAll(it.stops);
     };
-    const right = this.legendEl.createDiv({ cls: "im-legend-right" });
-    const follow = right.createEl("button", { cls: "im-chip im-chip-icon", text: "📍" });
+    const right = this.legendEl.createDiv({ cls: "wf-legend-right" });
+    const follow = right.createEl("button", { cls: "wf-chip wf-chip-icon", text: "📍" });
     follow.toggleClass("is-active", this.plugin.settings.followCursor);
     follow.setAttr("aria-label", this.plugin.settings.followCursor ? "Map follows the cursor (click to stop)" : "Map stays put (click to follow the cursor)");
     follow.onclick = () => {
@@ -314,7 +314,7 @@ export class ItineraryMapView extends ItemView {
     if (active) {
       const url = directionsUrl(active.stops);
       if (url) {
-        const go = right.createEl("button", { cls: "im-chip im-chip-go", text: "路線 ↗" });
+        const go = right.createEl("button", { cls: "wf-chip wf-chip-go", text: "路線 ↗" });
         go.setAttr("aria-label", `${active.label}: open the day's stops as directions in Google Maps`);
         go.onclick = () => window.open(url);
       }
@@ -326,19 +326,19 @@ export class ItineraryMapView extends ItemView {
     const day = it.days.find((d) => d.index === this.activeDay);
     const days = day ? [day] : it.days;
     for (const d of days) {
-      if (!day) this.stripEl.createDiv({ cls: "im-strip-day", text: d.label || `Day ${d.index + 1}` }).style.setProperty("--im-color", dayColor(d.index));
+      if (!day) this.stripEl.createDiv({ cls: "wf-strip-day", text: d.label || `Day ${d.index + 1}` }).style.setProperty("--wf-color", dayColor(d.index));
       d.stops.forEach((stop, i) => {
-        const card = this.stripEl.createEl("button", { cls: "im-stop" });
-        card.style.setProperty("--im-color", dayColor(d.index));
+        const card = this.stripEl.createEl("button", { cls: "wf-stop" });
+        card.style.setProperty("--wf-color", dayColor(d.index));
         card.toggleClass("is-focus", stop === this.focused);
-        const top = card.createDiv({ cls: "im-stop-top" });
-        top.createSpan({ cls: "im-stop-n", text: String(i + 1) });
-        if (stop.time) top.createSpan({ cls: "im-stop-time", text: stop.time });
-        if (stop.transport && i > 0) top.createSpan({ cls: "im-stop-mode", text: TRANSPORT_EMOJI[stop.transport] });
-        const main = card.createDiv({ cls: "im-stop-main" });
-        main.createSpan({ cls: "im-stop-glyph", text: stop.emoji ?? CATEGORY_EMOJI[stop.category] });
-        main.createSpan({ cls: "im-stop-name", text: stop.name });
-        if (stop.meta?.rating) card.createDiv({ cls: "im-stop-sub", text: `★ ${stop.meta.rating.toFixed(1)}` });
+        const top = card.createDiv({ cls: "wf-stop-top" });
+        top.createSpan({ cls: "wf-stop-n", text: String(i + 1) });
+        if (stop.time) top.createSpan({ cls: "wf-stop-time", text: stop.time });
+        if (stop.transport && i > 0) top.createSpan({ cls: "wf-stop-mode", text: TRANSPORT_EMOJI[stop.transport] });
+        const main = card.createDiv({ cls: "wf-stop-main" });
+        main.createSpan({ cls: "wf-stop-glyph", text: stop.emoji ?? CATEGORY_EMOJI[stop.category] });
+        main.createSpan({ cls: "wf-stop-name", text: stop.name });
+        if (stop.meta?.rating) card.createDiv({ cls: "wf-stop-sub", text: `★ ${stop.meta.rating.toFixed(1)}` });
         card.onclick = () => {
           this.focused = stop;
           this.userMoved = false;

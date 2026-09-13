@@ -1,7 +1,7 @@
 import { PluginSettingTab, Setting, type App } from "obsidian";
-import type ItineraryMapPlugin from "./main";
+import type WayfarerPlugin from "./main";
 
-export interface ItineraryMapSettings {
+export interface WayfarerSettings {
   /** Google Places (New) API key. Optional; without it links resolve from their own coordinates or OSM. */
   googleApiKey: string;
   /** BCP-47 language for place names and hours from Google, e.g. zh-TW, ja, en. */
@@ -25,7 +25,7 @@ export interface ItineraryMapSettings {
   autoOpen: boolean;
 }
 
-export const DEFAULT_SETTINGS: ItineraryMapSettings = {
+export const DEFAULT_SETTINGS: WayfarerSettings = {
   googleApiKey: "",
   languageCode: "zh-TW",
   dayHeadingLevel: 2,
@@ -39,8 +39,8 @@ export const DEFAULT_SETTINGS: ItineraryMapSettings = {
   autoOpen: true,
 };
 
-export class ItineraryMapSettingTab extends PluginSettingTab {
-  constructor(app: App, private plugin: ItineraryMapPlugin) {
+export class WayfarerSettingTab extends PluginSettingTab {
+  constructor(app: App, private plugin: WayfarerPlugin) {
     super(app, plugin);
   }
 

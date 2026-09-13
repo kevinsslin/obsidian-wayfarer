@@ -1,9 +1,9 @@
 {
-	"id": "itinerary-map",
-	"name": "Itinerary Map",
+	"id": "wayfarer",
+	"name": "Wayfarer",
 	"version": "0.1.0",
 	"minAppVersion": "1.11.4",
-	"description": "Trip planning: paste Google Maps links, write days as headings, see the plan on a map beside the note.",
+	"description": "Trip planning beside a map: paste Google Maps links, headings become days, the map follows your cursor.",
 	"author": "Kevin Lin",
 	"authorUrl": "https://github.com/kevinsslin",
 	"isDesktopOnly": false

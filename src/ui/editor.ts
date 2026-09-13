@@ -44,7 +44,7 @@ export function replaceUrlInEditor(editor: Editor, line: number, url: string, re
 
 /* ---------- Live Preview decorations ---------- */
 
-const META_RE = /\[([^\]]*)\]\(geo:(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)[^)]*\)((?:\s+tag:\S+)*)(\s*%%im:(\{.*?\})%%)/g;
+const META_RE = /\[([^\]]*)\]\(geo:(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)[^)]*\)((?:\s+tag:\S+)*)(\s*%%wf:(\{.*?\})%%)/g;
 
 class MetaWidget extends WidgetType {
   constructor(private meta: PlaceMeta) {
@@ -55,7 +55,7 @@ class MetaWidget extends WidgetType {
   }
   toDOM(): HTMLElement {
     const el = document.createElement("span");
-    el.className = "im-meta";
+    el.className = "wf-meta";
     const bits: string[] = [];
     if (this.meta.rating) bits.push(`★ ${this.meta.rating.toFixed(1)}`);
     const today = todayHours(this.meta.hours);
@@ -72,7 +72,7 @@ class MetaWidget extends WidgetType {
 }
 
 /**
- * Hides the `%%im:{...}%%` metadata comment and shows a compact
+ * Hides the `%%wf:{...}%%` metadata comment and shows a compact
  * "★ 4.5 · 9:00 AM – 5:00 PM" chip in its place, except on the line being
  * edited so the raw text stays reachable.
  */

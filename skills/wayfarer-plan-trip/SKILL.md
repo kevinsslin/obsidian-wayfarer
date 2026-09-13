@@ -1,11 +1,11 @@
 ---
-name: plan-trip-in-obsidian
-description: Write or revise a day-by-day travel itinerary as an Obsidian note that the Itinerary Map plugin renders as a map. Use when the user asks to plan a trip, add stops or days, reorder a day, or turn research (places, opening hours, transport) into an itinerary note.
+name: wayfarer-plan-trip
+description: Write or revise a day-by-day travel itinerary as an Obsidian note that the Wayfarer plugin renders as a map. Use when the user asks to plan a trip, add stops or days, reorder a day, or turn research (places, opening hours, transport) into an itinerary note.
 ---
 
 # Plan a trip in Obsidian
 
-The user keeps trips as Markdown notes. The Itinerary Map plugin reads a note and shows a map beside it: headings are days, `[Name](geo:lat,lng)` links are stops, the line's own words carry time, transport and notes. Your job is to write that note well. Read `FORMAT.md` in this folder once before writing.
+The user keeps trips as Markdown notes. The Wayfarer plugin reads a note and shows a map beside it: headings are days, `[Name](geo:lat,lng)` links are stops, the line's own words carry time, transport and notes. Your job is to write that note well. Read `FORMAT.md` in this folder once before writing.
 
 ## Before writing
 
@@ -28,7 +28,7 @@ The user keeps trips as Markdown notes. The Itinerary Map plugin reads a note an
 
 ## What not to do
 
-- Do not write `%%im:{…}%%` comments; the plugin writes those itself when it has place details.
+- Do not write `%%wf:{…}%%` comments; the plugin writes those itself when it has place details.
 - Do not add frontmatter beyond `locations:` (empty), which the Map View plugin uses.
 - Do not use em dashes or en dashes anywhere. Use commas, full stops, or parentheses.
 - Do not pad days with filler stops. Four to six stops a day is a full day for most people; leave room.

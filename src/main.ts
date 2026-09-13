@@ -3,30 +3,30 @@ import { isGoogleMapsUrl } from "./core/gmaps-url";
 import { dayAtLine, parseItinerary, type Itinerary } from "./core/itinerary";
 import { ResolveError, resolveMapsUrl, type ResolveDeps } from "./core/resolve";
 import { expandShortUrl, googlePlaces, nominatim } from "./net";
-import { DEFAULT_SETTINGS, ItineraryMapSettingTab, type ItineraryMapSettings } from "./settings";
+import { DEFAULT_SETTINGS, WayfarerSettingTab, type WayfarerSettings } from "./settings";
 import { findMapsUrl, metaDecorations, replaceUrlInEditor, stopText } from "./ui/editor";
-import { ItineraryMapView, VIEW_TYPE_ITINERARY_MAP } from "./ui/map-view";
+import { WayfarerView, VIEW_TYPE_WAYFARER } from "./ui/map-view";
 import { readingPostProcessor } from "./ui/reading";
 import { NewTripModal } from "./ui/new-trip-modal";
 import { tripSkeleton } from "./core/gmaps-out";
 import { firstEmoji } from "./core/category";
 
 /**
- * Itinerary Map: the note is the plan, the pane is the map.
+ * Wayfarer: the note is the plan, the pane is the map.
  *
  * `src/core` is Obsidian-free and unit tested. This file wires it to the
  * editor (paste conversion, cursor tracking), the map view, and settings.
  */
-export default class ItineraryMapPlugin extends Plugin {
-  settings: ItineraryMapSettings = { ...DEFAULT_SETTINGS };
-  private views = new Set<ItineraryMapView>();
+export default class WayfarerPlugin extends Plugin {
+  settings: WayfarerSettings = { ...DEFAULT_SETTINGS };
+  private views = new Set<WayfarerView>();
   private current: { file: TFile; itinerary: Itinerary } | null = null;
 
   async onload(): Promise<void> {
     await this.loadSettings();
-    this.addSettingTab(new ItineraryMapSettingTab(this.app, this));
+    this.addSettingTab(new WayfarerSettingTab(this.app, this));
 
-    this.registerView(VIEW_TYPE_ITINERARY_MAP, (leaf) => new ItineraryMapView(leaf, this));
+    this.registerView(VIEW_TYPE_WAYFARER, (leaf) => new WayfarerView(leaf, this));
     this.registerEditorExtension(metaDecorations);
     this.registerMarkdownPostProcessor(readingPostProcessor);
 
@@ -78,7 +78,7 @@ export default class ItineraryMapPlugin extends Plugin {
   /* ---------- settings ---------- */
 
   async loadSettings(): Promise<void> {
-    this.settings = { ...DEFAULT_SETTINGS, ...((await this.loadData()) as Partial<ItineraryMapSettings> | null) };
+    this.settings = { ...DEFAULT_SETTINGS, ...((await this.loadData()) as Partial<WayfarerSettings> | null) };
   }
   async saveSettings(): Promise<void> {
     await this.saveData(this.settings);
@@ -86,11 +86,11 @@ export default class ItineraryMapPlugin extends Plugin {
 
   /* ---------- map pane ---------- */
 
-  attachView(v: ItineraryMapView): void {
+  attachView(v: WayfarerView): void {
     this.views.add(v);
     this.refresh();
   }
-  detachView(v: ItineraryMapView): void {
+  detachView(v: WayfarerView): void {
     this.views.delete(v);
   }
 
@@ -102,7 +102,7 @@ export default class ItineraryMapPlugin extends Plugin {
     }
     const leaf = this.app.workspace.getRightLeaf(false);
     if (!leaf) return;
-    await leaf.setViewState({ type: VIEW_TYPE_ITINERARY_MAP, active: true });
+    await leaf.setViewState({ type: VIEW_TYPE_WAYFARER, active: true });
     await this.app.workspace.revealLeaf(leaf);
   }
 
@@ -114,7 +114,7 @@ export default class ItineraryMapPlugin extends Plugin {
   private mapLeaf(): WorkspaceLeaf | null {
     let found: WorkspaceLeaf | null = null;
     this.app.workspace.iterateAllLeaves((leaf) => {
-      if (!found && leaf.getViewState().type === VIEW_TYPE_ITINERARY_MAP) found = leaf;
+      if (!found && leaf.getViewState().type === VIEW_TYPE_WAYFARER) found = leaf;
     });
     return found;
   }
@@ -192,11 +192,11 @@ export default class ItineraryMapPlugin extends Plugin {
       const lineText = editor.getLine(line);
       const hasEmoji = firstEmoji(lineText.slice(0, Math.max(0, lineText.indexOf(url)))) !== null;
       if (!replaceUrlInEditor(editor, line, url, stopText(place, tags, this.settings.addEmoji && !hasEmoji))) {
-        new Notice(`Itinerary Map: the link moved before it resolved. ${place.name} is at ${place.lat}, ${place.lng}.`);
+        new Notice(`Wayfarer: the link moved before it resolved. ${place.name} is at ${place.lat}, ${place.lng}.`);
       }
     } catch (e) {
       const msg = e instanceof ResolveError ? e.message : `Could not resolve the link (${(e as Error).message ?? e})`;
-      new Notice(`Itinerary Map: ${msg}`, 8000);
+      new Notice(`Wayfarer: ${msg}`, 8000);
     }
   }
 
@@ -208,7 +208,7 @@ export default class ItineraryMapPlugin extends Plugin {
       await this.convert(editor, line, found.url);
       n++;
     }
-    new Notice(n ? `Itinerary Map: converted ${n} link${n === 1 ? "" : "s"}` : "Itinerary Map: no Google Maps links in this note");
+    new Notice(n ? `Wayfarer: converted ${n} link${n === 1 ? "" : "s"}` : "Wayfarer: no Google Maps links in this note");
   }
 }
 

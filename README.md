@@ -1,4 +1,4 @@
-# Itinerary Map
+# Wayfarer
 
 Trip planning inside Obsidian. The note is the plan; a pane beside it is the map.
 
@@ -9,7 +9,7 @@ Trip planning inside Obsidian. The note is the plan; a pane beside it is the map
 - **A day strip under the map.** The active day's stops run left to right as small cards with number, time, transport and name. Click one and the map flies there, the card opens, and the editor cursor lands on that line.
 - **Cards, not tooltips.** Click a pin for a card with photo, rating, today's hours, your own note from that line, address, and links: open in Google Maps, directions from the previous stop, website, jump to the line. Photos come from an image on the same line or the next (`![[photo.jpg]]` or a URL), or from Google when a key is set.
 - **Hand the day to Google Maps.** The legend shows a "Google Maps 路線" button for the day you are on: one tap opens that day's stops, in order, as transit directions on your phone or browser. Every pin popup also has an "Open in Google Maps" link.
-- **Ratings and opening hours** ride along as a hidden `%%im:{...}%%` comment and show as a small chip after the link, in both Live Preview and Reading view.
+- **Ratings and opening hours** ride along as a hidden `%%wf:{...}%%` comment and show as a small chip after the link, in both Live Preview and Reading view.
 
 The stop format is the same inline geolink that [Map View](https://github.com/esm7/obsidian-map-view) reads, so its display rules, routing, queries and Bases view all work on the same notes.
 
@@ -54,10 +54,10 @@ Paste conversion on/off, day heading level, per-day `tag:d1` tagging for Map Vie
 
 ## Planning with an AI assistant
 
-`skills/plan-trip-in-obsidian/` is a skill for Claude Code, Codex and similar agents: how to research, what to check (closed weekdays, real coordinates), and exactly how to write the note so the plugin reads it. Install by copying the folder:
+`skills/wayfarer-plan-trip/` is a skill for Claude Code, Codex and similar agents: how to research, what to check (closed weekdays, real coordinates), and exactly how to write the note so the plugin reads it. Install by copying the folder:
 
 ```bash
-cp -r skills/plan-trip-in-obsidian ~/.claude/skills/
+cp -r skills/wayfarer-plan-trip ~/.claude/skills/
 ```
 
 Then ask the assistant to plan a trip into a note in your vault. The same folder documents the note format for people in `FORMAT.md`.

@@ -5,7 +5,7 @@
 import { Platform, requestUrl } from "obsidian";
 import type { ResolveDeps, ResolvedPlace } from "./core/resolve";
 
-const UA = "ObsidianItineraryMap/0.1 (+https://github.com/kevinsslin/obsidian-itinerary-map)";
+const UA = "ObsidianWayfarer/0.1 (+https://github.com/kevinsslin/obsidian-wayfarer)";
 
 /**
  * maps.app.goo.gl answers a browser User-Agent with a 200 interstitial page

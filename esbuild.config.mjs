@@ -3,8 +3,8 @@ import process from "process";
 import { builtinModules } from "node:module";
 
 const banner = `/*
-Itinerary Map: an Obsidian plugin for trip planning on a map.
-This is a generated bundle. Source and license: https://github.com/kevinsslin/obsidian-itinerary-map
+Wayfarer: an Obsidian plugin for trip planning on a map.
+This is a generated bundle. Source and license: https://github.com/kevinsslin/obsidian-wayfarer
 */`;
 
 const production = process.argv[2] === "production";

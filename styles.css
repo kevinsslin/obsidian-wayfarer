@@ -1,7 +1,7 @@
 /*
- * Itinerary Map styles. Leaflet's stylesheet is inlined below (Obsidian
+ * Wayfarer styles. Leaflet's stylesheet is inlined below (Obsidian
  * plugins ship a single styles.css) and then our own rules, scoped under
- * .itinerary-map-view except for the editor chip, which lives inside the note.
+ * .wayfarer-view except for the editor chip, which lives inside the note.
  */
 /* required styles */
 
@@ -667,14 +667,14 @@ svg.leaflet-image-layer.leaflet-interactive path {
 
 
 /* ---------- pane ---------- */
-.itinerary-map-view {
+.wayfarer-view {
   display: flex;
   flex-direction: column;
   height: 100%;
   padding: 0;
   position: relative;
 }
-.itinerary-map-view .im-legend {
+.wayfarer-view .wf-legend {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -683,15 +683,15 @@ svg.leaflet-image-layer.leaflet-interactive path {
   border-bottom: 1px solid var(--background-modifier-border);
   background: var(--background-primary);
 }
-.itinerary-map-view .im-legend:empty { display: none; }
-.itinerary-map-view .im-legend-right { margin-left: auto; display: inline-flex; gap: 6px; }
-.itinerary-map-view .im-chip {
-  --im-color: var(--text-muted);
+.wayfarer-view .wf-legend:empty { display: none; }
+.wayfarer-view .wf-legend-right { margin-left: auto; display: inline-flex; gap: 6px; }
+.wayfarer-view .wf-chip {
+  --wf-color: var(--text-muted);
   font-size: var(--font-ui-smaller);
   line-height: 1.2;
   padding: 3px 9px 3px 7px;
   border-radius: 999px;
-  border: 1px solid var(--im-color);
+  border: 1px solid var(--wf-color);
   background: transparent;
   color: var(--text-normal);
   cursor: pointer;
@@ -703,28 +703,28 @@ svg.leaflet-image-layer.leaflet-interactive path {
   opacity: 0.6;
   transition: opacity 120ms ease, background 120ms ease;
 }
-.itinerary-map-view .im-chip::before {
+.wayfarer-view .wf-chip::before {
   content: "";
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  background: var(--im-color);
+  background: var(--wf-color);
 }
-.itinerary-map-view .im-chip.im-chip-all::before,
-.itinerary-map-view .im-chip.im-chip-go::before,
-.itinerary-map-view .im-chip.im-chip-icon::before { display: none; }
-.itinerary-map-view .im-chip.im-chip-go { opacity: 1; color: var(--text-accent); border-color: var(--text-accent); }
-.itinerary-map-view .im-chip.im-chip-icon { padding: 3px 7px; opacity: 0.45; border-color: var(--background-modifier-border); }
-.itinerary-map-view .im-chip.im-chip-icon.is-active { opacity: 1; border-color: var(--text-accent); }
-.itinerary-map-view .im-chip.is-active { opacity: 1; background: var(--background-secondary); }
-.itinerary-map-view .im-chip.is-pinned { outline: 2px solid var(--im-color); outline-offset: 1px; }
-.itinerary-map-view .im-map {
+.wayfarer-view .wf-chip.wf-chip-all::before,
+.wayfarer-view .wf-chip.wf-chip-go::before,
+.wayfarer-view .wf-chip.wf-chip-icon::before { display: none; }
+.wayfarer-view .wf-chip.wf-chip-go { opacity: 1; color: var(--text-accent); border-color: var(--text-accent); }
+.wayfarer-view .wf-chip.wf-chip-icon { padding: 3px 7px; opacity: 0.45; border-color: var(--background-modifier-border); }
+.wayfarer-view .wf-chip.wf-chip-icon.is-active { opacity: 1; border-color: var(--text-accent); }
+.wayfarer-view .wf-chip.is-active { opacity: 1; background: var(--background-secondary); }
+.wayfarer-view .wf-chip.is-pinned { outline: 2px solid var(--wf-color); outline-offset: 1px; }
+.wayfarer-view .wf-map {
   flex: 1 1 auto;
   min-height: 160px;
   background: var(--background-secondary);
   z-index: 0;
 }
-.itinerary-map-view .im-empty {
+.wayfarer-view .wf-empty {
   position: absolute;
   inset: 0;
   display: flex;
@@ -736,11 +736,11 @@ svg.leaflet-image-layer.leaflet-interactive path {
   pointer-events: none;
   background: var(--background-primary);
 }
-.itinerary-map-view .im-empty.is-hidden { display: none; }
+.wayfarer-view .wf-empty.is-hidden { display: none; }
 
 /* ---------- pins ---------- */
-.itinerary-map-view .im-pin { background: transparent; border: 0; }
-.itinerary-map-view .im-pin-body {
+.wayfarer-view .wf-pin { background: transparent; border: 0; }
+.wayfarer-view .wf-pin-body {
   position: relative;
   display: flex;
   align-items: center;
@@ -750,12 +750,12 @@ svg.leaflet-image-layer.leaflet-interactive path {
   margin: 2px;
   border-radius: 50%;
   background: #fff;
-  border: 2.5px solid var(--im-color);
+  border: 2.5px solid var(--wf-color);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
   transition: transform 120ms ease;
 }
-.itinerary-map-view .im-pin-glyph { font-size: 15px; line-height: 1; }
-.itinerary-map-view .im-pin-n {
+.wayfarer-view .wf-pin-glyph { font-size: 15px; line-height: 1; }
+.wayfarer-view .wf-pin-n {
   position: absolute;
   right: -6px;
   bottom: -5px;
@@ -763,16 +763,16 @@ svg.leaflet-image-layer.leaflet-interactive path {
   height: 15px;
   padding: 0 3px;
   border-radius: 999px;
-  background: var(--im-color);
+  background: var(--wf-color);
   color: #fff;
   font: 700 9.5px/15px var(--font-interface);
   text-align: center;
   border: 1.5px solid #fff;
 }
-.itinerary-map-view .im-pin.im-dim { opacity: 0.4; filter: saturate(0.3); }
-.itinerary-map-view .im-pin.is-focus .im-pin-body { transform: scale(1.25); box-shadow: 0 0 0 4px color-mix(in srgb, var(--im-color) 35%, transparent), 0 2px 8px rgba(0, 0, 0, 0.4); }
-.itinerary-map-view .im-pin:hover .im-pin-body { transform: scale(1.12); }
-.itinerary-map-view .im-tooltip {
+.wayfarer-view .wf-pin.wf-dim { opacity: 0.4; filter: saturate(0.3); }
+.wayfarer-view .wf-pin.is-focus .wf-pin-body { transform: scale(1.25); box-shadow: 0 0 0 4px color-mix(in srgb, var(--wf-color) 35%, transparent), 0 2px 8px rgba(0, 0, 0, 0.4); }
+.wayfarer-view .wf-pin:hover .wf-pin-body { transform: scale(1.12); }
+.wayfarer-view .wf-tooltip {
   font-family: var(--font-interface);
   font-size: var(--font-ui-small);
   padding: 2px 7px;
@@ -780,21 +780,21 @@ svg.leaflet-image-layer.leaflet-interactive path {
 }
 
 /* ---------- popup card ---------- */
-.itinerary-map-view .im-popup .leaflet-popup-content-wrapper { padding: 0; border-radius: 10px; overflow: hidden; }
-.itinerary-map-view .im-popup .leaflet-popup-content { margin: 0; width: auto !important; }
-.itinerary-map-view .im-card { font-family: var(--font-interface); font-size: var(--font-ui-small); line-height: 1.45; color: #222; }
-.itinerary-map-view .im-card-img { display: block; width: 100%; height: 120px; object-fit: cover; }
-.itinerary-map-view .im-card-body { padding: 10px 12px 10px; }
-.itinerary-map-view .im-card-title { font-weight: 600; font-size: 1.05em; }
-.itinerary-map-view .im-card-sub { color: #777; font-size: 0.88em; margin-top: 1px; }
-.itinerary-map-view .im-card-facts { margin-top: 6px; }
-.itinerary-map-view .im-card-note { margin-top: 6px; color: #444; }
-.itinerary-map-view .im-card-addr { margin-top: 4px; color: #888; font-size: 0.85em; }
-.itinerary-map-view .im-card-actions { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 8px; font-size: 0.9em; }
-.itinerary-map-view .im-card-actions a { text-decoration: none; color: #2a62c9; white-space: nowrap; }
+.wayfarer-view .wf-popup .leaflet-popup-content-wrapper { padding: 0; border-radius: 10px; overflow: hidden; }
+.wayfarer-view .wf-popup .leaflet-popup-content { margin: 0; width: auto !important; }
+.wayfarer-view .wf-card { font-family: var(--font-interface); font-size: var(--font-ui-small); line-height: 1.45; color: #222; }
+.wayfarer-view .wf-card-img { display: block; width: 100%; height: 120px; object-fit: cover; }
+.wayfarer-view .wf-card-body { padding: 10px 12px 10px; }
+.wayfarer-view .wf-card-title { font-weight: 600; font-size: 1.05em; }
+.wayfarer-view .wf-card-sub { color: #777; font-size: 0.88em; margin-top: 1px; }
+.wayfarer-view .wf-card-facts { margin-top: 6px; }
+.wayfarer-view .wf-card-note { margin-top: 6px; color: #444; }
+.wayfarer-view .wf-card-addr { margin-top: 4px; color: #888; font-size: 0.85em; }
+.wayfarer-view .wf-card-actions { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 8px; font-size: 0.9em; }
+.wayfarer-view .wf-card-actions a { text-decoration: none; color: #2a62c9; white-space: nowrap; }
 
 /* ---------- day strip ---------- */
-.itinerary-map-view .im-strip {
+.wayfarer-view .wf-strip {
   display: flex;
   gap: 6px;
   align-items: stretch;
@@ -805,26 +805,26 @@ svg.leaflet-image-layer.leaflet-interactive path {
   background: var(--background-primary);
   scrollbar-width: thin;
 }
-.itinerary-map-view .im-strip:empty { display: none; }
-.itinerary-map-view .im-strip-day {
+.wayfarer-view .wf-strip:empty { display: none; }
+.wayfarer-view .wf-strip-day {
   align-self: center;
   writing-mode: vertical-rl;
   transform: rotate(180deg);
   font-size: var(--font-ui-smaller);
-  color: var(--im-color);
+  color: var(--wf-color);
   padding: 2px 0;
-  border-left: 2px solid var(--im-color);
+  border-left: 2px solid var(--wf-color);
   margin-right: 2px;
 }
-.itinerary-map-view .im-stop {
-  --im-color: var(--text-muted);
+.wayfarer-view .wf-stop {
+  --wf-color: var(--text-muted);
   flex: 0 0 auto;
   width: 132px;
   padding: 6px 8px;
   text-align: left;
   border-radius: 8px;
   border: 1px solid var(--background-modifier-border);
-  border-left: 3px solid var(--im-color);
+  border-left: 3px solid var(--wf-color);
   background: var(--background-secondary);
   color: var(--text-normal);
   cursor: pointer;
@@ -840,26 +840,26 @@ svg.leaflet-image-layer.leaflet-interactive path {
   font-weight: normal;
   transition: background 120ms ease, border-color 120ms ease;
 }
-.itinerary-map-view .im-stop:hover { background: var(--background-modifier-hover); }
-.itinerary-map-view .im-stop.is-focus { border-color: var(--im-color); background: color-mix(in srgb, var(--im-color) 14%, var(--background-secondary)); }
-.itinerary-map-view .im-stop-top { display: flex; align-items: center; justify-content: flex-start; gap: 5px; width: 100%; font-size: var(--font-ui-smaller); color: var(--text-muted); }
-.itinerary-map-view .im-stop-n {
+.wayfarer-view .wf-stop:hover { background: var(--background-modifier-hover); }
+.wayfarer-view .wf-stop.is-focus { border-color: var(--wf-color); background: color-mix(in srgb, var(--wf-color) 14%, var(--background-secondary)); }
+.wayfarer-view .wf-stop-top { display: flex; align-items: center; justify-content: flex-start; gap: 5px; width: 100%; font-size: var(--font-ui-smaller); color: var(--text-muted); }
+.wayfarer-view .wf-stop-n {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 15px;
   height: 15px;
   border-radius: 50%;
-  background: var(--im-color);
+  background: var(--wf-color);
   color: #fff;
   font-size: 9.5px;
   font-weight: 700;
 }
-.itinerary-map-view .im-stop-time { font-variant-numeric: tabular-nums; }
-.itinerary-map-view .im-stop-mode { margin-left: auto; }
-.itinerary-map-view .im-stop-main { display: flex; align-items: baseline; gap: 5px; min-width: 0; width: 100%; }
-.itinerary-map-view .im-stop-glyph { flex: 0 0 auto; font-size: 1.05em; }
-.itinerary-map-view .im-stop-name {
+.wayfarer-view .wf-stop-time { font-variant-numeric: tabular-nums; }
+.wayfarer-view .wf-stop-mode { margin-left: auto; }
+.wayfarer-view .wf-stop-main { display: flex; align-items: baseline; gap: 5px; min-width: 0; width: 100%; }
+.wayfarer-view .wf-stop-glyph { flex: 0 0 auto; font-size: 1.05em; }
+.wayfarer-view .wf-stop-name {
   flex: 1 1 auto;
   min-width: 0;
   font-size: var(--font-ui-small);
@@ -868,10 +868,10 @@ svg.leaflet-image-layer.leaflet-interactive path {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.itinerary-map-view .im-stop-sub { font-size: var(--font-ui-smaller); color: var(--text-muted); text-align: left; }
+.wayfarer-view .wf-stop-sub { font-size: var(--font-ui-smaller); color: var(--text-muted); text-align: left; }
 
 /* ---------- in the note ---------- */
-.im-meta {
+.wf-meta {
   display: inline-block;
   margin-left: 6px;
   padding: 0 7px;
@@ -884,4 +884,4 @@ svg.leaflet-image-layer.leaflet-interactive path {
   border: 1px solid var(--background-modifier-border);
   white-space: nowrap;
 }
-.im-geo-link::before { content: "📍"; font-size: 0.85em; margin-right: 2px; }
+.wf-geo-link::before { content: "📍"; font-size: 0.85em; margin-right: 2px; }

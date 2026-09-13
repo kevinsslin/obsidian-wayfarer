@@ -1,11 +1,11 @@
 {
-  "name": "itinerary-map",
+  "name": "wayfarer",
   "version": "0.1.0",
   "description": "Trip planning in Obsidian: paste Google Maps links, write days as headings, see the plan on a map beside the note.",
   "type": "module",
   "license": "MIT",
   "author": "Kevin Lin",
-  "repository": { "type": "git", "url": "git+https://github.com/kevinsslin/obsidian-itinerary-map.git" },
+  "repository": { "type": "git", "url": "git+https://github.com/kevinsslin/obsidian-wayfarer.git" },
   "keywords": ["obsidian", "obsidian-plugin", "travel", "itinerary", "map", "leaflet"],
   "scripts": {
     "dev": "node esbuild.config.mjs",

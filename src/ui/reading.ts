@@ -4,7 +4,7 @@ import type { PlaceMeta } from "../core/itinerary";
 
 /**
  * Reading view: `geo:` links open Google Maps (Obsidian has no handler for
- * the geo scheme), and the `%%im:{}%%` comment, which Obsidian already hides,
+ * the geo scheme), and the `%%wf:{}%%` comment, which Obsidian already hides,
  * is surfaced as a rating and hours chip after the link.
  */
 export const readingPostProcessor: MarkdownPostProcessor = (el, ctx) => {
@@ -17,14 +17,14 @@ export const readingPostProcessor: MarkdownPostProcessor = (el, ctx) => {
     const m = /^geo:(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/.exec(a.getAttribute("href") ?? "");
     if (!m) return;
     a.setAttribute("href", `https://www.google.com/maps/search/?api=1&query=${m[1]},${m[2]}`);
-    a.addClass("im-geo-link");
+    a.addClass("wf-geo-link");
     a.setAttr("target", "_blank");
     a.setAttr("rel", "noopener");
 
     const meta = metaFor(sourceLines, a.textContent ?? "", m[1], m[2]);
     if (!meta) return;
     const chip = document.createElement("span");
-    chip.className = "im-meta";
+    chip.className = "wf-meta";
     const bits: string[] = [];
     if (meta.rating) bits.push(`★ ${meta.rating.toFixed(1)}`);
     const today = todayHours(meta.hours);
@@ -38,7 +38,7 @@ export const readingPostProcessor: MarkdownPostProcessor = (el, ctx) => {
 
 function metaFor(source: string, name: string, lat: string, lng: string): PlaceMeta | null {
   const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const re = new RegExp(`\\[${esc(name)}\\]\\(geo:${esc(lat)},${esc(lng)}[^)]*\\)(?:\\s+tag:\\S+)*\\s*%%im:(\\{.*?\\})%%`);
+  const re = new RegExp(`\\[${esc(name)}\\]\\(geo:${esc(lat)},${esc(lng)}[^)]*\\)(?:\\s+tag:\\S+)*\\s*%%wf:(\\{.*?\\})%%`);
   const m = re.exec(source);
   if (!m) return null;
   try {

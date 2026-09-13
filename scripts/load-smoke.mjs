@@ -9,7 +9,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const src = process.argv[2] ?? "main.js";
-const cjs = join(mkdtempSync(join(tmpdir(), "im-smoke-")), "main.cjs");
+const cjs = join(mkdtempSync(join(tmpdir(), "wf-smoke-")), "main.cjs");
 copyFileSync(src, cjs);
 
 const fakeEl = () => ({
@@ -119,11 +119,11 @@ const app = {
   },
   metadataCache: { on: () => ({}) },
 };
-const plugin = new PluginClass(app, { id: "itinerary-map", version: "0.0.0-smoke" });
+const plugin = new PluginClass(app, { id: "wayfarer", version: "0.0.0-smoke" });
 await plugin.onload();
 
 const assert = (cond, msg) => { if (!cond) { console.error(`smoke: FAIL ${msg}`); process.exit(1); } };
-assert(plugin.views["itinerary-map"], "map view registered");
+assert(plugin.views["wayfarer"], "map view registered");
 assert(plugin.commands.some((c) => c.id === "open-map"), "open-map command");
 assert(plugin.commands.some((c) => c.id === "convert-maps-link"), "convert command");
 assert(plugin.commands.some((c) => c.id === "convert-all-maps-links"), "convert-all command");

@@ -1,4 +1,4 @@
-# Note format read by Itinerary Map
+# Note format read by Wayfarer
 
 ```markdown
 ---
@@ -46,5 +46,5 @@ locations:
 | `tag:stay` and other `tag:x` | Category hint and Map View compatibility. |
 | Rest of the line | Shown as the note in the stop's card. |
 | `![[img.jpg]]` or image URL on the line or the next | Photo in the card. |
-| `%%im:{…}%%` | Written by the plugin (rating, hours, address). Do not write by hand. |
+| `%%wf:{…}%%` | Written by the plugin (rating, hours, address). Do not write by hand. |
 | Full Google Maps URL | Converted to a stop when pasted or via the convert command. Short `maps.app.goo.gl` links only on desktop. |

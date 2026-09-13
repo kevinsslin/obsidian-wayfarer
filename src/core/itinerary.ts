@@ -2,7 +2,7 @@
  * Parses a note into days and stops.
  *
  * Stops are Map View compatible inline geolinks: `[Name](geo:lat,lng)`,
- * optionally followed by `tag:x` tokens and a `%%im:{...}%%` metadata comment
+ * optionally followed by `tag:x` tokens and a `%%wf:{...}%%` metadata comment
  * that this plugin writes when it has place details.
  *
  * Days are headings. Every stop belongs to the nearest heading above it; stops
@@ -78,7 +78,7 @@ export interface ParseOptions {
 import { firstEmoji, pickCategory, transportFrom, type Category, type Transport } from "./category";
 
 const GEO_LINK = /\[([^\]]*)\]\(geo:(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)(?:[^)]*)\)/g;
-const TRAILER = /^((?:\s+tag:[^\s%]+)*)(\s*%%im:(\{.*?\})%%)?/;
+const TRAILER = /^((?:\s+tag:[^\s%]+)*)(\s*%%wf:(\{.*?\})%%)?/;
 const HEADING = /^(#{1,6})\s+(.*?)\s*#*\s*$/;
 const FENCE = /^\s*(```|~~~)/;
 const TIME = /^\s*(?:[-*+]|\d+[.)])?\s*(?:\S\s+)?(\d{1,2}:\d{2})/u;
@@ -169,7 +169,7 @@ export function parseItinerary(markdown: string, opts: ParseOptions = {}): Itine
 export function plainNote(line: string): string {
   return line
     .replace(/^\s*(?:[-*+]|\d+[.)])\s*/, "")
-    .replace(/%%im:\{.*?\}%%/g, "")
+    .replace(/%%wf:\{.*?\}%%/g, "")
     .replace(/\s+tag:\S+/g, "")
     .replace(IMAGE, "")
     .replace(/\[([^\]]*)\]\(geo:[^)]*\)/g, "$1")
@@ -212,7 +212,7 @@ export function dayLabel(title: string): string {
 export function formatStop(name: string, lat: number, lng: number, tags: string[] = [], meta?: PlaceMeta, emoji?: string): string {
   const parts = [`${emoji ? emoji + " " : ""}[${name.replace(/[[\]]/g, "")}](geo:${round(lat)},${round(lng)})`];
   for (const t of tags) parts.push(`tag:${t}`);
-  if (meta && Object.keys(meta).length > 0) parts.push(`%%im:${JSON.stringify(compactMeta(meta))}%%`);
+  if (meta && Object.keys(meta).length > 0) parts.push(`%%wf:${JSON.stringify(compactMeta(meta))}%%`);
   return parts.join(" ");
 }
 
