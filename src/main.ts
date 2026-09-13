@@ -1,6 +1,6 @@
 import { MarkdownView, Notice, Platform, Plugin, TFile, debounce, type Editor, type MarkdownFileInfo, type WorkspaceLeaf } from "obsidian";
 import { isGoogleMapsUrl } from "./core/gmaps-url";
-import { dayAtLine, parseItinerary, patchLineMeta, setTransportOnLine, type Itinerary, type PlaceMeta, type Stop } from "./core/itinerary";
+import { dayAtLine, moveBlock, parseItinerary, patchLineMeta, setTransportOnLine, type Itinerary, type PlaceMeta, type Stop } from "./core/itinerary";
 import type { Transport } from "./core/category";
 import { ResolveError, resolveMapsUrl, type ResolveDeps } from "./core/resolve";
 import { GoogleApiError, expandShortUrl, googlePlaces } from "./net";
@@ -256,11 +256,30 @@ export default class WayfarerPlugin extends Plugin {
   setStopMeta(line: number, patch: Partial<PlaceMeta>, quiet = false): void {
     const md = this.activeMarkdown();
     if (!md || (quiet && md.file?.path !== this.current?.file.path)) return;
-    const text = md.editor.getLine(line);
     // A background write must land on the line it was computed for.
-    if (quiet && !/\]\(geo:/.test(text)) return;
-    const next = patchLineMeta(text, patch);
-    if (next !== text) md.editor.replaceRange(next, { line, ch: 0 }, { line, ch: text.length });
+    void this.rewriteLine(md, line, (text) => (quiet && !/\]\(geo:/.test(text) ? text : patchLineMeta(text, patch)));
+  }
+
+  /**
+   * Replaces one line of the note. In editing mode through the editor, so undo
+   * works. In Reading view the editor is hidden and Obsidian does not save
+   * what is typed into it, so the change goes to the file instead.
+   */
+  private async rewriteLine(md: MarkdownView, line: number, fn: (text: string) => string): Promise<void> {
+    if (md.getMode() === "preview" && md.file) {
+      await this.app.vault.process(md.file, (data) => {
+        const lines = data.split("\n");
+        if (line >= lines.length) return data;
+        const next = fn(lines[line]);
+        if (next === lines[line]) return data;
+        lines[line] = next;
+        return lines.join("\n");
+      });
+    } else {
+      const text = md.editor.getLine(line);
+      const next = fn(text);
+      if (next !== text) md.editor.replaceRange(next, { line, ch: 0 }, { line, ch: text.length });
+    }
     this.refresh();
   }
 
@@ -268,18 +287,20 @@ export default class WayfarerPlugin extends Plugin {
   setStopTransport(stop: Stop, mode: Transport): void {
     const md = this.activeMarkdown();
     if (!md) return;
-    const text = md.editor.getLine(stop.line);
     // The link must still be where the pane saw it; otherwise the note changed under us.
-    if (!/^\[[^\]]*\]\(geo:/.test(text.slice(stop.from, stop.to))) return;
-    const next = setTransportOnLine(text, stop, mode);
-    if (next !== text) md.editor.replaceRange(next, { line: stop.line, ch: 0 }, { line: stop.line, ch: text.length });
-    this.refresh();
+    void this.rewriteLine(md, stop.line, (text) => (/^\[[^\]]*\]\(geo:/.test(text.slice(stop.from, stop.to)) ? setTransportOnLine(text, stop, mode) : text));
   }
 
   /** Moves the stop line at `from` to sit where `to` is (before it when moving up, after it when moving down). */
   async moveStopLine(from: number, to: number): Promise<void> {
     const md = this.activeMarkdown();
     if (!md) return;
+    if (md.getMode() === "preview" && md.file) {
+      // Reading view: the hidden editor is not saved, so reorder the file itself.
+      await this.app.vault.process(md.file, (data) => moveBlock(data.split("\n"), from, to).join("\n"));
+      this.refresh();
+      return;
+    }
     const editor = md.editor;
     // The stop's block: its line plus every deeper-indented line under it (notes, images).
     const indentOf = (l: string) => /^\s*/.exec(l)![0].replace(/\t/g, "    ").length;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dayAtLine, dayDateEnd, dayLabel, formatStop, parseItinerary, patchLineMeta, setTransportOnLine } from "./itinerary";
+import { dayAtLine, dayDateEnd, dayLabel, formatStop, moveBlock, parseItinerary, patchLineMeta, setTransportOnLine } from "./itinerary";
 
 const NOTE = `---
 locations:
@@ -196,5 +196,22 @@ describe("undated sections beside dated days", () => {
   it("stay days when the note has no dates at all", () => {
     const it = parseItinerary("## Day 1\n- [A](geo:1,2)\n## Day 2\n- [B](geo:3,4)\n");
     expect(it.days.length).toBe(2);
+  });
+});
+
+describe("moveBlock", () => {
+  const lines = ["## d", "- A", "    a1", "- B", "- C", "    c1", "    c2", "- D"];
+  it("moves a stop with its notes up before the target", () => {
+    expect(moveBlock(lines, 4, 1)).toEqual(["## d", "- C", "    c1", "    c2", "- A", "    a1", "- B", "- D"]);
+  });
+  it("moves a stop with its notes down after the target's block", () => {
+    expect(moveBlock(lines, 1, 4)).toEqual(["## d", "- B", "- C", "    c1", "    c2", "- A", "    a1", "- D"]);
+  });
+  it("moves to the very end", () => {
+    expect(moveBlock(lines, 3, 7)).toEqual(["## d", "- A", "    a1", "- C", "    c1", "    c2", "- D", "- B"]);
+  });
+  it("leaves the lines alone for a no-op or bad index", () => {
+    expect(moveBlock(lines, 3, 3)).toBe(lines);
+    expect(moveBlock(lines, 3, 99)).toBe(lines);
   });
 });

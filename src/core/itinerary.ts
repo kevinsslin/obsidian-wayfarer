@@ -419,3 +419,25 @@ export function stopNotes(stop: Stop): string[] {
   line = line.replace(/\s+/g, " ").trim();
   return line && line !== stop.name ? [line, ...stop.notes] : [...stop.notes];
 }
+
+/**
+ * Moves the block starting at line `from` (the line plus every deeper-indented
+ * line under it) to sit where line `to` is: before it when moving up, after
+ * its block when moving down. Same rule as the drag in the timeline.
+ */
+export function moveBlock(lines: string[], from: number, to: number): string[] {
+  const indentOf = (l: string) => (/^\s*/.exec(l) as RegExpExecArray)[0].replace(/\t/g, "    ").length;
+  const blockLen = (ls: string[], ln: number): number => {
+    const base = indentOf(ls[ln]);
+    let n = 1;
+    while (ln + n < ls.length && ls[ln + n].trim() && indentOf(ls[ln + n]) > base) n++;
+    return n;
+  };
+  if (from < 0 || from >= lines.length || to < 0 || to >= lines.length || from === to) return lines;
+  const count = blockLen(lines, from);
+  const block = lines.slice(from, from + count);
+  const rest = [...lines.slice(0, from), ...lines.slice(from + count)];
+  // Moving down: the target line has shifted up by the removed block; land after the target's own block.
+  const at = from < to ? Math.min(rest.length, to - count + blockLen(rest, to - count)) : to;
+  return [...rest.slice(0, at), ...block, ...rest.slice(at)];
+}
