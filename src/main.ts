@@ -11,6 +11,9 @@ import { NewTripModal } from "./ui/new-trip-modal";
 import { tripSkeleton } from "./core/gmaps-out";
 import { firstEmoji } from "./core/category";
 import { LegRouter } from "./routing";
+import { formatDistance, formatDuration } from "./core/legs";
+import { legTrailer, splitTrailer } from "./core/schedule";
+import { TRANSPORT_EMOJI } from "./core/category";
 
 /**
  * Wayfarer: the note is the plan, the pane is the map.
@@ -55,6 +58,11 @@ export default class WayfarerPlugin extends Plugin {
           const text = editor.getValue().trim() ? skeleton.replace(/^---\nlocations:\n---\n\n/, "") : skeleton;
           editor.replaceSelection(text);
         }).open(),
+    });
+    this.addCommand({
+      id: "write-legs",
+      name: "Write travel times and estimated arrivals into this note",
+      editorCallback: (editor) => this.writeLegs(editor),
     });
     this.addCommand({
       id: "convert-all-maps-links",
@@ -184,6 +192,68 @@ export default class WayfarerPlugin extends Plugin {
     if (recent?.view instanceof MarkdownView) return recent.view;
     const first = this.app.workspace.getLeavesOfType("markdown")[0];
     return first?.view instanceof MarkdownView ? first.view : null;
+  }
+
+  /* ---------- writing the plan back ---------- */
+
+  /**
+   * Appends ` · 🚶 34 分 · 2.5 km · ≈10:05 到` to every stop that has a leg
+   * before it, replacing an earlier trailer. Times are inferred only where the
+   * line has none of its own, so the user's anchors stay untouched.
+   */
+  writeLegs(editor: Editor): void {
+    const view = [...this.views][0];
+    const it = parseItinerary(editor.getValue(), { maxHeadingLevel: this.settings.dayHeadingLevel });
+    if (!view) {
+      new Notice("Wayfarer: open the map pane first so legs can be routed.");
+      return;
+    }
+    let n = 0;
+    const edits: Array<{ line: number; text: string }> = [];
+    for (const day of it.days) {
+      const { legs, slots } = view.plan(day);
+      day.stops.forEach((stop, i) => {
+        if (i === 0) return;
+        const leg = legs[i - 1];
+        const slot = slots[i];
+        const legText = `${TRANSPORT_EMOJI[leg.mode]} ${leg.source === "estimate" ? "≈" : ""}${formatDuration(leg.durationS)}`;
+        const trailer = legTrailer(legText, leg.source === "estimate" && leg.mode !== "walk" ? null : formatDistance(leg.distanceM), slot.arrive, slot.inferred);
+        const { base } = splitTrailer(editor.getLine(stop.line));
+        const text = base.replace(/\s+$/, "") + trailer;
+        if (text !== editor.getLine(stop.line)) edits.push({ line: stop.line, text });
+        n++;
+      });
+    }
+    for (const e of edits) editor.replaceRange(e.text, { line: e.line, ch: 0 }, { line: e.line, ch: editor.getLine(e.line).length });
+    new Notice(`Wayfarer: wrote ${edits.length} of ${n} legs`);
+  }
+
+  /** Moves the stop line at `from` to sit where `to` is (before it when moving up, after it when moving down). */
+  async moveStopLine(from: number, to: number): Promise<void> {
+    const md = this.activeMarkdown();
+    if (!md) return;
+    const editor = md.editor;
+    const takeWith = (ln: number): number => {
+      // an image-only line right below belongs to the stop
+      const next = editor.getLine(ln + 1);
+      return next !== undefined && /^\s*!\[/.test(next) ? 2 : 1;
+    };
+    const count = takeWith(from);
+    const lines = Array.from({ length: count }, (_, i) => editor.getLine(from + i));
+    const total = editor.lineCount();
+    const endLine = from + count;
+    const removeTo = endLine < total ? { line: endLine, ch: 0 } : { line: from + count - 1, ch: editor.getLine(from + count - 1).length };
+    const removeFrom = endLine < total ? { line: from, ch: 0 } : { line: from - 1, ch: editor.getLine(from - 1).length };
+    editor.replaceRange("", removeFrom, removeTo);
+    let target = to;
+    if (from < to) target = to - count + takeWith(to - count);
+    else target = to;
+    const insertAt = Math.min(target, editor.lineCount());
+    const text = lines.join("\n") + "\n";
+    if (insertAt >= editor.lineCount()) editor.replaceRange("\n" + lines.join("\n"), { line: editor.lineCount() - 1, ch: editor.getLine(editor.lineCount() - 1).length });
+    else editor.replaceRange(text, { line: insertAt, ch: 0 });
+    editor.setCursor({ line: insertAt, ch: 0 });
+    this.refresh();
   }
 
   /* ---------- paste conversion ---------- */

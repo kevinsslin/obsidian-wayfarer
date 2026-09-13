@@ -18,7 +18,7 @@ locations:
 ## 9/17 週四 上山，走戰場之原，睡湯元
 
 1. 07:53 巴士到 [湯滝](geo:36.7938,139.4316)
-2. 走木道到 [赤沼](geo:36.7754,139.4432)，約 1h45
+2. 走木道到 [赤沼](geo:36.7754,139.4432) ~1h45
 3. 12:52 巴士到 [中禪寺湖](geo:36.7345,139.4823)
 4. [華嚴瀑布](geo:36.7383,139.5030) 最後上電梯 17:00
 5. 回 ♨️ [湯元溫泉](geo:36.7955,139.4247) tag:stay
@@ -41,6 +41,8 @@ locations:
 | `## 9/17 …` | A day. Date formats: `9/17`, `2026-09-17`, `9月17日`, `Sep 17`, `Day 3`. Level is a setting (default `##`; `#` also counts). |
 | `[Name](geo:lat,lng)` | A stop. Same format as the Map View plugin. |
 | `07:53` at line start | The stop's time. |
+| `~1h45`, `~45m` on the line | Planned stay; drives the inferred timetable. |
+| ` · 🚶 34 分 · 2.5 km · ≈08:47 到` at line end | Written by the plugin's write-back command. Do not author by hand. |
 | Words before the link | Transport: 巴士/バス/bus, 走/步行/walk, 電車/新幹線/JR/地鐵/train, 計程車/taxi/開車, 飛/flight, 船/ferry, 自転車/bike. |
 | Emoji before the link | The pin's icon. Otherwise guessed from `tag:`, Google type, or name. |
 | `tag:stay` and other `tag:x` | Category hint and Map View compatibility. |

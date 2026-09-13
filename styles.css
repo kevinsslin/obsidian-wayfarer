@@ -890,6 +890,13 @@ svg.leaflet-image-layer.leaflet-interactive path {
   font-weight: 700;
 }
 .wayfarer-view .wf-stop-time { font-variant-numeric: tabular-nums; }
+.wayfarer-view .wf-stop-time.is-inferred { opacity: 0.7; }
+.wayfarer-view .wf-stop-dwell { margin-left: auto; opacity: 0.7; }
+.wayfarer-view .wf-stop.is-dragging { opacity: 0.4; }
+.wayfarer-view .wf-stop.is-drop { outline: 2px dashed var(--text-accent); outline-offset: 1px; }
+.wayfarer-view .wf-stop-sub.is-late { color: #d0342c; }
+.wayfarer-view .wf-card-time { margin-top: 4px; color: #444; }
+.wayfarer-view .wf-card-warn { margin-top: 4px; color: #d0342c; font-weight: 600; }
 .wayfarer-view .wf-stop-mode { margin-left: auto; }
 .wayfarer-view .wf-stop-main { display: flex; align-items: baseline; gap: 5px; min-width: 0; width: 100%; }
 .wayfarer-view .wf-stop-glyph { flex: 0 0 auto; font-size: 1.05em; }

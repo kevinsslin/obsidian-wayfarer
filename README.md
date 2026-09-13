@@ -9,6 +9,10 @@ Trip planning inside Obsidian. The note is the plan; a pane beside it is the map
 - **A day strip under the map.** The active day's stops run left to right as small cards with number, time, transport and name. Click one and the map flies there, the card opens, and the editor cursor lands on that line.
 - **Cards, not tooltips.** Click a pin for a card with photo, rating, today's hours, your own note from that line, address, and links: open in Google Maps, directions from the previous stop, website, jump to the line. Photos come from an image on the same line or the next (`![[photo.jpg]]` or a URL), or from Google when a key is set.
 - **Legs between stops are real.** Walking and driving legs are routed on OpenStreetMap (OSRM) and drawn along the road, with a `🚶 34 分` label at the midpoint. Transit legs use Google Routes when a key is set (line names included); otherwise they are estimated from the straight-line distance and marked `≈`. The strip shows each leg between its two cards, the legend sums the day (stops, moving time, first to last time), and a leg that cannot fit between the two written times turns red with how many minutes late you would be.
+- **A timetable you did not have to type.** Write a time only on the anchors (the bus, the reservation, the last entry) and a stay length where it matters (`~1h30`, `~45m`). Wayfarer walks the day forward: arrival = previous departure + leg, departure = arrival + stay (defaults by category: 90 min for a museum, 30 for a shrine, 0 for a station). Inferred times show as `≈08:47`; a written anchor that cannot be reached turns red with the minutes you are short.
+- **Opening hours checked against your arrival.** When a stop has Google hours, the card and the strip say 當天休, 10:00 才開, 17:00 已關 or 時間不夠 for the weekday of that heading.
+- **Write it back.** The command *Write travel times and estimated arrivals into this note* appends ` · 🚶 34 分 · 2.5 km · ≈08:47 到` to each stop's line (replacing an earlier one), so the plan reads on a phone without the map.
+- **Reorder by dragging.** Drag a card in the strip onto another; the lines move in the note and everything recomputes.
 - **Hand the day to Google Maps.** The legend shows a "Google Maps 路線" button for the day you are on: one tap opens that day's stops, in order, as transit directions on your phone or browser. Every pin popup also has an "Open in Google Maps" link.
 - **Ratings and opening hours** ride along as a hidden `%%wf:{...}%%` comment and show as a small chip after the link, in both Live Preview and Reading view.
 
@@ -46,6 +50,7 @@ With a **Google Places (New) API key** in settings, links are resolved through t
 
 - **Open itinerary map** (also the ribbon icon)
 - **Insert day headings for a trip**
+- **Write travel times and estimated arrivals into this note**
 - **Convert Google Maps link on this line to a stop**
 - **Convert every Google Maps link in this note**
 

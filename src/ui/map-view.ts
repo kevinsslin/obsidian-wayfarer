@@ -5,6 +5,7 @@ import { dayColor } from "../core/colors";
 import { directionsUrl, placeUrl } from "../core/gmaps-out";
 import type { Day, Itinerary, Stop } from "../core/itinerary";
 import { daySummary, formatDistance, formatDuration, type Leg } from "../core/legs";
+import { buildSchedule, checkHours, describeHours, fmtMin, type Slot } from "../core/schedule";
 import { dateFromLabel } from "../routing";
 import type WayfarerPlugin from "../main";
 import { googlePhotoUrl } from "../net";
@@ -163,7 +164,22 @@ export class WayfarerView extends ItemView {
   }
 
   private legsOf(day: Day): Leg[] {
-    return this.plugin.router.legsFor(day, dateFromLabel(day.label));
+    return this.plan(day).legs;
+  }
+
+  /** Legs plus the inferred timetable; lateness on legs comes from the timetable. */
+  plan(day: Day): { legs: Leg[]; slots: Slot[]; date: Date | null } {
+    const date = dateFromLabel(day.label);
+    const legs = this.plugin.router.legsFor(day, date);
+    const slots = buildSchedule(day, legs);
+    legs.forEach((leg, i) => (leg.lateBy = slots[i + 1]?.lateBy ?? 0));
+    return { legs, slots, date };
+  }
+
+  private hoursWarning(stop: Stop, slot: Slot, date: Date | null): string | null {
+    if (!date || !stop.meta?.hours) return null;
+    const st = checkHours(stop.meta.hours, date.getDay(), slot.arrive, slot.dwellMin);
+    return st ? describeHours(st) : null;
   }
 
   /* ---------- drawing ---------- */
@@ -272,7 +288,16 @@ export class WayfarerView extends ItemView {
     if (stop.time) sub.push(stop.time);
     if (stop.transport) sub.push(TRANSPORT_EMOJI[stop.transport]);
     body.createDiv({ cls: "wf-card-sub", text: sub.join(" · ") });
+    const { slots, date } = this.plan(day);
+    const slot = slots[stop.index];
     const facts: string[] = [];
+    if (slot?.arrive !== undefined) {
+      let t = `${slot.inferred ? "≈" : ""}${fmtMin(slot.arrive)} 到`;
+      if (slot.depart !== undefined) t += ` · ${fmtMin(slot.depart)} 走 (~${formatDuration(slot.dwellMin * 60)})`;
+      body.createDiv({ cls: "wf-card-time", text: t });
+    }
+    const warn = slot ? this.hoursWarning(stop, slot, date) : null;
+    if (warn) body.createDiv({ cls: "wf-card-warn", text: `⚠ ${warn}` });
     if (stop.meta?.rating) facts.push(`★ ${stop.meta.rating.toFixed(1)}`);
     const today = todayHours(stop.meta?.hours);
     if (today) facts.push(today.replace(/^[^:]+:\s*/, ""));
@@ -333,11 +358,16 @@ export class WayfarerView extends ItemView {
     };
     const activeDay = it.days.find((d) => d.index === this.activeDay);
     if (activeDay) {
-      const sum = daySummary(activeDay, this.legsOf(activeDay));
+      const { legs, slots, date } = this.plan(activeDay);
+      const sum = daySummary(activeDay, legs);
       const bits = [`${activeDay.stops.length} 站`, `移動 ${formatDuration(sum.movingS)}`];
-      if (sum.first && sum.last) bits.push(`${sum.first} 到 ${sum.last}`);
+      const first = slots[0]?.arrive;
+      const last = slots[slots.length - 1]?.arrive;
+      if (first !== undefined && last !== undefined && slots.length > 1) bits.push(`${fmtMin(first)} 到 ${slots[slots.length - 1].inferred ? "≈" : ""}${fmtMin(last)}`);
       if (sum.late) bits.push(`${sum.late} 段趕不上`);
-      this.legendEl.createSpan({ cls: `wf-summary${sum.late ? " is-late" : ""}`, text: bits.join(" · ") });
+      const closed = activeDay.stops.filter((st, i) => this.hoursWarning(st, slots[i], date)).length;
+      if (closed) bits.push(`${closed} 站營業時間有問題`);
+      this.legendEl.createSpan({ cls: `wf-summary${sum.late || closed ? " is-late" : ""}`, text: bits.join(" · ") });
     }
     const right = this.legendEl.createDiv({ cls: "wf-legend-right" });
     const follow = right.createEl("button", { cls: "wf-chip wf-chip-icon", text: "📍" });
@@ -365,7 +395,7 @@ export class WayfarerView extends ItemView {
     const days = day ? [day] : it.days;
     for (const d of days) {
       if (!day) this.stripEl.createDiv({ cls: "wf-strip-day", text: d.label || `Day ${d.index + 1}` }).style.setProperty("--wf-color", dayColor(d.index));
-      const legs = this.legsOf(d);
+      const { legs, slots, date } = this.plan(d);
       d.stops.forEach((stop, i) => {
         if (i > 0) {
           const leg = legs[i - 1];
@@ -379,11 +409,27 @@ export class WayfarerView extends ItemView {
         card.toggleClass("is-focus", stop === this.focused);
         const top = card.createDiv({ cls: "wf-stop-top" });
         top.createSpan({ cls: "wf-stop-n", text: String(i + 1) });
-        if (stop.time) top.createSpan({ cls: "wf-stop-time", text: stop.time });
+        const slot = slots[i];
+        if (slot.arrive !== undefined) top.createSpan({ cls: `wf-stop-time${slot.inferred ? " is-inferred" : ""}`, text: `${slot.inferred ? "≈" : ""}${fmtMin(slot.arrive)}` });
+        if (slot.dwellMin && i < d.stops.length - 1) top.createSpan({ cls: "wf-stop-dwell", text: `~${formatDuration(slot.dwellMin * 60).replace(/ /g, "")}` });
         const main = card.createDiv({ cls: "wf-stop-main" });
         main.createSpan({ cls: "wf-stop-glyph", text: stop.emoji ?? CATEGORY_EMOJI[stop.category] });
         main.createSpan({ cls: "wf-stop-name", text: stop.name });
-        if (stop.meta?.rating) card.createDiv({ cls: "wf-stop-sub", text: `★ ${stop.meta.rating.toFixed(1)}` });
+        const warn = this.hoursWarning(stop, slot, date);
+        if (warn) card.createDiv({ cls: "wf-stop-sub is-late", text: `⚠ ${warn}` });
+        else if (stop.meta?.rating) card.createDiv({ cls: "wf-stop-sub", text: `★ ${stop.meta.rating.toFixed(1)}` });
+        card.draggable = true;
+        card.dataset.line = String(stop.line);
+        card.ondragstart = (e) => { e.dataTransfer?.setData("text/plain", String(stop.line)); card.addClass("is-dragging"); };
+        card.ondragend = () => card.removeClass("is-dragging");
+        card.ondragover = (e) => { e.preventDefault(); card.addClass("is-drop"); };
+        card.ondragleave = () => card.removeClass("is-drop");
+        card.ondrop = (e) => {
+          e.preventDefault();
+          card.removeClass("is-drop");
+          const src = Number(e.dataTransfer?.getData("text/plain"));
+          if (Number.isFinite(src) && src !== stop.line) void this.plugin.moveStopLine(src, stop.line);
+        };
         card.onclick = () => {
           this.focused = stop;
           this.userMoved = false;
