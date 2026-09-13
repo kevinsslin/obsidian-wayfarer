@@ -4,7 +4,10 @@ Trip planning inside Obsidian. The note is the plan; a pane beside it is the map
 
 - **Paste a Google Maps link** (including `maps.app.goo.gl` share links) and it becomes `[Name](geo:lat,lng)`.
 - **Headings are days.** Every stop under `## 9/17 ...` is that day's stop: same colour, numbered in order, joined by a line.
-- **The map follows your cursor.** Put the cursor in a day and that day is drawn at full strength, the rest dimmed. Click a pin to jump back to its line.
+- **The map follows your cursor.** Put the cursor on a stop and the map flies to it; move into another day and the map reframes that day, drawn at full strength with the rest dimmed. Drag the map and it stays put until you move to another line. The 📍 chip turns following off.
+- **Every stop has a face.** Pins carry a category emoji (⛩️ 🍜 🏨 🚉 🏞️ ...) guessed from the place type or name, or the emoji you typed before the link. A `07:53` at the start of the line becomes the stop's time; words like 巴士, 走, 新幹線 or ✈ before the link set how you get there, which changes the line style and shows up in the card.
+- **A day strip under the map.** The active day's stops run left to right as small cards with number, time, transport and name. Click one and the map flies there, the card opens, and the editor cursor lands on that line.
+- **Cards, not tooltips.** Click a pin for a card with photo, rating, today's hours, your own note from that line, address, and links: open in Google Maps, directions from the previous stop, website, jump to the line. Photos come from an image on the same line or the next (`![[photo.jpg]]` or a URL), or from Google when a key is set.
 - **Hand the day to Google Maps.** The legend shows a "Google Maps 路線" button for the day you are on: one tap opens that day's stops, in order, as transit directions on your phone or browser. Every pin popup also has an "Open in Google Maps" link.
 - **Ratings and opening hours** ride along as a hidden `%%im:{...}%%` comment and show as a small chip after the link, in both Live Preview and Reading view.
 

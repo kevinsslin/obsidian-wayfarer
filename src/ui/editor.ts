@@ -2,6 +2,7 @@ import { Decoration, EditorView, ViewPlugin, WidgetType, type DecorationSet, typ
 import { RangeSetBuilder } from "@codemirror/state";
 import type { Editor } from "obsidian";
 import { isGoogleMapsUrl } from "../core/gmaps-url";
+import { CATEGORY_EMOJI, pickCategory } from "../core/category";
 import { formatStop, type PlaceMeta } from "../core/itinerary";
 import type { ResolvedPlace } from "../core/resolve";
 import { todayHours } from "./map-view";
@@ -18,8 +19,10 @@ export function findMapsUrl(line: string): { url: string; from: number; to: numb
 }
 
 /** The line should be replaced in place; returns the new text for the span. */
-export function stopText(place: ResolvedPlace, tags: string[]): string {
-  return formatStop(place.name, place.lat, place.lng, tags, place.meta);
+export function stopText(place: ResolvedPlace, tags: string[], withEmoji = true): string {
+  const cat = pickCategory({ tags, googleType: place.meta?.type, name: place.name });
+  const emoji = withEmoji && cat !== "place" ? CATEGORY_EMOJI[cat] : undefined;
+  return formatStop(place.name, place.lat, place.lng, tags, place.meta, emoji);
 }
 
 /**

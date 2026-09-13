@@ -12,6 +12,10 @@ export interface ItineraryMapSettings {
   convertOnPaste: boolean;
   /** Add `tag:d<n>` to converted stops using the day's position. */
   addDayTag: boolean;
+  /** Prefix converted stops with a category emoji (⛩️ 🍜 🏨 ...). */
+  addEmoji: boolean;
+  /** The map flies to the stop on the cursor line. */
+  followCursor: boolean;
   /** Raster tile URL template. */
   tileUrl: string;
   tileAttribution: string;
@@ -27,6 +31,8 @@ export const DEFAULT_SETTINGS: ItineraryMapSettings = {
   dayHeadingLevel: 2,
   convertOnPaste: true,
   addDayTag: false,
+  addEmoji: true,
+  followCursor: true,
   tileUrl: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
   tileAttribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
   drawRoutes: true,
@@ -61,6 +67,16 @@ export class ItineraryMapSettingTab extends PluginSettingTab {
       .setName("Tag converted stops with their day")
       .setDesc("Appends tag:d1, tag:d2 ... so Map View display rules can colour them too.")
       .addToggle((t) => t.setValue(s.addDayTag).onChange((v) => { s.addDayTag = v; save(); }));
+
+    new Setting(containerEl)
+      .setName("Add a category emoji to converted stops")
+      .setDesc("⛩️ 🍜 🏨 🚉 and so on, guessed from the place type or name. Your own emoji before the link always wins.")
+      .addToggle((t) => t.setValue(s.addEmoji).onChange((v) => { s.addEmoji = v; save(); }));
+
+    new Setting(containerEl)
+      .setName("Map follows the cursor")
+      .setDesc("Moving the cursor onto a stop flies the map there. Dragging the map pauses this until the cursor moves to another line.")
+      .addToggle((t) => t.setValue(s.followCursor).onChange((v) => { s.followCursor = v; save(); }));
 
     new Setting(containerEl)
       .setName("Draw a line through each day")

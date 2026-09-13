@@ -52,7 +52,7 @@ export async function nominatim(query: string): Promise<ResolvedPlace | null> {
   };
 }
 
-const PLACE_FIELDS = "id,displayName,location,formattedAddress,rating,regularOpeningHours,websiteUri";
+const PLACE_FIELDS = "id,displayName,location,formattedAddress,rating,regularOpeningHours,websiteUri,primaryType,photos";
 
 interface PlaceJson {
   id?: string;
@@ -62,6 +62,13 @@ interface PlaceJson {
   rating?: number;
   regularOpeningHours?: { weekdayDescriptions?: string[] };
   websiteUri?: string;
+  primaryType?: string;
+  photos?: Array<{ name: string }>;
+}
+
+/** URL for a Google photo resource. Built only for the DOM; the key never goes into a note. */
+export function googlePhotoUrl(apiKey: string, photo: string, maxWidthPx = 480): string {
+  return `https://places.googleapis.com/v1/${photo}/media?maxWidthPx=${maxWidthPx}&key=${encodeURIComponent(apiKey)}`;
 }
 
 export function googlePlaces(apiKey: string, languageCode: string): NonNullable<ResolveDeps["places"]> {
@@ -79,6 +86,8 @@ export function googlePlaces(apiKey: string, languageCode: string): NonNullable<
         address: p.formattedAddress,
         website: p.websiteUri,
         placeId: p.id,
+        type: p.primaryType,
+        photo: p.photos?.[0]?.name,
       },
     };
   };

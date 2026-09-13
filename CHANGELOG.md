@@ -9,4 +9,7 @@ First release.
 - Cursor tracking: the day under the cursor is emphasised.
 - Rating and opening-hours chip from `%%im:{...}%%` metadata in Live Preview and Reading view.
 - "Insert day headings for a trip" command, and a per-day "Google Maps 路線" button that opens the day's stops as transit directions.
+- Category emoji on pins and converted stops, time and transport parsed from the line, transport-styled route segments.
+- Day strip under the map, popup cards with photo (vault image, URL or Google photo), note, hours, rating and directions from the previous stop.
+- Cursor follow: the map flies to the stop under the cursor and pauses while you drag.
 - Optional Google Places (New) resolution; Nominatim fallback for text-only links.

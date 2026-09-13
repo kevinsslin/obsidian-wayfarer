@@ -1,30 +1,39 @@
 import { ItemView, MarkdownView, TFile, type WorkspaceLeaf } from "obsidian";
 import * as L from "leaflet";
+import { CATEGORY_EMOJI, TRANSPORT_EMOJI } from "../core/category";
 import { dayColor } from "../core/colors";
 import { directionsUrl, placeUrl } from "../core/gmaps-out";
 import type { Day, Itinerary, Stop } from "../core/itinerary";
 import type ItineraryMapPlugin from "../main";
+import { googlePhotoUrl } from "../net";
 
 export const VIEW_TYPE_ITINERARY_MAP = "itinerary-map";
 
 /**
- * The map pane. Shows the active note's stops coloured and numbered by day,
- * with a line through each day. The day under the editor cursor is drawn at
- * full strength and the others dimmed, so scrolling the note walks the map.
+ * The map pane. Three bands: day chips on top, the map, and a strip of the
+ * active day's stops along the bottom. The day under the editor cursor is
+ * drawn at full strength; when the cursor sits on a stop the map flies there.
  */
 export class ItineraryMapView extends ItemView {
   private map: L.Map | null = null;
   private tiles: L.TileLayer | null = null;
   private layer: L.LayerGroup = L.layerGroup();
+  private markers = new Map<Stop, L.Marker>();
   private legendEl!: HTMLElement;
-  private emptyEl!: HTMLElement;
   private mapEl!: HTMLElement;
+  private stripEl!: HTMLElement;
+  private emptyEl!: HTMLElement;
   private file: TFile | null = null;
   private itinerary: Itinerary | null = null;
   private activeDay = -1;
   /** Day pinned by clicking the legend; -1 follows the cursor. */
   private pinnedDay = -1;
+  private focused: Stop | null = null;
   private fittedFor: string | null = null;
+  /** Set while the user pans; cleared when the cursor moves to another line. */
+  private userMoved = false;
+  private flying = false;
+  private lastCursorLine = -1;
 
   constructor(leaf: WorkspaceLeaf, private plugin: ItineraryMapPlugin) {
     super(leaf);
@@ -46,6 +55,7 @@ export class ItineraryMapView extends ItemView {
     root.addClass("itinerary-map-view");
     this.legendEl = root.createDiv({ cls: "im-legend" });
     this.mapEl = root.createDiv({ cls: "im-map" });
+    this.stripEl = root.createDiv({ cls: "im-strip" });
     this.emptyEl = root.createDiv({ cls: "im-empty" });
     this.emptyEl.setText("No stops in this note yet. Paste a Google Maps link, or write [Name](geo:lat,lng).");
 
@@ -53,6 +63,9 @@ export class ItineraryMapView extends ItemView {
     this.map.setView([35.68, 139.76], 5);
     this.applyTiles();
     this.layer.addTo(this.map);
+    this.map.on("dragstart", () => (this.userMoved = true));
+    this.map.on("zoomstart", () => { if (!this.flying) this.userMoved = true; });
+    this.map.on("moveend zoomend", () => (this.flying = false));
 
     // Leaflet measures its container once; the pane can be resized or hidden.
     const ro = new ResizeObserver(() => this.map?.invalidateSize());
@@ -61,11 +74,15 @@ export class ItineraryMapView extends ItemView {
 
     // Popup anchors live inside Leaflet's DOM, outside Obsidian's link handling.
     this.registerDomEvent(this.mapEl, "click", (evt) => {
-      const a = (evt.target as HTMLElement).closest?.("a.im-ext");
+      const t = evt.target as HTMLElement;
+      const a = t.closest?.("a.im-ext");
       if (a instanceof HTMLAnchorElement) {
         evt.preventDefault();
         window.open(a.href);
+        return;
       }
+      const jump = t.closest?.("[data-im-jump]");
+      if (jump instanceof HTMLElement && this.focused) void this.jumpTo(this.focused);
     });
 
     this.plugin.attachView(this);
@@ -86,24 +103,25 @@ export class ItineraryMapView extends ItemView {
     }).addTo(this.map);
   }
 
-  /** Replaces the rendered itinerary. `cursorLine` picks the day to emphasise. */
+  /** Replaces the rendered itinerary. `cursorDay` picks the day to emphasise. */
   render(file: TFile | null, itinerary: Itinerary | null, cursorDay: number): void {
     if (!this.map) return;
     const fileChanged = file?.path !== this.file?.path;
     this.file = file;
     this.itinerary = itinerary;
-    if (fileChanged) this.pinnedDay = -1;
+    if (fileChanged) {
+      this.pinnedDay = -1;
+      this.focused = null;
+      this.userMoved = false;
+    }
     this.activeDay = this.pinnedDay >= 0 ? this.pinnedDay : cursorDay;
+    if (this.focused) this.focused = this.sameStop(this.focused);
     (this.leaf as WorkspaceLeaf & { updateHeader?: () => void }).updateHeader?.();
 
-    this.layer.clearLayers();
-    this.legendEl.empty();
+    this.draw();
     const stops = itinerary?.stops ?? [];
     this.emptyEl.toggleClass("is-hidden", stops.length > 0);
     if (!itinerary || stops.length === 0) return;
-
-    for (const day of itinerary.days) this.drawDay(day);
-    this.drawLegend(itinerary);
 
     if (fileChanged || this.fittedFor !== file?.path) {
       this.fitAll(stops);
@@ -111,50 +129,130 @@ export class ItineraryMapView extends ItemView {
     }
   }
 
-  /** Called on cursor moves only; cheaper than a full render. */
-  setActiveDay(day: number): void {
-    if (this.pinnedDay >= 0 || day === this.activeDay || !this.itinerary) return;
-    this.activeDay = day;
+  /**
+   * Cursor moved to `line`, which lies in day `day` (or -1). A stop on that
+   * line becomes the focus and the map flies to it; a line elsewhere in a
+   * day only switches the emphasised day.
+   */
+  onCursor(line: number, day: number): void {
+    if (!this.itinerary || !this.map) return;
+    const lineChanged = line !== this.lastCursorLine;
+    this.lastCursorLine = line;
+    if (lineChanged) this.userMoved = false;
+
+    const stop = this.itinerary.stops.find((s) => s.line === line) ?? null;
+    const dayChanged = this.pinnedDay < 0 && day !== this.activeDay;
+    if (this.pinnedDay < 0) this.activeDay = day;
+    if (stop === this.focused && !dayChanged) return;
+    this.focused = stop;
+    this.draw();
+
+    if (!this.plugin.settings.followCursor || this.userMoved) return;
+    if (stop) this.flyToStop(stop);
+    else if (dayChanged && day >= 0) {
+      const d = this.itinerary.days.find((x) => x.index === day);
+      if (d) this.fitAll(d.stops);
+    }
+  }
+
+  /* ---------- drawing ---------- */
+
+  private draw(): void {
     this.layer.clearLayers();
+    this.markers.clear();
     this.legendEl.empty();
-    for (const d of this.itinerary.days) this.drawDay(d);
+    this.stripEl.empty();
+    if (!this.itinerary || this.itinerary.stops.length === 0) return;
+    for (const day of this.itinerary.days) this.drawDay(day);
     this.drawLegend(this.itinerary);
+    this.drawStrip(this.itinerary);
   }
 
   private drawDay(day: Day): void {
     const color = dayColor(day.index);
     const dim = this.activeDay >= 0 && this.activeDay !== day.index;
     const cls = dim ? "im-dim" : "im-active";
-    const latlngs = day.stops.map((s) => L.latLng(s.lat, s.lng));
 
-    if (this.plugin.settings.drawRoutes && latlngs.length > 1) {
-      L.polyline(latlngs, { color, weight: dim ? 2 : 3, opacity: dim ? 0.25 : 0.8, dashArray: "6 6", className: cls }).addTo(this.layer);
+    if (this.plugin.settings.drawRoutes) {
+      for (let i = 1; i < day.stops.length; i++) {
+        const a = day.stops[i - 1];
+        const b = day.stops[i];
+        const mode = b.transport;
+        const dash = mode === "walk" ? "2 6" : mode === "flight" ? "12 8" : mode === "boat" ? "8 4 2 4" : "6 6";
+        L.polyline([L.latLng(a.lat, a.lng), L.latLng(b.lat, b.lng)], {
+          color,
+          weight: dim ? 2 : mode === "walk" ? 3 : 3,
+          opacity: dim ? 0.25 : 0.8,
+          dashArray: dash,
+          className: cls,
+        }).addTo(this.layer);
+      }
     }
     day.stops.forEach((stop, i) => {
+      const focus = stop === this.focused;
+      const glyph = stop.emoji ?? CATEGORY_EMOJI[stop.category];
       const icon = L.divIcon({
-        className: `im-pin ${cls}`,
-        html: `<span class="im-pin-dot" style="background:${color}">${i + 1}</span>`,
-        iconSize: [26, 26],
-        iconAnchor: [13, 13],
-        popupAnchor: [0, -12],
+        className: `im-pin ${cls}${focus ? " is-focus" : ""}`,
+        html: `<span class="im-pin-body" style="--im-color:${color}"><span class="im-pin-glyph">${glyph}</span><span class="im-pin-n">${i + 1}</span></span>`,
+        iconSize: [34, 34],
+        iconAnchor: [17, 17],
+        popupAnchor: [0, -16],
       });
-      const marker = L.marker([stop.lat, stop.lng], { icon, title: stop.name, zIndexOffset: dim ? 0 : 1000 });
-      marker.bindTooltip(stop.name, { direction: "top", offset: [0, -10], className: "im-tooltip" });
-      marker.bindPopup(this.popupHtml(day, stop), { className: "im-popup", closeButton: false });
-      marker.on("click", () => this.jumpTo(stop));
+      const marker = L.marker([stop.lat, stop.lng], { icon, title: stop.name, zIndexOffset: focus ? 2000 : dim ? 0 : 1000 });
+      marker.bindTooltip(stop.time ? `${stop.time} ${stop.name}` : stop.name, { direction: "top", offset: [0, -14], className: "im-tooltip", permanent: focus });
+      marker.bindPopup(() => this.popupEl(day, stop), { className: "im-popup", closeButton: false, maxWidth: 280, minWidth: 220 });
+      marker.on("click", () => {
+        this.focused = stop;
+        this.userMoved = true;
+        void this.jumpTo(stop, false);
+      });
       marker.addTo(this.layer);
+      this.markers.set(stop, marker);
     });
   }
 
-  private popupHtml(day: Day, stop: Stop): string {
-    const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
-    const bits = [`<b>${esc(stop.name)}</b>`, `<span class="im-popup-day">${esc(day.label)} · #${stop.index + 1}</span>`];
-    if (stop.meta?.rating) bits.push(`★ ${stop.meta.rating.toFixed(1)}`);
+  private popupEl(day: Day, stop: Stop): HTMLElement {
+    const root = createDiv({ cls: "im-card" });
+    const img = this.imageUrl(stop);
+    if (img) {
+      const el = root.createEl("img", { cls: "im-card-img", attr: { src: img, alt: "" } });
+      el.onerror = () => el.remove();
+    }
+    const body = root.createDiv({ cls: "im-card-body" });
+    const title = body.createDiv({ cls: "im-card-title" });
+    title.createSpan({ text: `${stop.emoji ?? CATEGORY_EMOJI[stop.category]} ` });
+    title.createSpan({ text: stop.name });
+    const sub = [day.label || `Day ${day.index + 1}`, `#${stop.index + 1}`];
+    if (stop.time) sub.push(stop.time);
+    if (stop.transport) sub.push(TRANSPORT_EMOJI[stop.transport]);
+    body.createDiv({ cls: "im-card-sub", text: sub.join(" · ") });
+    const facts: string[] = [];
+    if (stop.meta?.rating) facts.push(`★ ${stop.meta.rating.toFixed(1)}`);
     const today = todayHours(stop.meta?.hours);
-    if (today) bits.push(esc(today));
-    if (stop.meta?.address) bits.push(`<small>${esc(stop.meta.address)}</small>`);
-    bits.push(`<a class="im-ext" href="${placeUrl(stop)}">Open in Google Maps</a>`);
-    return bits.join("<br>");
+    if (today) facts.push(today.replace(/^[^:]+:\s*/, ""));
+    if (facts.length) body.createDiv({ cls: "im-card-facts", text: facts.join(" · ") });
+    const note = stop.note.startsWith(stop.name) ? stop.note.slice(stop.name.length).replace(/^[\s,，、:：]+/, "") : stop.note;
+    if (note) body.createDiv({ cls: "im-card-note", text: note });
+    if (stop.meta?.address) body.createDiv({ cls: "im-card-addr", text: stop.meta.address });
+    const actions = body.createDiv({ cls: "im-card-actions" });
+    actions.createEl("a", { cls: "im-ext", text: "Google Maps ↗", attr: { href: placeUrl(stop) } });
+    const prev = day.stops[stop.index - 1];
+    if (prev) actions.createEl("a", { cls: "im-ext", text: `${TRANSPORT_EMOJI[stop.transport ?? "train"]} 從上一站 ↗`, attr: { href: directionsUrl([prev, stop], stop.transport === "walk" ? "walking" : stop.transport === "car" ? "driving" : "transit") ?? "#" } });
+    if (stop.meta?.website) actions.createEl("a", { cls: "im-ext", text: "網站 ↗", attr: { href: stop.meta.website } });
+    actions.createEl("a", { text: "到這行", attr: { href: "#", "data-im-jump": "1" } });
+    return root;
+  }
+
+  /** A vault image (`![[file]]`), a URL, or the Google photo when a key is set. */
+  private imageUrl(stop: Stop): string | null {
+    if (stop.image) {
+      if (/^https?:\/\//.test(stop.image)) return stop.image;
+      const f = this.file ? this.plugin.app.metadataCache.getFirstLinkpathDest(stop.image, this.file.path) : null;
+      return f ? this.plugin.app.vault.getResourcePath(f) : null;
+    }
+    const key = this.plugin.settings.googleApiKey;
+    if (stop.meta?.photo && key) return googlePhotoUrl(key, stop.meta.photo);
+    return null;
   }
 
   private drawLegend(it: Itinerary): void {
@@ -167,27 +265,83 @@ export class ItineraryMapView extends ItemView {
       chip.onclick = () => {
         this.pinnedDay = this.pinnedDay === day.index ? -1 : day.index;
         this.activeDay = this.pinnedDay;
-        this.render(this.file, this.itinerary, this.pinnedDay);
-        if (this.pinnedDay >= 0) this.fitAll(day.stops);
+        this.focused = null;
+        this.draw();
+        this.fitAll(this.pinnedDay >= 0 ? day.stops : it.stops);
       };
-    }
-    const active = it.days.find((d) => d.index === this.activeDay);
-    if (active) {
-      const url = directionsUrl(active.stops);
-      if (url) {
-        const go = this.legendEl.createEl("button", { cls: "im-chip im-chip-go", text: "Google Maps 路線 ↗" });
-        go.setAttr("aria-label", `${active.label}: open the day's stops as directions in Google Maps`);
-        go.onclick = () => window.open(url);
-      }
     }
     const all = this.legendEl.createEl("button", { cls: "im-chip im-chip-all", text: "全部" });
     all.toggleClass("is-active", this.activeDay === -1);
     all.onclick = () => {
       this.pinnedDay = -1;
       this.activeDay = -1;
-      this.render(this.file, this.itinerary, -1);
-      this.fitAll(this.itinerary?.stops ?? []);
+      this.focused = null;
+      this.draw();
+      this.fitAll(it.stops);
     };
+    const right = this.legendEl.createDiv({ cls: "im-legend-right" });
+    const follow = right.createEl("button", { cls: "im-chip im-chip-icon", text: "📍" });
+    follow.toggleClass("is-active", this.plugin.settings.followCursor);
+    follow.setAttr("aria-label", this.plugin.settings.followCursor ? "Map follows the cursor (click to stop)" : "Map stays put (click to follow the cursor)");
+    follow.onclick = () => {
+      this.plugin.settings.followCursor = !this.plugin.settings.followCursor;
+      void this.plugin.saveSettings();
+      this.draw();
+    };
+    const active = it.days.find((d) => d.index === this.activeDay);
+    if (active) {
+      const url = directionsUrl(active.stops);
+      if (url) {
+        const go = right.createEl("button", { cls: "im-chip im-chip-go", text: "路線 ↗" });
+        go.setAttr("aria-label", `${active.label}: open the day's stops as directions in Google Maps`);
+        go.onclick = () => window.open(url);
+      }
+    }
+  }
+
+  /** The active day's stops as a horizontal timeline; the whole trip when no day is active. */
+  private drawStrip(it: Itinerary): void {
+    const day = it.days.find((d) => d.index === this.activeDay);
+    const days = day ? [day] : it.days;
+    for (const d of days) {
+      if (!day) this.stripEl.createDiv({ cls: "im-strip-day", text: d.label || `Day ${d.index + 1}` }).style.setProperty("--im-color", dayColor(d.index));
+      d.stops.forEach((stop, i) => {
+        const card = this.stripEl.createEl("button", { cls: "im-stop" });
+        card.style.setProperty("--im-color", dayColor(d.index));
+        card.toggleClass("is-focus", stop === this.focused);
+        const top = card.createDiv({ cls: "im-stop-top" });
+        top.createSpan({ cls: "im-stop-n", text: String(i + 1) });
+        if (stop.time) top.createSpan({ cls: "im-stop-time", text: stop.time });
+        if (stop.transport && i > 0) top.createSpan({ cls: "im-stop-mode", text: TRANSPORT_EMOJI[stop.transport] });
+        const main = card.createDiv({ cls: "im-stop-main" });
+        main.createSpan({ cls: "im-stop-glyph", text: stop.emoji ?? CATEGORY_EMOJI[stop.category] });
+        main.createSpan({ cls: "im-stop-name", text: stop.name });
+        if (stop.meta?.rating) card.createDiv({ cls: "im-stop-sub", text: `★ ${stop.meta.rating.toFixed(1)}` });
+        card.onclick = () => {
+          this.focused = stop;
+          this.userMoved = false;
+          this.draw();
+          this.flyToStop(stop);
+          void this.jumpTo(stop, false);
+          this.markers.get(stop)?.openPopup();
+        };
+        if (stop === this.focused) window.setTimeout(() => card.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" }), 0);
+      });
+    }
+  }
+
+  /* ---------- camera ---------- */
+
+  private flyToStop(stop: Stop): void {
+    if (!this.map) return;
+    this.map.invalidateSize(false);
+    const size = this.map.getSize();
+    if (size.x === 0 || size.y === 0) return;
+    const target = L.latLng(stop.lat, stop.lng);
+    const zoom = Math.max(this.map.getZoom(), 14);
+    this.flying = true;
+    if (this.map.getBounds().pad(-0.2).contains(target) && this.map.getZoom() >= 13) this.map.panTo(target, { animate: true, duration: 0.4 });
+    else this.map.flyTo(target, zoom, { duration: 0.6 });
   }
 
   /**
@@ -203,15 +357,20 @@ export class ItineraryMapView extends ItemView {
       window.setTimeout(() => this.fitAll(stops, attempt + 1), 50);
       return;
     }
+    this.flying = true;
     if (stops.length === 1) {
       this.map.setView([stops[0].lat, stops[0].lng], 14);
       return;
     }
-    this.map.fitBounds(L.latLngBounds(stops.map((s) => [s.lat, s.lng] as [number, number])), { padding: [28, 28], maxZoom: 15 });
+    this.map.fitBounds(L.latLngBounds(stops.map((s) => [s.lat, s.lng] as [number, number])), { padding: [36, 36], maxZoom: 15 });
+  }
+
+  private sameStop(s: Stop): Stop | null {
+    return this.itinerary?.stops.find((x) => x.line === s.line && x.from === s.from) ?? this.itinerary?.stops.find((x) => x.name === s.name && x.lat === s.lat && x.lng === s.lng) ?? null;
   }
 
   /** Puts the editor cursor on the stop and scrolls it into view. */
-  private async jumpTo(stop: Stop): Promise<void> {
+  private async jumpTo(stop: Stop, focusEditor = true): Promise<void> {
     if (!this.file) return;
     let view = this.plugin.app.workspace.getLeavesOfType("markdown")
       .map((l) => l.view)
@@ -222,7 +381,8 @@ export class ItineraryMapView extends ItemView {
       view = leaf.view instanceof MarkdownView ? leaf.view : undefined;
     }
     if (!view) return;
-    this.plugin.app.workspace.setActiveLeaf(view.leaf, { focus: true });
+    this.lastCursorLine = stop.line;
+    if (focusEditor) this.plugin.app.workspace.setActiveLeaf(view.leaf, { focus: true });
     const pos = { line: stop.line, ch: stop.from };
     view.editor.setCursor(pos);
     view.editor.scrollIntoView({ from: pos, to: { line: stop.line, ch: stop.to } }, true);

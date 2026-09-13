@@ -1,4 +1,4 @@
-import { MarkdownView, Notice, Platform, Plugin, TFile, debounce, type Editor, type MarkdownFileInfo } from "obsidian";
+import { MarkdownView, Notice, Platform, Plugin, TFile, debounce, type Editor, type MarkdownFileInfo, type WorkspaceLeaf } from "obsidian";
 import { isGoogleMapsUrl } from "./core/gmaps-url";
 import { dayAtLine, parseItinerary, type Itinerary } from "./core/itinerary";
 import { ResolveError, resolveMapsUrl, type ResolveDeps } from "./core/resolve";
@@ -9,6 +9,7 @@ import { ItineraryMapView, VIEW_TYPE_ITINERARY_MAP } from "./ui/map-view";
 import { readingPostProcessor } from "./ui/reading";
 import { NewTripModal } from "./ui/new-trip-modal";
 import { tripSkeleton } from "./core/gmaps-out";
+import { firstEmoji } from "./core/category";
 
 /**
  * Itinerary Map: the note is the plan, the pane is the map.
@@ -94,7 +95,7 @@ export default class ItineraryMapPlugin extends Plugin {
   }
 
   async openMap(): Promise<void> {
-    const existing = this.app.workspace.getLeavesOfType(VIEW_TYPE_ITINERARY_MAP)[0];
+    const existing = this.mapLeaf();
     if (existing) {
       await this.app.workspace.revealLeaf(existing);
       return;
@@ -103,6 +104,19 @@ export default class ItineraryMapPlugin extends Plugin {
     if (!leaf) return;
     await leaf.setViewState({ type: VIEW_TYPE_ITINERARY_MAP, active: true });
     await this.app.workspace.revealLeaf(leaf);
+  }
+
+  /**
+   * The pane holding our view. Checked by saved view state, not live type,
+   * because right after a plugin reload the leaf is still a placeholder that
+   * `getLeavesOfType` does not return, and opening another would stack panes.
+   */
+  private mapLeaf(): WorkspaceLeaf | null {
+    let found: WorkspaceLeaf | null = null;
+    this.app.workspace.iterateAllLeaves((leaf) => {
+      if (!found && leaf.getViewState().type === VIEW_TYPE_ITINERARY_MAP) found = leaf;
+    });
+    return found;
   }
 
   /** Re-parses the active markdown note and pushes it to every map pane. */
@@ -117,7 +131,7 @@ export default class ItineraryMapPlugin extends Plugin {
     this.current = { file: md.file, itinerary };
     for (const v of this.views) v.applyTiles();
     this.pushToViews();
-    if (this.settings.autoOpen && itinerary.stops.length > 0 && this.views.size === 0 && !Platform.isMobile) void this.openMap();
+    if (this.settings.autoOpen && itinerary.stops.length > 0 && this.views.size === 0 && !Platform.isMobile && !this.mapLeaf()) void this.openMap();
   }
 
   private pushToViews(): void {
@@ -137,8 +151,9 @@ export default class ItineraryMapPlugin extends Plugin {
     if (this.views.size === 0 || !this.current) return;
     const md = this.activeMarkdown();
     if (!md?.file || md.file.path !== this.current.file.path) return;
-    const day = dayAtLine(this.current.itinerary, md.editor.getCursor().line);
-    for (const v of this.views) v.setActiveDay(day);
+    const line = md.editor.getCursor().line;
+    const day = dayAtLine(this.current.itinerary, line);
+    for (const v of this.views) v.onCursor(line, day);
   }
 
   private activeMarkdown(): MarkdownView | null {
@@ -174,7 +189,9 @@ export default class ItineraryMapPlugin extends Plugin {
         const heading = headingIndexAtLine(editor.getValue(), line, this.settings.dayHeadingLevel);
         if (heading >= 0) tags.push(`d${heading + 1}`);
       }
-      if (!replaceUrlInEditor(editor, line, url, stopText(place, tags))) {
+      const lineText = editor.getLine(line);
+      const hasEmoji = firstEmoji(lineText.slice(0, Math.max(0, lineText.indexOf(url)))) !== null;
+      if (!replaceUrlInEditor(editor, line, url, stopText(place, tags, this.settings.addEmoji && !hasEmoji))) {
         new Notice(`Itinerary Map: the link moved before it resolved. ${place.name} is at ${place.lat}, ${place.lng}.`);
       }
     } catch (e) {

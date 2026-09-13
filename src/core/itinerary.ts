@@ -17,6 +17,10 @@ export interface PlaceMeta {
   address?: string;
   website?: string;
   placeId?: string;
+  /** Google primaryType, e.g. "shinto_shrine". */
+  type?: string;
+  /** Google photo resource name (`places/…/photos/…`), fetched with the user's key at render time. */
+  photo?: string;
 }
 
 export interface Stop {
@@ -30,6 +34,17 @@ export interface Stop {
   to: number;
   tags: string[];
   meta?: PlaceMeta;
+  /** Emoji the user wrote before the link on this line, if any. */
+  emoji?: string;
+  category: Category;
+  /** Leading "HH:MM" on the line, if any. */
+  time?: string;
+  /** How one gets here, read from the words before the link. */
+  transport?: Transport;
+  /** The line's prose with links reduced to their names and markup removed. */
+  note: string;
+  /** Image on the same line or the line after: a vault `![[file]]` link or a URL. */
+  image?: string;
   /** Index within its day, zero-based. */
   index: number;
   dayIndex: number;
@@ -60,10 +75,14 @@ export interface ParseOptions {
   maxHeadingLevel?: number;
 }
 
+import { firstEmoji, pickCategory, transportFrom, type Category, type Transport } from "./category";
+
 const GEO_LINK = /\[([^\]]*)\]\(geo:(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)(?:[^)]*)\)/g;
 const TRAILER = /^((?:\s+tag:[^\s%]+)*)(\s*%%im:(\{.*?\})%%)?/;
 const HEADING = /^(#{1,6})\s+(.*?)\s*#*\s*$/;
 const FENCE = /^\s*(```|~~~)/;
+const TIME = /^\s*(?:[-*+]|\d+[.)])?\s*(?:\S\s+)?(\d{1,2}:\d{2})/u;
+const IMAGE = /!\[\[([^\]|]+)(?:\|[^\]]*)?\]\]|!\[[^\]]*\]\((\S+?)\)/;
 
 export function parseItinerary(markdown: string, opts: ParseOptions = {}): Itinerary {
   const maxLevel = opts.maxHeadingLevel ?? 2;
@@ -95,6 +114,9 @@ export function parseItinerary(markdown: string, opts: ParseOptions = {}): Itine
 
     GEO_LINK.lastIndex = 0;
     let m: RegExpExecArray | null;
+    let prevEnd = 0;
+    const time = TIME.exec(line)?.[1];
+    const image = IMAGE.exec(line) ?? (lines[i + 1] && !HEADING.test(lines[i + 1]) ? IMAGE.exec(lines[i + 1]) : null);
     while ((m = GEO_LINK.exec(line))) {
       const lat = Number(m[2]);
       const lng = Number(m[3]);
@@ -110,8 +132,11 @@ export function parseItinerary(markdown: string, opts: ParseOptions = {}): Itine
           meta = undefined;
         }
       }
+      const before = line.slice(prevEnd, m.index);
+      prevEnd = m.index + m[0].length;
+      const name = m[1] || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
       current.stops.push({
-        name: m[1] || `${lat.toFixed(4)}, ${lng.toFixed(4)}`,
+        name,
         lat,
         lng,
         line: i,
@@ -119,6 +144,12 @@ export function parseItinerary(markdown: string, opts: ParseOptions = {}): Itine
         to: m.index + m[0].length,
         tags,
         meta,
+        emoji: firstEmoji(before.replace(/\d{1,2}:\d{2}/, "")) ?? undefined,
+        category: pickCategory({ tags, googleType: meta?.type, name }),
+        time,
+        transport: transportFrom(before) ?? undefined,
+        note: plainNote(line),
+        image: image ? (image[1] ?? image[2]) : undefined,
         index: current.stops.length,
         dayIndex: -1,
       });
@@ -132,6 +163,22 @@ export function parseItinerary(markdown: string, opts: ParseOptions = {}): Itine
     d.stops.forEach((s) => (s.dayIndex = i));
   });
   return { days: withStops, stops: withStops.flatMap((d) => d.stops) };
+}
+
+/** The line as prose: list marker, time, links (kept as names), tags, meta and images removed. */
+export function plainNote(line: string): string {
+  return line
+    .replace(/^\s*(?:[-*+]|\d+[.)])\s*/, "")
+    .replace(/%%im:\{.*?\}%%/g, "")
+    .replace(/\s+tag:\S+/g, "")
+    .replace(IMAGE, "")
+    .replace(/\[([^\]]*)\]\(geo:[^)]*\)/g, "$1")
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/!?\[\[([^\]|]+)(?:\|([^\]]*))?\]\]/g, (_, a: string, b?: string) => b ?? a)
+    .replace(/[*_`]/g, "")
+    .replace(/\s{2,}/g, " ")
+    .trim()
+    .replace(/^\p{Extended_Pictographic}(?:️|‍\p{Extended_Pictographic})*\s*/u, "");
 }
 
 /** Which day (by index) contains the given zero-based line, or -1. */
@@ -162,8 +209,8 @@ export function dayLabel(title: string): string {
 }
 
 /** Serialises a stop back to its inline form. */
-export function formatStop(name: string, lat: number, lng: number, tags: string[] = [], meta?: PlaceMeta): string {
-  const parts = [`[${name.replace(/[[\]]/g, "")}](geo:${round(lat)},${round(lng)})`];
+export function formatStop(name: string, lat: number, lng: number, tags: string[] = [], meta?: PlaceMeta, emoji?: string): string {
+  const parts = [`${emoji ? emoji + " " : ""}[${name.replace(/[[\]]/g, "")}](geo:${round(lat)},${round(lng)})`];
   for (const t of tags) parts.push(`tag:${t}`);
   if (meta && Object.keys(meta).length > 0) parts.push(`%%im:${JSON.stringify(compactMeta(meta))}%%`);
   return parts.join(" ");
@@ -176,6 +223,8 @@ function compactMeta(meta: PlaceMeta): PlaceMeta {
   if (meta.address) out.address = meta.address;
   if (meta.website) out.website = meta.website;
   if (meta.placeId) out.placeId = meta.placeId;
+  if (meta.type) out.type = meta.type;
+  if (meta.photo) out.photo = meta.photo;
   return out;
 }
 
