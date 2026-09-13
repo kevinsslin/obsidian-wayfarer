@@ -5,8 +5,9 @@
 First release.
 
 - Google Maps link conversion on paste and by command, including `maps.app.goo.gl` short links on desktop. With a Google key, exact pins with rating, opening hours, address, website and photo; a text lookup is only accepted when it lands where the link points.
-- Timeline cards fold their notes behind a chevron; the first line stays as the one-line summary. The camera and popups centre on the part of the map not covered by the floating timeline. "All" is the first chip.
+- Timeline cards show one summary line; the chosen card unfolds its notes and folds again when another is chosen. The camera and popups centre on the part of the map not covered by the floating timeline. "All" is the first chip.
 - A refused Google request (API not enabled, key restricted) is reported once with Google's message; a **Test key** button in settings makes one Places and one Routes call. A leg whose result is already saved on the stop is never asked again.
+- Undated sections in a note that has dated days are notes, not days: to-dos, research and candidates live in the same note and stay off the map. Straight legs are dashed, routed ones solid; the route shape is saved with the leg so the road is drawn without asking again. Hovering a pin shows its card; choosing a card in the timeline shows the same card on the map. Chips switch on the first click.
 - Range headings (`## 2026-09-19 ~ 2026-09-26 東京`) keep several days as one block for a stretch not yet planned day by day: one chip, one section, no weekday checks.
 - Map pane beside the note: pins coloured and numbered per day heading, category emoji on pins, lines with arrowheads between a day's stops, click a pin for a card.
 - Cursor follow: the map flies to the stop under the cursor and reframes the day; pauses while you drag.

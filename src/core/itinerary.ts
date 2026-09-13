@@ -40,6 +40,8 @@ export interface LegMeta {
   m: number;
   /** Transit line names, when any. */
   line?: string;
+  /** The route's shape as an encoded polyline, simplified to a few dozen points, so the map can draw the road without asking again. */
+  p?: string;
 }
 
 export interface Stop {
@@ -197,7 +199,10 @@ export function parseItinerary(markdown: string, opts: ParseOptions = {}): Itine
   }
   days.push(current);
 
-  const withStops = days.filter((d) => d.stops.length > 0);
+  // Once a note has dated headings, the undated sections are notes (research, to-dos, candidates):
+  // their links stay in the text but are not part of the trip on the map.
+  const dated = days.some((d) => d.date);
+  const withStops = days.filter((d) => d.stops.length > 0 && (!dated || d.date));
   withStops.forEach((d, i) => {
     d.index = i;
     d.stops.forEach((s) => (s.dayIndex = i));

@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { setLocale } from "./i18n";
 import { parseItinerary } from "./itinerary";
-import { bareLeg, coordKey, decodePolyline, finishLeg, formatDuration, haversineM, legMetaFor, legText, minutesOf, shortWayLng } from "./legs";
+import { bareLeg, coordKey, decodePolyline, encodePolyline, finishLeg, formatDuration, haversineM, legMetaFor, legText, minutesOf, shortWayLng, simplifyLine } from "./legs";
 
 beforeAll(() => setLocale("zh-TW"));
 
@@ -62,5 +62,33 @@ describe("shortWayLng", () => {
     expect(shortWayLng(139.77, -122.38)).toBeCloseTo(237.62);
     expect(shortWayLng(-122.38, 139.77)).toBeCloseTo(-220.23);
     expect(shortWayLng(121.55, 139.77)).toBe(139.77);
+  });
+});
+
+describe("saved route shape", () => {
+  it("encodes what decodePolyline reads back", () => {
+    const pts: [number, number][] = [[38.5, -120.2], [40.7, -120.95], [43.252, -126.453]];
+    expect(encodePolyline(pts)).toBe("_p~iF~ps|U_ulLnnqC_mqNvxq`@");
+    expect(decodePolyline(encodePolyline(pts))).toEqual(pts);
+  });
+  it("simplifies a long line to the point budget and keeps the ends", () => {
+    const pts: [number, number][] = [];
+    for (let i = 0; i <= 200; i++) pts.push([35 + i * 0.001, 139 + Math.sin(i / 7) * 0.002]);
+    const out = simplifyLine(pts, 40);
+    expect(out.length).toBeLessThanOrEqual(40);
+    expect(out.length).toBeGreaterThan(5);
+    expect(out[0]).toEqual(pts[0]);
+    expect(out[out.length - 1]).toEqual(pts[200]);
+  });
+  it("saves the shape on the leg and a later read draws it", () => {
+    const from = { name: "A", lat: 35.0, lng: 139.0, line: 1, from: 0, to: 1, beforeFrom: 0, index: 0, dayIndex: 0, category: "other", note: "", notes: [] } as unknown as import("./itinerary").Stop;
+    const geometry: [number, number][] = [[35.0, 139.0], [35.01, 139.02], [35.02, 139.05]];
+    const meta = legMetaFor(from, { durationS: 600, distanceM: 5000, geometry }, "bus");
+    expect(meta?.p).toBeTruthy();
+    const to = { ...from, name: "B", lat: 35.02, lng: 139.05, line: 2, transport: "bus", meta: { leg: meta } } as unknown as import("./itinerary").Stop;
+    const leg = bareLeg(from, to);
+    expect(leg.routed).toBe(true);
+    expect(leg.geometry.length).toBe(3);
+    expect(leg.geometry[1][0]).toBeCloseTo(35.01, 4);
   });
 });

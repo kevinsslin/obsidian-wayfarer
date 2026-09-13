@@ -43,7 +43,8 @@ export function bareLeg(from: Stop, to: Stop): Leg {
   const straight: [number, number][] = [[from.lat, from.lng], [to.lat, shortWayLng(from.lng, to.lng)]];
   const saved = to.meta?.leg;
   if (saved && to.transport && saved.via === to.transport && saved.from === coordKey(from)) {
-    return finishLeg({ from, to, mode: to.transport, distanceM: saved.m, durationS: saved.s, summary: saved.line, routed: true, source: "google", geometry: straight });
+    const shape = saved.p ? decodePolyline(saved.p) : [];
+    return finishLeg({ from, to, mode: to.transport, distanceM: saved.m, durationS: saved.s, summary: saved.line, routed: true, source: "google", geometry: shape.length >= 2 ? shape : straight });
   }
   return finishLeg({ from, to, mode: to.transport, distanceM: haversineM(from, to), routed: false, geometry: straight });
 }
@@ -53,11 +54,79 @@ export function coordKey(p: { lat: number; lng: number }): string {
   return `${p.lat.toFixed(4)},${p.lng.toFixed(4)}`;
 }
 
-/** What to save on the destination stop after a route came back. */
-export function legMetaFor(from: Stop, leg: Pick<Leg, "durationS" | "distanceM" | "summary">, via: NonNullable<Stop["transport"]>): LegMeta | null {
+/** What to save on the destination stop after a route came back. The shape is kept to at most `maxPoints` points. */
+export function legMetaFor(from: Stop, leg: Pick<Leg, "durationS" | "distanceM" | "summary"> & { geometry?: [number, number][] }, via: NonNullable<Stop["transport"]>, maxPoints = 40): LegMeta | null {
   if (leg.durationS === undefined) return null;
   const out: LegMeta = { from: coordKey(from), via, s: Math.round(leg.durationS), m: Math.round(leg.distanceM) };
   if (leg.summary) out.line = leg.summary;
+  if (leg.geometry && leg.geometry.length >= 2) out.p = encodePolyline(simplifyLine(leg.geometry, maxPoints));
+  return out;
+}
+
+/**
+ * Douglas-Peucker, tightened until the line has at most `maxPoints` points.
+ * Ends are always kept.
+ */
+export function simplifyLine(pts: [number, number][], maxPoints: number): [number, number][] {
+  if (pts.length <= maxPoints) return pts;
+  let tol = 1e-5;
+  let out = pts;
+  for (let i = 0; i < 40 && out.length > maxPoints; i++, tol *= 1.5) out = douglasPeucker(pts, tol);
+  return out.length > maxPoints ? [pts[0], pts[pts.length - 1]] : out;
+}
+
+function douglasPeucker(pts: [number, number][], tol: number): [number, number][] {
+  if (pts.length <= 2) return pts;
+  const keep = new Array<boolean>(pts.length).fill(false);
+  keep[0] = keep[pts.length - 1] = true;
+  const stack: Array<[number, number]> = [[0, pts.length - 1]];
+  while (stack.length) {
+    const [a, b] = stack.pop() as [number, number];
+    let far = -1;
+    let farD = 0;
+    for (let i = a + 1; i < b; i++) {
+      const d = pointSegmentDistance(pts[i], pts[a], pts[b]);
+      if (d > farD) { farD = d; far = i; }
+    }
+    if (far >= 0 && farD > tol) {
+      keep[far] = true;
+      stack.push([a, far], [far, b]);
+    }
+  }
+  return pts.filter((_, i) => keep[i]);
+}
+
+function pointSegmentDistance(p: [number, number], a: [number, number], b: [number, number]): number {
+  const dx = b[0] - a[0];
+  const dy = b[1] - a[1];
+  const len2 = dx * dx + dy * dy;
+  const u = len2 === 0 ? 0 : Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / len2));
+  const x = a[0] + u * dx - p[0];
+  const y = a[1] + u * dy - p[1];
+  return Math.sqrt(x * x + y * y);
+}
+
+/** Google's encoded polyline format, 1e-5 precision; the inverse of decodePolyline. */
+export function encodePolyline(pts: [number, number][]): string {
+  let out = "";
+  let prevLat = 0;
+  let prevLng = 0;
+  const enc = (v: number) => {
+    let n = v < 0 ? ~(v << 1) : v << 1;
+    let s = "";
+    while (n >= 0x20) {
+      s += String.fromCharCode((0x20 | (n & 0x1f)) + 63);
+      n >>= 5;
+    }
+    return s + String.fromCharCode(n + 63);
+  };
+  for (const [lat, lng] of pts) {
+    const la = Math.round(lat * 1e5);
+    const ln = Math.round(lng * 1e5);
+    out += enc(la - prevLat) + enc(ln - prevLng);
+    prevLat = la;
+    prevLng = ln;
+  }
   return out;
 }
 

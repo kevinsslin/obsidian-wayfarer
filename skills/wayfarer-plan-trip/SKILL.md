@@ -42,7 +42,7 @@ Read the whole note first. Keep the user's headings, order and wording. Add stop
 
 ## Checklist before handing back
 
-- Every day heading starts with a full date (`2026-09-17`). A stretch the user has not planned day by day stays one range heading (`2026-09-19 ~ 2026-09-26 東京`); do not invent a per-day schedule to fill it.
+- Every day heading starts with a full date (`2026-09-17`). Research, alternatives, to-do checklists and candidate places go in undated `##` sections of the same note; they are not on the map, so keep them there rather than in a second note. A stretch the user has not planned day by day stays one range heading (`2026-09-19 ~ 2026-09-26 東京`); do not invent a per-day schedule to fill it.
 - Every stop has real coordinates or a full Google Maps URL.
 - Times are in 24-hour `HH:MM`.
 - Closed days checked for every museum, shop and restaurant.

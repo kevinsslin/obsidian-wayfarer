@@ -46,6 +46,7 @@ locations:
 | Element | How the plugin reads it |
 |---|---|
 | `## 2026-09-17 週四 主題` | A day. One heading per day, the full `YYYY-MM-DD` first, then anything. Only a full date counts as a date; a heading without one is a day with no weekday or hours checks. Level is a setting (default `##`). |
+| `## 待辦` or any heading without a date | Once the note has dated headings, an undated section is notes: to-do checklists, research, candidate places. Links in it stay in the text but do not appear on the map. Keep everything about the trip in the one note. |
 | `## 2026-09-19 ~ 2026-09-26 東京` | A range: several days kept as one block, for a stretch not yet planned day by day. Two full dates joined by `~`, `～`, `to` or `到`. One chip (`9/19~9/26`), no weekday checks. Split it into day headings once the days are decided. |
 | `[Name](geo:lat,lng)` | A stop. Same format as the Map View plugin. |
 | `07:53` at line start | The stop's time. |

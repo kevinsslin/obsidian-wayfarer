@@ -34,7 +34,8 @@ export class LegRouter {
       const to = day.stops[i];
       const leg = bareLeg(from, to);
       // A leg already saved on the stop is not asked again: the numbers are there, and every call counts against the key.
-      if (leg.routed || !leg.mode || !routable(leg.mode) || !this.settings().googleApiKey) {
+      // A saved leg that already carries its shape is complete; one saved without a shape (older notes) is asked once more.
+      if ((leg.routed && to.meta?.leg?.p) || !leg.mode || !routable(leg.mode) || !this.settings().googleApiKey) {
         legs.push(leg);
         continue;
       }
@@ -63,7 +64,7 @@ export class LegRouter {
             changed = true;
             const meta = legMetaFor(it.from, r, it.mode);
             const saved = it.to.meta?.leg;
-            if (meta && this.onRouted && (!saved || saved.from !== meta.from || saved.via !== meta.via || saved.s !== meta.s || saved.m !== meta.m || saved.line !== meta.line)) this.onRouted(it.to.line, meta);
+            if (meta && this.onRouted && (!saved || saved.from !== meta.from || saved.via !== meta.via || saved.s !== meta.s || saved.m !== meta.m || saved.line !== meta.line || saved.p !== meta.p)) this.onRouted(it.to.line, meta);
           }
         } catch (e) {
           // The leg keeps its distance only; a refusal from Google is worth telling the user once.

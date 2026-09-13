@@ -40,8 +40,6 @@ export class WayfarerView extends ItemView {
   /** Set while the user pans; cleared when the cursor moves to another line. */
   private userMoved = false;
   private flying = false;
-  /** Lines of the stops whose card notes are unfolded in the timeline. */
-  private openNotes = new Set<number>();
   private lastCursorLine = -1;
 
   constructor(leaf: WorkspaceLeaf, private plugin: WayfarerPlugin) {
@@ -110,7 +108,12 @@ export class WayfarerView extends ItemView {
     this.map.on("zoomstart", () => { if (!this.flying) this.userMoved = true; });
     this.map.on("moveend zoomend", () => (this.flying = false));
     // Arrowheads sit a fixed number of pixels before the pin, so they move with the zoom.
-    this.map.on("zoomend", () => this.draw());
+    // The rebuild removes the markers, and with them an open popup, so put the focused one back.
+    this.map.on("zoomend", () => {
+      const keep = this.focused && this.markers.get(this.focused)?.isPopupOpen() ? this.focused : null;
+      this.draw();
+      if (keep) this.openPopup(keep);
+    });
 
     // Leaflet measures its container once; the pane can be resized or hidden.
     const ro = new ResizeObserver(() => this.map?.invalidateSize());
@@ -176,6 +179,11 @@ export class WayfarerView extends ItemView {
     if (this.focused) this.focused = this.sameStop(this.focused);
     (this.leaf as WorkspaceLeaf & { updateHeader?: () => void }).updateHeader?.();
 
+    // A leaf change re-sends the same note. Rebuilding the pane then would swallow the click
+    // that caused it (the chip under the pointer is replaced between mousedown and mouseup).
+    const sig = `${file?.path}|${this.activeDay}|${this.focused?.line ?? -1}|${signatureOf(itinerary)}`;
+    if (sig === this.lastSig) return;
+    this.lastSig = sig;
     this.draw();
     const stops = itinerary?.stops ?? [];
     this.emptyEl.toggleClass("is-hidden", stops.length > 0);
@@ -260,6 +268,7 @@ export class WayfarerView extends ItemView {
   }
 
   private draw(): void {
+    this.lastSig = "";
     this.layer.clearLayers();
     this.markers.clear();
     this.legendEl.empty();
@@ -279,12 +288,14 @@ export class WayfarerView extends ItemView {
       for (const leg of this.legsOf(day)) {
         const mode = leg.mode;
         const lineColor = leg.lateBy > 0 && !dim ? "#d0342c" : color;
-        // A routed leg follows the road; an unrouted one is the straight line, drawn thinner and lighter.
+        // A routed leg follows the road and is solid; a straight line stands for "no route known" and is dashed.
         const pts = leg.geometry.map(([a, b]) => L.latLng(a, b));
+        const straight = pts.length <= 2;
         const line = L.polyline(pts, {
           color: lineColor,
-          weight: dim ? 2 : leg.routed ? (mode === "walk" ? 3.5 : 4) : 2.5,
-          opacity: dim ? 0.25 : leg.routed ? 0.9 : 0.7,
+          weight: dim ? 2 : straight ? 2.5 : mode === "walk" ? 3.5 : 4,
+          opacity: dim ? 0.25 : straight ? 0.7 : 0.9,
+          dashArray: straight ? "2 9" : undefined,
           lineCap: "round",
           lineJoin: "round",
           className: cls,
@@ -318,6 +329,19 @@ export class WayfarerView extends ItemView {
         this.userMoved = true;
         this.setFocus(stop);
         void this.jumpTo(stop, false);
+      });
+      // Hovering a pin shows its card; it goes away with the pointer unless the stop is the focused one.
+      marker.on("mouseover", () => {
+        if (this.flying) return;
+        window.clearTimeout(this.hoverClose);
+        if (!marker.isPopupOpen()) this.openPopup(stop);
+      });
+      marker.on("mouseout", () => this.closeHoverPopup(stop, marker));
+      marker.on("popupopen", (e) => {
+        const el = (e as L.PopupEvent).popup.getElement();
+        if (!el) return;
+        el.onmouseenter = () => window.clearTimeout(this.hoverClose);
+        el.onmouseleave = () => this.closeHoverPopup(stop, marker);
       });
       marker.addTo(this.layer);
       this.markers.set(stop, marker);
@@ -462,26 +486,17 @@ export class WayfarerView extends ItemView {
         main.createSpan({ cls: "wf-stop-name", text: stop.name });
         const warn = this.hoursWarning(stop, date);
         const notes = stopNotes(stop);
-        const open = this.openNotes.has(stop.line);
+        // The chosen card is the unfolded one; choosing another folds it back. No toggles to click.
+        const open = stop === this.focused;
         card.toggleClass("is-open", open);
         const sub = body.createDiv({ cls: "wf-stop-sub" });
         if (warn) sub.createSpan({ cls: "is-late", text: `⚠ ${warn}` });
         else if (notes[0]) sub.createSpan({ text: notes[0] });
         else if (stop.meta?.rating) sub.createSpan({ text: `★ ${stop.meta.rating.toFixed(1)}` });
-        // Notes fold behind a chevron so the list stays short; the first line is the one-line summary.
-        if (notes.length > 0) {
-          const more = top.createEl("button", { cls: "wf-stop-more", text: open ? "▾" : "▸" });
-          more.setAttr("aria-label", open ? t("notes_less") : t("notes_more"));
-          more.onclick = (e) => {
-            e.stopPropagation();
-            if (open) this.openNotes.delete(stop.line);
-            else this.openNotes.add(stop.line);
-            this.draw();
-          };
-          if (open) {
-            const box = body.createDiv({ cls: "wf-stop-notes" });
-            for (const n of notes) box.createDiv({ cls: "wf-stop-note", text: n });
-          }
+        if (open && notes.length > 0) {
+          const box = body.createDiv({ cls: "wf-stop-notes" });
+          if (warn) box.createDiv({ cls: "wf-stop-note is-late", text: `⚠ ${warn}` });
+          for (const n of notes) box.createDiv({ cls: "wf-stop-note", text: n });
         }
         card.draggable = true;
         card.ondragstart = (e) => { e.dataTransfer?.setData("text/plain", String(stop.line)); card.addClass("is-dragging"); };
@@ -559,6 +574,20 @@ export class WayfarerView extends ItemView {
   private centreFor(target: L.LatLng, zoom: number): L.LatLng {
     if (!this.map) return target;
     return this.map.unproject(this.map.project(target, zoom).subtract([this.leftInset() / 2, 0]), zoom);
+  }
+
+  private hoverClose = 0;
+  private lastSig = "";
+
+  /** Closes a popup that was only open because the pointer was on the pin. */
+  private closeHoverPopup(stop: Stop, marker: L.Marker): void {
+    window.clearTimeout(this.hoverClose);
+    this.hoverClose = window.setTimeout(() => {
+      if (stop === this.focused || !marker.isPopupOpen()) return;
+      marker.closePopup();
+      // Hovering another pin had displaced the chosen stop's card; bring it back.
+      if (this.focused) this.openPopup(this.focused);
+    }, 180);
   }
 
   /** Opens a stop's popup, panning it clear of the floating timeline. */
@@ -672,4 +701,10 @@ export function todayHours(hours: string[] | undefined, now = new Date()): strin
     hours[d] ??
     null
   );
+}
+
+/** Everything the pane draws from an itinerary, as a string, to skip a rebuild when nothing changed. */
+function signatureOf(it: Itinerary | null): string {
+  if (!it) return "";
+  return JSON.stringify(it.days.map((d) => [d.headingLine, d.title, d.stops.map((s) => [s.line, s.from, s.name, s.lat, s.lng, s.transport, s.time, s.emoji, s.note, s.notes, s.meta])]));
 }

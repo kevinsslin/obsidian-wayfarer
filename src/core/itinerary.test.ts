@@ -185,3 +185,16 @@ describe("setTransportOnLine", () => {
     expect(stopOf(`- 🚶 [A](geo:1,2) %%wf:{"via":"bus"}%%`).transport).toBe("walk");
   });
 });
+
+describe("undated sections beside dated days", () => {
+  it("are notes, not days on the map", () => {
+    const md = "## 2026-09-17 上山\n- [A](geo:1,2)\n## 候選\n- [B](geo:3,4)\n## 待辦\n- [ ] 訂房\n";
+    const it = parseItinerary(md);
+    expect(it.days.map((d) => d.title)).toEqual(["2026-09-17 上山"]);
+    expect(it.stops.map((s) => s.name)).toEqual(["A"]);
+  });
+  it("stay days when the note has no dates at all", () => {
+    const it = parseItinerary("## Day 1\n- [A](geo:1,2)\n## Day 2\n- [B](geo:3,4)\n");
+    expect(it.days.length).toBe(2);
+  });
+});
