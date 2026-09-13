@@ -859,6 +859,26 @@ svg.leaflet-image-layer.leaflet-interactive path {
 .wayfarer-view .wf-stop-sub > span { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .wayfarer-view .wf-stop-sub:empty { display: none; }
 .wayfarer-view .wf-stop-sub .is-late { color: var(--wf-late); }
+.wayfarer-view .wf-stop-more {
+  margin-left: auto;
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-faint);
+  font-size: 11px;
+  line-height: 20px;
+  cursor: pointer;
+}
+.wayfarer-view .wf-stop-more:hover { color: var(--text-normal); background: color-mix(in srgb, var(--text-normal) 10%, transparent); }
+.wayfarer-view .wf-stop.is-open .wf-stop-sub { display: none; }
+.wayfarer-view .wf-stop-notes { display: flex; flex-direction: column; gap: 3px; margin-top: 2px; font-size: var(--font-ui-smaller); color: var(--text-muted); }
+.wayfarer-view .wf-stop-note { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.4; }
+.wayfarer-view .wf-stop-note:first-child { color: var(--text-normal); }
 
 /* the arrow between two cards */
 .wayfarer-view .wf-leg {

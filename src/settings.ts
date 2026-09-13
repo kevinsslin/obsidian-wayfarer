@@ -1,4 +1,5 @@
-import { PluginSettingTab, Setting, type App } from "obsidian";
+import { googlePlaces, googleRoute } from "./net";
+import { Notice, PluginSettingTab, Setting, type App } from "obsidian";
 import type WayfarerPlugin from "./main";
 
 export interface WayfarerSettings {
@@ -94,6 +95,27 @@ export class WayfarerSettingTab extends PluginSettingTab {
       .addText((t) => {
         t.inputEl.type = "password";
         t.setPlaceholder("AIza...").setValue(s.googleApiKey).onChange((v) => { s.googleApiKey = v.trim(); save(); });
+      })
+      .addButton((b) => {
+        b.setButtonText("Test key").onClick(async () => {
+          if (!s.googleApiKey) { new Notice("Wayfarer: paste a key first"); return; }
+          b.setDisabled(true);
+          const out: string[] = [];
+          try {
+            const p = await googlePlaces(s.googleApiKey, s.languageCode).searchText("Tokyo Station");
+            out.push(p ? `Places OK (${p.name})` : "Places: no result");
+          } catch (e) {
+            out.push(`Places refused: ${(e as Error).message}`);
+          }
+          try {
+            const r = await googleRoute(s.googleApiKey, s.languageCode, { lat: 35.6812, lng: 139.7671 }, { lat: 35.7101, lng: 139.8107 }, "WALK");
+            out.push(r ? `Routes OK (${Math.round(r.distanceM / 100) / 10} km)` : "Routes: no result");
+          } catch (e) {
+            out.push(`Routes refused: ${(e as Error).message}`);
+          }
+          b.setDisabled(false);
+          new Notice(`Wayfarer key test\n${out.join("\n")}`, 20000);
+        });
       });
     new Setting(containerEl)
       .setName("Language for Google results")

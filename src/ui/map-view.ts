@@ -40,6 +40,8 @@ export class WayfarerView extends ItemView {
   /** Set while the user pans; cleared when the cursor moves to another line. */
   private userMoved = false;
   private flying = false;
+  /** Lines of the stops whose card notes are unfolded in the timeline. */
+  private openNotes = new Set<number>();
   private lastCursorLine = -1;
 
   constructor(leaf: WorkspaceLeaf, private plugin: WayfarerPlugin) {
@@ -246,7 +248,7 @@ export class WayfarerView extends ItemView {
     if (this.pinnedDay < 0 && this.activeDay !== -1 && this.activeDay !== stop.dayIndex) {
       this.activeDay = stop.dayIndex;
       this.draw();
-      this.markers.get(stop)?.openPopup();
+      this.openPopup(stop);
       return;
     }
     for (const s of [prev, stop]) {
@@ -395,6 +397,15 @@ export class WayfarerView extends ItemView {
   }
 
   private drawLegend(it: Itinerary): void {
+    const all = this.legendEl.createEl("button", { cls: "wf-chip wf-chip-all", text: t("all") });
+    all.toggleClass("is-active", this.activeDay === -1);
+    all.onclick = () => {
+      this.pinnedDay = -1;
+      this.activeDay = -1;
+      this.focused = null;
+      this.draw();
+      this.fitAll(it.stops);
+    };
     for (const day of it.days) {
       const chip = this.legendEl.createEl("button", { cls: "wf-chip", text: day.label || (day.headingLine === -1 ? t("other") : t("day", { n: day.index + 1 })) });
       chip.style.setProperty("--wf-color", dayColor(day.index));
@@ -409,15 +420,6 @@ export class WayfarerView extends ItemView {
         this.fitAll(this.pinnedDay >= 0 ? day.stops : it.stops);
       };
     }
-    const all = this.legendEl.createEl("button", { cls: "wf-chip wf-chip-all", text: t("all") });
-    all.toggleClass("is-active", this.activeDay === -1);
-    all.onclick = () => {
-      this.pinnedDay = -1;
-      this.activeDay = -1;
-      this.focused = null;
-      this.draw();
-      this.fitAll(it.stops);
-    };
     const right = this.legendEl.createDiv({ cls: "wf-legend-right" });
     const follow = right.createEl("button", { cls: "wf-chip wf-chip-icon", text: "📍" });
     follow.toggleClass("is-active", this.plugin.settings.followCursor);
@@ -459,11 +461,28 @@ export class WayfarerView extends ItemView {
         main.createSpan({ cls: "wf-stop-glyph", text: stop.emoji ?? CATEGORY_EMOJI[stop.category] });
         main.createSpan({ cls: "wf-stop-name", text: stop.name });
         const warn = this.hoursWarning(stop, date);
-        const [note] = stopNotes(stop);
+        const notes = stopNotes(stop);
+        const open = this.openNotes.has(stop.line);
+        card.toggleClass("is-open", open);
         const sub = body.createDiv({ cls: "wf-stop-sub" });
         if (warn) sub.createSpan({ cls: "is-late", text: `⚠ ${warn}` });
-        else if (note) sub.createSpan({ text: note });
+        else if (notes[0]) sub.createSpan({ text: notes[0] });
         else if (stop.meta?.rating) sub.createSpan({ text: `★ ${stop.meta.rating.toFixed(1)}` });
+        // Notes fold behind a chevron so the list stays short; the first line is the one-line summary.
+        if (notes.length > 0) {
+          const more = top.createEl("button", { cls: "wf-stop-more", text: open ? "▾" : "▸" });
+          more.setAttr("aria-label", open ? t("notes_less") : t("notes_more"));
+          more.onclick = (e) => {
+            e.stopPropagation();
+            if (open) this.openNotes.delete(stop.line);
+            else this.openNotes.add(stop.line);
+            this.draw();
+          };
+          if (open) {
+            const box = body.createDiv({ cls: "wf-stop-notes" });
+            for (const n of notes) box.createDiv({ cls: "wf-stop-note", text: n });
+          }
+        }
         card.draggable = true;
         card.ondragstart = (e) => { e.dataTransfer?.setData("text/plain", String(stop.line)); card.addClass("is-dragging"); };
         card.ondragend = () => card.removeClass("is-dragging");
@@ -481,7 +500,7 @@ export class WayfarerView extends ItemView {
           this.draw();
           this.flyToStop(stop);
           void this.jumpTo(stop, false);
-          this.markers.get(stop)?.openPopup();
+          this.openPopup(stop);
         };
         if (stop === this.focused) window.setTimeout(() => card.scrollIntoView({ block: "nearest", behavior: "smooth" }), 0);
       });
@@ -531,6 +550,26 @@ export class WayfarerView extends ItemView {
 
   /* ---------- camera ---------- */
 
+  /** Width of the map hidden under the floating timeline, so the camera centres on what is actually visible. */
+  private leftInset(): number {
+    return this.plugin.settings.listOpen ? this.plugin.settings.listWidth + 20 : 0;
+  }
+
+  /** The map centre that puts `target` in the middle of the uncovered part of the map at `zoom`. */
+  private centreFor(target: L.LatLng, zoom: number): L.LatLng {
+    if (!this.map) return target;
+    return this.map.unproject(this.map.project(target, zoom).subtract([this.leftInset() / 2, 0]), zoom);
+  }
+
+  /** Opens a stop's popup, panning it clear of the floating timeline. */
+  private openPopup(stop: Stop): void {
+    const marker = this.markers.get(stop);
+    if (!marker) return;
+    const popup = marker.getPopup();
+    if (popup) L.setOptions(popup, { autoPanPaddingTopLeft: L.point(this.leftInset() + 12, 12), autoPanPaddingBottomRight: L.point(12, 12) });
+    marker.openPopup();
+  }
+
   private flyToStop(stop: Stop): void {
     if (!this.map) return;
     this.map.invalidateSize(false);
@@ -539,8 +578,11 @@ export class WayfarerView extends ItemView {
     const target = L.latLng(stop.lat, stop.lng);
     const zoom = Math.max(this.map.getZoom(), 14);
     this.flying = true;
-    if (this.map.getBounds().pad(-0.2).contains(target) && this.map.getZoom() >= 13) this.map.panTo(target, { animate: true, duration: 0.4 });
-    else this.map.flyTo(target, zoom, { duration: 0.6 });
+    const visible = this.map.getBounds();
+    const covered = this.map.containerPointToLatLng([this.leftInset(), 0]);
+    const seen = L.latLngBounds(L.latLng(visible.getSouth(), covered.lng), visible.getNorthEast()).pad(-0.2);
+    if (seen.contains(target) && this.map.getZoom() >= 13) this.map.panTo(this.centreFor(target, this.map.getZoom()), { animate: true, duration: 0.4 });
+    else this.map.flyTo(this.centreFor(target, zoom), zoom, { duration: 0.6 });
   }
 
   /**
@@ -558,10 +600,10 @@ export class WayfarerView extends ItemView {
     }
     this.flying = true;
     if (stops.length === 1) {
-      this.map.setView([stops[0].lat, stops[0].lng], 14);
+      this.map.setView(this.centreFor(L.latLng(stops[0].lat, stops[0].lng), 14), 14);
       return;
     }
-    this.map.fitBounds(L.latLngBounds(stops.map((s) => [s.lat, s.lng] as [number, number])), { padding: [36, 36], maxZoom: 15 });
+    this.map.fitBounds(L.latLngBounds(stops.map((s) => [s.lat, s.lng] as [number, number])), { paddingTopLeft: [this.leftInset() + 36, 36], paddingBottomRight: [36, 36], maxZoom: 15 });
   }
 
   private sameStop(s: Stop): Stop | null {

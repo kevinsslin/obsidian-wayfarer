@@ -2,7 +2,7 @@ import { MarkdownView, Notice, Platform, Plugin, TFile, debounce, type Editor, t
 import { isGoogleMapsUrl } from "./core/gmaps-url";
 import { dayAtLine, parseItinerary, patchLineMeta, type Itinerary, type PlaceMeta, type Stop } from "./core/itinerary";
 import { ResolveError, resolveMapsUrl, type ResolveDeps } from "./core/resolve";
-import { expandShortUrl, googlePlaces } from "./net";
+import { GoogleApiError, expandShortUrl, googlePlaces } from "./net";
 import { DEFAULT_SETTINGS, WayfarerSettingTab, type WayfarerSettings } from "./settings";
 import { findMapsUrl, metaDecorations, replaceUrlInEditor, stopText } from "./ui/editor";
 import { WayfarerView, VIEW_TYPE_WAYFARER } from "./ui/map-view";
@@ -28,7 +28,16 @@ export default class WayfarerPlugin extends Plugin {
     () => this.settings,
     () => { for (const v of this.views) v.redraw(); },
     (line, leg) => this.setStopMeta(line, { leg }, true),
+    (e) => this.googleRefused(e),
   );
+  private refusals = new Set<string>();
+
+  /** Tells the user once per session why Google refused, instead of quietly showing distance only. */
+  googleRefused(e: GoogleApiError): void {
+    if (this.refusals.has(e.message)) return;
+    this.refusals.add(e.message);
+    new Notice(`Wayfarer: Google refused the request (${e.status}). ${e.message}`, 15000);
+  }
   photoFor(stop: Stop): StopPhoto | null {
     return photoFor(stop, this.settings, (link) => {
       const from = this.current?.file.path ?? "";

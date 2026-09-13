@@ -67,6 +67,17 @@ Wayfarer uses your own key, so the free monthly allowance is yours and nothing g
 5. Click the key to edit it, and under **API restrictions** choose *Restrict key* and tick only Places API (New) and Routes API. Save. This way the key is useless for anything else if it ever leaks.
 6. In Obsidian: **Settings → Wayfarer → Google API key**, paste it. Also set *Language for Google results* (default `zh-TW`) to the language you want place names and hours in.
 
+Then press **Test key** next to the field. It makes one Places call and one Routes call and tells you the result. If Google refuses, the notice carries Google's own reason; the usual one is "Places API (New) has not been used in project … or it is disabled", which means step 3 was skipped for that API. The same notice appears once per session if a route request is refused while the map is open, so a key that does nothing is never silent.
+
+**How many calls a trip costs.** Wayfarer is built to call Google as rarely as it can, and everything it learns is written into the note so nobody asks twice:
+
+- Converting a pasted link is one Places call per stop, once. Rating, hours, address and photo reference are saved in the `%%wf%%` comment on the line.
+- A routed leg is one Routes call per leg, once. Duration, distance and line names are saved on the destination stop; opening the note again, on any machine, reads them from the note and asks nothing. Only a leg with no saved result (new stop, reordered, transport changed) is asked.
+- Photos are loaded from Google each time a card with a photo is drawn; Obsidian caches them like a browser.
+- Opening the map, clicking around, switching days: zero calls.
+
+A 60-stop trip therefore costs on the order of 100 to 150 calls in total, against the 10,000 per month of each free allowance.
+
 The key is stored in this vault's `.obsidian/plugins/wayfarer/data.json`. It is never written into a note. If you sync or share the whole vault, everyone with the vault gets the key, so restrict it as in step 5.
 
 ## Commands

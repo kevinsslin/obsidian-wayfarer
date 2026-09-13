@@ -83,7 +83,8 @@ export function googlePlaces(apiKey: string, languageCode: string): NonNullable<
         headers: { ...headers, "X-Goog-FieldMask": PLACE_FIELDS },
         throw: false,
       });
-      return res.status === 200 ? toPlace(res.json as PlaceJson) : null;
+      refused(res);
+      return toPlace(res.json as PlaceJson);
     },
     async searchText(query, near) {
       const body: Record<string, unknown> = { textQuery: query, languageCode, pageSize: 1 };
@@ -95,10 +96,29 @@ export function googlePlaces(apiKey: string, languageCode: string): NonNullable<
         body: JSON.stringify(body),
         throw: false,
       });
-      if (res.status !== 200) return null;
+      refused(res);
       return toPlace((res.json as { places?: PlaceJson[] }).places?.[0]);
     },
   };
+}
+
+/** A refusal from Google with its own explanation, e.g. an API not enabled on the key's project. */
+export class GoogleApiError extends Error {
+  constructor(public status: number, message: string) {
+    super(message);
+  }
+}
+
+/** Throws when Google refused the request (4xx/5xx), with Google's message. */
+function refused(res: { status: number; json?: unknown; text?: string }): void {
+  if (res.status === 200) return;
+  let msg = "";
+  try {
+    msg = (res.json as { error?: { message?: string } })?.error?.message ?? "";
+  } catch {
+    msg = "";
+  }
+  throw new GoogleApiError(res.status, msg || `HTTP ${res.status}`);
 }
 
 /* ---------- routing ---------- */
@@ -141,7 +161,7 @@ export async function googleRoute(
     body: JSON.stringify(body),
     throw: false,
   });
-  if (res.status !== 200) return null;
+  refused(res);
   interface Step { travelMode?: string; transitDetails?: { transitLine?: { nameShort?: string; name?: string } } }
   const route = (res.json as { routes?: Array<{ duration?: string; distanceMeters?: number; polyline?: { encodedPolyline?: string }; legs?: Array<{ steps?: Step[] }> }> }).routes?.[0];
   if (!route?.polyline?.encodedPolyline) return null;
