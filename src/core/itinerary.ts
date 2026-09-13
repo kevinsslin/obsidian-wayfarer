@@ -332,7 +332,13 @@ export function setTransportOnLine(line: string, stop: Pick<Stop, "from" | "befo
     break;
   }
   if (out === null) out = line.slice(0, stop.from) + emoji + " " + line.slice(stop.from);
-  return patchLineMeta(out, { via: undefined });
+  // A route saved for another mode is stale now; drop it rather than leave it behind.
+  const mm = META.exec(out);
+  let savedVia: string | undefined;
+  if (mm) {
+    try { savedVia = (JSON.parse(mm[1]) as PlaceMeta).leg?.via; } catch { savedVia = undefined; }
+  }
+  return patchLineMeta(out, savedVia && savedVia !== mode ? { via: undefined, leg: undefined } : { via: undefined });
 }
 
 /**

@@ -176,6 +176,11 @@ describe("setTransportOnLine", () => {
     const line = `- [A](geo:1,2) %%wf:{"via":"bus","rating":4.1}%%`;
     expect(setTransportOnLine(line, stopOf(line), "walk")).toBe(`- 🚶 [A](geo:1,2) %%wf:{"rating":4.1}%%`);
   });
+  it("drops a route saved for another mode and keeps one for the same mode", () => {
+    const line = `- 🚌 [A](geo:1,2) %%wf:{"leg":{"from":"1.0000,2.0000","via":"bus","s":600,"m":3000}}%%`;
+    expect(setTransportOnLine(line, stopOf(line), "walk")).toBe("- 🚶 [A](geo:1,2)");
+    expect(setTransportOnLine(line, stopOf(line), "bus")).toBe(line);
+  });
   it("the emoji wins over an older via when both are present", () => {
     expect(stopOf(`- 🚶 [A](geo:1,2) %%wf:{"via":"bus"}%%`).transport).toBe("walk");
   });
