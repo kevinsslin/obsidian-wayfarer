@@ -74,6 +74,7 @@ export function categoryFromName(name: string): Category | null {
   const rules: Array<[RegExp, Category]> = [
     [/(湖|滝|沼|瀑布|湿原|濕原|高原|渓谷|溪谷|海岸|山|岳|島|岬)$/, "nature"],
     [/ホテル|hotel|旅館|民宿|hostel|\binn\b|ゲストハウス|ホステル|酒店|飯店/, "stay"],
+    [/セブン|ファミマ|ファミリーマート|ローソン|7-?eleven|コンビニ|便利商店|全家|超商|ドラッグ|マツキヨ|ドンキ|don quijote/, "shop"],
     [/空港|機場|机场|airport/, "airport"],
     [/駅|車站|车站|站$|\bstation\b|バスターミナル|バス停|轉運站/, "station"],
     [/港|ferry|フェリー|碼頭|码头|桟橋/, "port"],

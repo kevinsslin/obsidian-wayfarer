@@ -48,13 +48,12 @@ export class PhotoFinder {
     this.inflight.add(key);
     try {
       const langs = Array.from(new Set([this.settings().languageCode.split("-")[0], ...guessLangs(stop), "en"]));
-      // A nearby article's photo suits a waterfall or a shrine; for a hotel or a
-      // restaurant it would show the wrong thing, so those get a title match or a street photo only.
+      // A nearby photo suits a waterfall or a shrine; for a hotel or a restaurant
+      // it would show the wrong thing, so those get a title match or nothing.
       const landmark = LANDMARK_CATEGORIES.has(stop.category);
       const found =
         (await wikipediaByTitle(cleanName(stop.name), langs)) ??
-        (landmark ? await wikipediaNearby(stop.lat, stop.lng, langs) : null) ??
-        (await commonsNearby(stop.lat, stop.lng, landmark ? 200 : 80));
+        (landmark ? (await wikipediaNearby(stop.lat, stop.lng, langs)) ?? (await commonsNearby(stop.lat, stop.lng, 200)) : null);
       this.cache[key] = found;
       this.persist();
       if (found) this.onUpdate();

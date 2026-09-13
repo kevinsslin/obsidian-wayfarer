@@ -19,6 +19,7 @@ describe("category", () => {
   it("maps names in three languages", () => {
     expect(categoryFromName("日光ステーションホテル")).toBe("stay");
     expect(categoryFromName("東武日光站")).toBe("station");
+    expect(categoryFromName("セブンイレブン 東武日光駅前")).toBe("shop");
     expect(categoryFromName("湯滝")).toBe("nature");
     expect(categoryFromName("千光寺")).toBe("temple");
     expect(categoryFromName("中禪寺湖")).toBe("nature");
