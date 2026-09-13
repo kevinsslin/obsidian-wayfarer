@@ -1,0 +1,68 @@
+# Itinerary Map
+
+Trip planning inside Obsidian. The note is the plan; a pane beside it is the map.
+
+- **Paste a Google Maps link** (including `maps.app.goo.gl` share links) and it becomes `[Name](geo:lat,lng)`.
+- **Headings are days.** Every stop under `## 9/17 ...` is that day's stop: same colour, numbered in order, joined by a line.
+- **The map follows your cursor.** Put the cursor in a day and that day is drawn at full strength, the rest dimmed. Click a pin to jump back to its line.
+- **Hand the day to Google Maps.** The legend shows a "Google Maps 路線" button for the day you are on: one tap opens that day's stops, in order, as transit directions on your phone or browser. Every pin popup also has an "Open in Google Maps" link.
+- **Ratings and opening hours** ride along as a hidden `%%im:{...}%%` comment and show as a small chip after the link, in both Live Preview and Reading view.
+
+The stop format is the same inline geolink that [Map View](https://github.com/esm7/obsidian-map-view) reads, so its display rules, routing, queries and Bases view all work on the same notes.
+
+## Writing a plan
+
+You never type the link syntax by hand. Run **Insert day headings for a trip**, pick the first day and the length, and you get one heading per day. Then paste Google Maps links under each heading; each one turns into a stop. The result looks like this:
+
+```markdown
+---
+locations:
+---
+## 9/16 週三 日光市區
+- [東武日光站](geo:36.7509,139.6187)
+- [日光ステーションホテル](geo:36.7512,139.6201) tag:stay
+
+## 9/17 週四 上山
+1. 07:53 巴士到 [湯滝](geo:36.7938,139.4316)
+2. 走木道到 [赤沼](geo:36.7754,139.4432)
+3. https://maps.app.goo.gl/...        <- paste, it converts itself
+```
+
+Stops before the first heading form their own group. The heading level that starts a day is a setting (default `##`). Headings without stops are skipped.
+
+## Google Maps links
+
+Without any API key the plugin reads coordinates straight out of the link: the exact `!3d…!4d…` pin when present, else the `@lat,lng` viewport centre, `?q=lat,lng`, or `/maps/search/lat,lng`. The place name comes from the `/maps/place/<name>/` segment. Links that only carry text (`?q=Ichiran+Shibuya`) are geocoded with OpenStreetMap Nominatim.
+
+Short links (`maps.app.goo.gl`, `goo.gl/maps`, `g.co`) are expanded on desktop by following the redirect with a non-browser User-Agent, because Google serves browsers an interstitial page instead of a `Location` header. On mobile, paste the full link.
+
+With a **Google Places (New) API key** in settings, links are resolved through the API instead: exact pin, canonical name in your chosen language, rating, opening hours, address and website. Place Details and Text Search each have a free monthly allowance (10,000 Essentials calls as of 2025), which a trip will not come near. The key is stored in the vault's plugin data, never in a note.
+
+## Commands
+
+- **Open itinerary map** (also the ribbon icon)
+- **Insert day headings for a trip**
+- **Convert Google Maps link on this line to a stop**
+- **Convert every Google Maps link in this note**
+
+## Settings
+
+Paste conversion on/off, day heading level, per-day `tag:d1` tagging for Map View, route lines, auto-open, Google API key and language, tile URL and attribution (OpenStreetMap by default).
+
+## Development
+
+```bash
+npm install
+npm run check        # lint, typecheck, unit tests, production build, load smoke
+npm run dev          # esbuild watch
+```
+
+`src/core` has no Obsidian imports and is unit tested (URL parsing, note parsing, resolver). `scripts/expand-check.mjs` hits the network to confirm the short-link strategy still works. `scripts/cdp.mjs` drives a running Obsidian started with `--remote-debugging-port=9222` for end-to-end checks; `test-vault/` is the fixture vault, with the plugin symlinked into `.obsidian/plugins/`.
+
+## Why
+
+Inspired by Ink and Switch's [Embark](https://www.inkandswitch.com/embark/), which is not public, and by [Waypoint](https://github.com/jakelazaroff/waypoint). Both put places in the text and a map beside it. This does the same inside Obsidian, reusing Map View's data format instead of inventing one.
+
+## License
+
+MIT

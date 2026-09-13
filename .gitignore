@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+
+# Build output (attached to GitHub releases, not committed)
+main.js
+*.js.map
+demo/*.bundle.js
+
+# Test / coverage
+coverage/
+
+# Obsidian plugin runtime data
+data.json
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+*.log
+test-vault/.obsidian/workspace*.json
