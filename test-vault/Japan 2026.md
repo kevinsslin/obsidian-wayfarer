@@ -10,7 +10,7 @@ locations:
 搭 19:19 的リバティけごん 47 號。
 
 - [東武日光站](geo:36.7509,139.6187) tag:d1
-- [日光ステーションホテルクラシック](geo:36.7512,139.6201) tag:d1 tag:stay %%wf:{"rating":4.1,"hours":["Monday: Open 24 hours","Tuesday: Open 24 hours","Wednesday: Open 24 hours","Thursday: Open 24 hours","Friday: Open 24 hours","Saturday: Open 24 hours","Sunday: Open 24 hours"],"address":"栃木県日光市相生町3-1"}%%
+- [日光ステーションホテルクラシック](geo:36.7512,139.6201) tag:d1 tag:stay %%wf:{"rating":4.1,"hours":["Monday: Open 24 hours","Tuesday: Open 24 hours","Wednesday: Open 24 hours","Thursday: Open 24 hours","Friday: Open 24 hours","Saturday: Open 24 hours","Sunday: Open 24 hours"],"address":"栃木県日光市相生町3-1","via":"bus"}%%
 - 便利商店：[セブンイレブン 東武日光駅前](geo:36.7503,139.6172)
 
 ## 9/17 週四 上山，走戰場之原，睡湯元

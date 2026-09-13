@@ -14,7 +14,7 @@ import type WayfarerPlugin from "../main";
 
 export const VIEW_TYPE_WAYFARER = "wayfarer";
 
-const TRANSPORT_LABEL: Record<Transport, string> = { walk: "walk", train: "train", bus: "bus", car: "car / taxi", bike: "bike", boat: "boat", flight: "flight" };
+const MODES: Transport[] = ["walk", "bike", "car", "taxi", "bus", "train", "metro", "tram", "boat", "flight"];
 
 /**
  * The map pane. Three bands: day chips on top, the map, and a strip of the
@@ -122,7 +122,10 @@ export class WayfarerView extends ItemView {
   }
 
   private applySplit(): void {
+    const open = this.plugin.settings.listOpen;
     this.stripEl.style.flex = `0 0 ${this.plugin.settings.listWidth}px`;
+    this.stripEl.toggleClass("is-hidden", !open);
+    this.contentEl.querySelector(".wf-divider")?.toggleClass("is-hidden", !open);
   }
 
   applyTiles(): void {
@@ -322,7 +325,7 @@ export class WayfarerView extends ItemView {
       const t2 = body.createDiv({ cls: `wf-card-leg${leg.lateBy > 0 ? " is-late" : ""}` });
       t2.setText(`${leg.mode ? TRANSPORT_EMOJI[leg.mode] + " " : ""}${t("from_prev", { name: prev.name })}: ${legText(leg)}${leg.lateBy ? ", " + t("late_by", { n: leg.lateBy }) : ""}`);
       body.insertBefore(t2, actions);
-      if (leg.mode) actions.createEl("a", { cls: "wf-ext", text: `${TRANSPORT_EMOJI[leg.mode]} ${t("from_prev_dir")}`, attr: { href: directionsUrl([prev, stop], leg.mode === "walk" ? "walking" : leg.mode === "car" ? "driving" : "transit") ?? "#" } });
+      if (leg.mode) actions.createEl("a", { cls: "wf-ext", text: `${TRANSPORT_EMOJI[leg.mode]} ${t("from_prev_dir")}`, attr: { href: directionsUrl([prev, stop], leg.mode === "walk" ? "walking" : leg.mode === "car" || leg.mode === "taxi" ? "driving" : "transit") ?? "#" } });
     }
     if (stop.meta?.website) actions.createEl("a", { cls: "wf-ext", text: t("website"), attr: { href: stop.meta.website } });
     actions.createEl("a", { text: t("to_line"), attr: { href: "#", "data-wf-jump": "1" } });
@@ -354,6 +357,15 @@ export class WayfarerView extends ItemView {
       this.fitAll(it.stops);
     };
     const right = this.legendEl.createDiv({ cls: "wf-legend-right" });
+    const list = right.createEl("button", { cls: "wf-chip wf-chip-icon", text: this.plugin.settings.listOpen ? "◧" : "▢" });
+    list.setAttr("aria-label", this.plugin.settings.listOpen ? t("list_hide") : t("list_show"));
+    list.onclick = () => {
+      this.plugin.settings.listOpen = !this.plugin.settings.listOpen;
+      void this.plugin.saveSettings();
+      this.applySplit();
+      this.map?.invalidateSize();
+      this.draw();
+    };
     const follow = right.createEl("button", { cls: "wf-chip wf-chip-icon", text: "📍" });
     follow.toggleClass("is-active", this.plugin.settings.followCursor);
     follow.setAttr("aria-label", this.plugin.settings.followCursor ? t("follow_on") : t("follow_off"));
@@ -443,8 +455,7 @@ export class WayfarerView extends ItemView {
   }
 
   private pickTransport(anchor: HTMLElement, leg: Leg): void {
-    const modes: Transport[] = ["walk", "train", "bus", "car", "bike", "boat", "flight"];
-    this.popover(anchor, modes.map((m) => ({ label: `${TRANSPORT_EMOJI[m]} ${TRANSPORT_LABEL[m]}`, active: m === leg.mode, pick: () => this.plugin.setStopMeta(leg.to.line, { via: m }) })));
+    this.popover(anchor, MODES.map((m) => ({ label: `${TRANSPORT_EMOJI[m]} ${t(`m_${m}` as const)}`, active: m === leg.mode, pick: () => this.plugin.setStopMeta(leg.to.line, { via: m }) })));
   }
 
   /** A small menu anchored under an element; one click picks and closes. */

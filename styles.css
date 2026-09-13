@@ -824,7 +824,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
   background: var(--background-primary);
   scrollbar-width: thin;
 }
-.wayfarer-view .wf-strip:empty { display: none; }
+.wayfarer-view .wf-strip:empty, .wayfarer-view .wf-strip.is-hidden, .wayfarer-view .wf-divider.is-hidden { display: none; }
 .wayfarer-view .wf-strip-day {
   font-size: var(--font-ui-smaller);
   font-weight: 600;

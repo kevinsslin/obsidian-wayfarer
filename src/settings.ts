@@ -10,6 +10,8 @@ export interface WayfarerSettings {
   uiLanguage: "auto" | "en" | "zh-TW";
   /** Width of the timeline column in pixels. */
   listWidth: number;
+  /** Whether the timeline column is shown beside the map. */
+  listOpen: boolean;
   /** Headings at this level or shallower start a new day. */
   dayHeadingLevel: number;
   /** Convert Google Maps links automatically on paste. */
@@ -38,6 +40,7 @@ export const DEFAULT_SETTINGS: WayfarerSettings = {
   languageCode: "zh-TW",
   uiLanguage: "auto",
   listWidth: 260,
+  listOpen: true,
   dayHeadingLevel: 2,
   convertOnPaste: true,
   addEmoji: true,

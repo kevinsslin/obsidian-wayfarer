@@ -43,7 +43,7 @@ locations:
 | `[Name](geo:lat,lng)` | A stop. Same format as the Map View plugin. |
 | `07:53` at line start | The stop's time. |
 | ` · 🚶 34 分 · 2.5 km` at line end | Written by the plugin's write-back command. Do not author by hand. |
-| Transport emoji before the link | How you get there: 🚶 walk, 🚃 🚄 🚇 train, 🚌 bus, 🚗 🚕 car, 🚲 bike, ⛴️ boat, ✈️ flight. Words are not read; the user can also pick it on the arrow in the map pane, which is stored as `%%wf:{"via":"bus"}%%` on the line. |
+| Transport emoji before the link | How you get there: 🚶 walk, 🚲 bike, 🚗 car, 🚕 taxi, 🚌 bus, 🚆 🚄 🚃 train, 🚇 metro / MRT, 🚊 tram / light rail, ⛴️ boat, ✈️ flight. Words are not read; the user can also pick it on the arrow in the map pane, which is stored as `%%wf:{"via":"bus"}%%` on the line. |
 | Indented lines under a stop | The stop's notes, shown verbatim on its card and popup. No format inside them is interpreted. |
 | Emoji before the link | The pin's icon. Otherwise guessed from `tag:`, Google type, or name. |
 | `tag:x` | Optional, for Map View compatibility only. |

@@ -102,13 +102,16 @@ export function pickCategory(input: { tags: string[]; googleType?: string; name:
   return categoryFromTags(input.tags) ?? categoryFromGoogleType(input.googleType) ?? categoryFromName(input.name) ?? "place";
 }
 
-export type Transport = "walk" | "train" | "bus" | "car" | "flight" | "boat" | "bike";
+export type Transport = "walk" | "bike" | "car" | "taxi" | "bus" | "train" | "metro" | "tram" | "boat" | "flight";
 
-export const TRANSPORT_EMOJI: Record<Transport, string> = { walk: "🚶", train: "🚃", bus: "🚌", car: "🚕", flight: "✈️", boat: "⛴️", bike: "🚲" };
+export const TRANSPORT_EMOJI: Record<Transport, string> = { walk: "🚶", bike: "🚲", car: "🚗", taxi: "🚕", bus: "🚌", train: "🚆", metro: "🚇", tram: "🚊", boat: "⛴️", flight: "✈️" };
+
+/** Modes a transit router answers for. */
+export const TRANSIT_MODES: ReadonlySet<Transport> = new Set<Transport>(["bus", "train", "metro", "tram"]);
 
 const EMOJI_TRANSPORT: Record<string, Transport> = {
-  "🚶": "walk", "🚶‍♀️": "walk", "🚶‍♂️": "walk", "🚃": "train", "🚄": "train", "🚅": "train", "🚆": "train", "🚇": "train", "🚈": "train", "🚊": "train", "🚉": "train",
-  "🚌": "bus", "🚍": "bus", "🚕": "car", "🚗": "car", "🚙": "car", "✈️": "flight", "✈": "flight", "🛫": "flight", "🛬": "flight",
+  "🚶": "walk", "🚶‍♀️": "walk", "🚶‍♂️": "walk", "🚃": "train", "🚄": "train", "🚅": "train", "🚆": "train", "🚂": "train", "🚉": "train", "🚇": "metro", "🚈": "metro", "🚝": "metro", "🚊": "tram", "🚋": "tram",
+  "🚌": "bus", "🚍": "bus", "🚐": "bus", "🚕": "taxi", "🚖": "taxi", "🚗": "car", "🚙": "car", "✈️": "flight", "✈": "flight", "🛫": "flight", "🛬": "flight",
   "⛴️": "boat", "⛴": "boat", "🚢": "boat", "⛵": "boat", "🚲": "bike", "🚴": "bike",
 };
 

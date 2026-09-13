@@ -1,4 +1,4 @@
-import type { Transport } from "./core/category";
+import { TRANSIT_MODES, type Transport } from "./core/category";
 import type { Day, Stop } from "./core/itinerary";
 import { bareLeg, finishLeg, legKey, type Leg } from "./core/legs";
 import { googleRoute, osrmRoute } from "./net";
@@ -68,7 +68,7 @@ export class LegRouter {
   private async route(from: Stop, to: Stop, mode: Transport, departure?: Date): Promise<Pick<Leg, "distanceM" | "durationS" | "geometry" | "summary" | "source"> | null> {
     const s = this.settings();
     if (mode === "flight" || mode === "boat") return null;
-    const transit = mode === "train" || mode === "bus";
+    const transit = TRANSIT_MODES.has(mode);
     if (s.googleApiKey && (transit || s.preferGoogleRoutes)) {
       const gm = transit ? "TRANSIT" : mode === "walk" ? "WALK" : mode === "bike" ? "BICYCLE" : "DRIVE";
       const r = await googleRoute(s.googleApiKey, s.languageCode, from, to, gm, departure);
@@ -77,7 +77,7 @@ export class LegRouter {
     if (transit) return null;
     const r = await osrmRoute(from, to);
     if (!r) return null;
-    const durationS = mode === "car" ? r.durationS : mode === "bike" ? Math.round(r.distanceM / (14000 / 3600)) : Math.round(r.distanceM / (4500 / 3600));
+    const durationS = mode === "car" || mode === "taxi" ? r.durationS : mode === "bike" ? Math.round(r.distanceM / (14000 / 3600)) : Math.round(r.distanceM / (4500 / 3600));
     return { distanceM: r.distanceM, durationS, geometry: r.geometry, source: "osrm" };
   }
 }
