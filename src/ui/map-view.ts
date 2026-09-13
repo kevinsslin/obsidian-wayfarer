@@ -64,6 +64,15 @@ export class WayfarerView extends ItemView {
     const body = root.createDiv({ cls: "wf-body" });
     this.stripEl = body.createDiv({ cls: "wf-strip" });
     const divider = body.createDiv({ cls: "wf-divider" });
+    const toggle = divider.createEl("button", { cls: "wf-divider-toggle" });
+    toggle.onpointerdown = (e) => e.stopPropagation();
+    toggle.onclick = (e) => {
+      e.stopPropagation();
+      this.plugin.settings.listOpen = !this.plugin.settings.listOpen;
+      void this.plugin.saveSettings();
+      this.applySplit();
+      this.map?.invalidateSize();
+    };
     this.mapEl = body.createDiv({ cls: "wf-map" });
     this.emptyEl = root.createDiv({ cls: "wf-empty" });
     this.emptyEl.setText(t("empty"));
@@ -125,7 +134,13 @@ export class WayfarerView extends ItemView {
     const open = this.plugin.settings.listOpen;
     this.stripEl.style.flex = `0 0 ${this.plugin.settings.listWidth}px`;
     this.stripEl.toggleClass("is-hidden", !open);
-    this.contentEl.querySelector(".wf-divider")?.toggleClass("is-hidden", !open);
+    const divider = this.contentEl.querySelector(".wf-divider");
+    divider?.toggleClass("is-closed", !open);
+    const toggle = divider?.querySelector(".wf-divider-toggle");
+    if (toggle) {
+      toggle.textContent = open ? "‹" : "›";
+      toggle.setAttribute("aria-label", open ? t("list_hide") : t("list_show"));
+    }
   }
 
   applyTiles(): void {
@@ -357,15 +372,6 @@ export class WayfarerView extends ItemView {
       this.fitAll(it.stops);
     };
     const right = this.legendEl.createDiv({ cls: "wf-legend-right" });
-    const list = right.createEl("button", { cls: "wf-chip wf-chip-icon", text: this.plugin.settings.listOpen ? "◧" : "▢" });
-    list.setAttr("aria-label", this.plugin.settings.listOpen ? t("list_hide") : t("list_show"));
-    list.onclick = () => {
-      this.plugin.settings.listOpen = !this.plugin.settings.listOpen;
-      void this.plugin.saveSettings();
-      this.applySplit();
-      this.map?.invalidateSize();
-      this.draw();
-    };
     const follow = right.createEl("button", { cls: "wf-chip wf-chip-icon", text: "📍" });
     follow.toggleClass("is-active", this.plugin.settings.followCursor);
     follow.setAttr("aria-label", this.plugin.settings.followCursor ? t("follow_on") : t("follow_off"));
