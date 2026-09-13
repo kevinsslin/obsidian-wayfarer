@@ -13,20 +13,18 @@ export function parseDwell(line: string): number | undefined {
   return Number(m[1]) * 60 + Number(m[2] ?? 0);
 }
 
-/** How long people usually stay, when the note does not say. */
-export const DEFAULT_DWELL: Record<Category, number> = {
-  stay: 0, station: 0, airport: 0, port: 0,
-  food: 60, cafe: 45, bar: 90, nightlife: 120, shrine: 30, temple: 40, museum: 90, park: 45, nature: 60,
-  onsen: 90, shop: 45, market: 45, view: 30, castle: 60, event: 120, place: 45,
-};
+/** Categories one passes through rather than stays at. */
+export const PASS_THROUGH = new Set<Category>(["station", "airport", "port"]);
 
 export interface Slot {
   /** Minutes from midnight. Written on the line, or inferred from the previous stop plus the leg. */
   arrive?: number;
+  /** Known only when the stay is known (set by the user) or the stop is a pass-through. */
   depart?: number;
   /** True when `arrive` was inferred rather than written. */
   inferred: boolean;
-  dwellMin: number;
+  /** The user's stay, or 0 for stations and airports; undefined means unknown. */
+  dwellMin?: number;
   /** Minutes the inferred arrival lands after the written time, or 0. */
   lateBy: number;
 }
@@ -34,6 +32,9 @@ export interface Slot {
 /**
  * Walks a day forward. A written time is an anchor: the stop is taken to
  * start then even if the inferred arrival is later (that gap is `lateBy`).
+ * Nothing is guessed about how long a stop takes: a stay comes from the
+ * user, or is zero for places one passes through (stations, airports,
+ * ports). Where the stay is unknown the inference stops until the next anchor.
  */
 export function buildSchedule(day: Day, legs: Leg[]): Slot[] {
   const out: Slot[] = [];
@@ -42,7 +43,7 @@ export function buildSchedule(day: Day, legs: Leg[]): Slot[] {
     const written = minutesOf(stop.time);
     const leg = i > 0 ? legs[i - 1] : undefined;
     const predicted = prevDepart !== undefined && leg ? prevDepart + Math.round(leg.durationS / 60) : undefined;
-    const dwellMin = stop.dwellMin ?? DEFAULT_DWELL[stop.category];
+    const dwellMin = stop.dwellMin ?? (PASS_THROUGH.has(stop.category) ? 0 : undefined);
     let arrive: number | undefined;
     let inferred = false;
     let lateBy = 0;
@@ -54,7 +55,7 @@ export function buildSchedule(day: Day, legs: Leg[]): Slot[] {
       inferred = true;
     }
     const isLast = i === day.stops.length - 1;
-    const depart = arrive !== undefined && !isLast ? arrive + dwellMin : undefined;
+    const depart = arrive !== undefined && !isLast && dwellMin !== undefined ? arrive + dwellMin : undefined;
     out.push({ arrive, depart, inferred, dwellMin, lateBy });
     prevDepart = depart;
   });
@@ -127,7 +128,7 @@ export type HoursStatus =
   | { kind: "closes-soon"; closedAt: number };
 
 /** Checks an arrival (minutes) against that weekday's hours. Null when there is nothing to check. */
-export function checkHours(hours: string[] | undefined, weekday: number, arrive: number | undefined, dwellMin = 0): HoursStatus | null {
+export function checkHours(hours: string[] | undefined, weekday: number, arrive: number | undefined, dwellMin: number | undefined = 0): HoursStatus | null {
   const line = hoursForWeekday(hours, weekday);
   if (!line || arrive === undefined) return null;
   const dh = parseDayHours(line);

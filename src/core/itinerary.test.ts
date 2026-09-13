@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dayAtLine, dayLabel, formatStop, parseItinerary } from "./itinerary";
+import { dayAtLine, dayLabel, formatStop, parseItinerary, patchLineMeta } from "./itinerary";
 
 const NOTE = `---
 locations:
@@ -33,7 +33,7 @@ describe("parseItinerary", () => {
   const it_ = parseItinerary(NOTE);
 
   it("groups stops under ## headings and keeps document order", () => {
-    expect(it_.days.map((d) => d.title)).toEqual(["日本 2026", "9/16 週三 日光市區", "9/17 週四 上山"]);
+    expect(it_.days.map((d) => d.title)).toEqual(["", "9/16 週三 日光市區", "9/17 週四 上山"]);
     expect(it_.days[1].stops.map((s) => s.name)).toEqual(["東武日光站", "日光ステーションホテル"]);
     expect(it_.days[2].stops.map((s) => s.name)).toEqual(["湯滝", "赤沼", "中禪寺湖", "華嚴瀑布"]);
   });
@@ -58,7 +58,7 @@ describe("parseItinerary", () => {
   });
   it("labels days from dates in the heading", () => {
     expect(it_.days[1].label).toBe("9/16");
-    expect(it_.days[0].label).toBe("日本 2026");
+    expect(it_.days[0].label).toBe("");
   });
   it("maps a cursor line to its day", () => {
     const lines = NOTE.split("\n");
@@ -94,5 +94,25 @@ describe("formatStop", () => {
   });
   it("omits empty metadata", () => {
     expect(formatStop("A", 1, 2, [], {})).toBe("[A](geo:1,2)");
+  });
+});
+
+describe("meta placement and day headings", () => {
+  it("reads meta anywhere after the link and patches it", () => {
+    const it2 = parseItinerary(`## 9/17\n- 走到 [赤沼](geo:1,2) ~1h45 %%wf:{"via":"bus","stay":30}%%`);
+    const st = it2.stops[0];
+    expect(st.transport).toBe("bus");
+    expect(st.transportSource).toBe("chosen");
+    expect(st.dwellMin).toBe(30);
+    const patched = patchLineMeta(`- [赤沼](geo:1,2) tag:stay 備註`, { via: "walk" });
+    expect(patched).toBe(`- [赤沼](geo:1,2) tag:stay %%wf:{"via":"walk"}%% 備註`);
+    expect(patchLineMeta(patched, { via: undefined })).toBe(`- [赤沼](geo:1,2) tag:stay 備註`);
+    expect(patchLineMeta(`- [赤沼](geo:1,2) %%wf:{"rating":4.4}%%`, { stay: 45 })).toBe(`- [赤沼](geo:1,2) %%wf:{"rating":4.4,"stay":45}%%`);
+  });
+  it("treats only the configured level as days when it exists", () => {
+    const it2 = parseItinerary(`# Trip\n[A](geo:1,1)\n## 9/16\n[B](geo:2,2)\n## 9/17\n[C](geo:3,3)`);
+    expect(it2.days.map((d) => d.title)).toEqual(["", "9/16", "9/17"]);
+    const single = parseItinerary(`# 9/16\n[B](geo:2,2)\n# 9/17\n[C](geo:3,3)`);
+    expect(single.days.map((d) => d.title)).toEqual(["9/16", "9/17"]);
   });
 });

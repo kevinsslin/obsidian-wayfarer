@@ -20,9 +20,11 @@ describe("buildSchedule", () => {
 1. 07:53 巴士到 [湯滝](geo:36.7938,139.4316) ~20m
 2. 走木道到 [赤沼](geo:36.7754,139.4432) ~1h45
 3. 12:52 巴士到 [中禪寺湖](geo:36.7345,139.4823)
+4. [華嚴瀑布](geo:36.7383,139.5031)
+5. [湯元溫泉](geo:36.7955,139.4247)
 `);
   const day = it2.days[0];
-  const legs = [estimateLeg(day.stops[0], day.stops[1]), estimateLeg(day.stops[1], day.stops[2])];
+  const legs = day.stops.slice(1).map((st, i) => estimateLeg(day.stops[i], st));
   const slots = buildSchedule(day, legs);
   it("anchors on written times and infers the rest", () => {
     expect(slots[0].arrive).toBe(7 * 60 + 53);
@@ -32,6 +34,13 @@ describe("buildSchedule", () => {
     expect(slots[1].depart).toBe(slots[1].arrive! + 105);
     expect(slots[2].inferred).toBe(false);
     expect(slots[2].arrive).toBe(12 * 60 + 52);
+  });
+  it("stops inferring where the stay is unknown", () => {
+    // 中禪寺湖 has a written time but no stay, so nothing after it can be placed
+    expect(slots[2].depart).toBeUndefined();
+    expect(slots[3].arrive).toBeUndefined();
+    expect(slots[3].inferred).toBe(false);
+    expect(slots[4].arrive).toBeUndefined();
   });
   it("reports lateness against a written anchor", () => {
     const predicted = slots[1].depart! + Math.round(legs[1].durationS / 60);

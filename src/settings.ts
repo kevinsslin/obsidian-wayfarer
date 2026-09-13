@@ -7,15 +7,13 @@ export interface WayfarerSettings {
   /** BCP-47 language for place names and hours from Google, e.g. zh-TW, ja, en. */
   languageCode: string;
   /** Interface language: "auto" follows Obsidian. */
-  uiLanguage: "auto" | "en" | "zh-TW" | "ja";
-  /** Share of the pane given to the map; the rest is the timeline. */
-  mapSplit: number;
+  uiLanguage: "auto" | "en" | "zh-TW";
+  /** Width of the timeline column in pixels. */
+  listWidth: number;
   /** Headings at this level or shallower start a new day. */
   dayHeadingLevel: number;
   /** Convert Google Maps links automatically on paste. */
   convertOnPaste: boolean;
-  /** Add `tag:d<n>` to converted stops using the day's position. */
-  addDayTag: boolean;
   /** Prefix converted stops with a category emoji (⛩️ 🍜 🏨 ...). */
   addEmoji: boolean;
   /** Look up a photo for every stop from Wikipedia and Wikimedia Commons; Google when a key is set. */
@@ -39,10 +37,9 @@ export const DEFAULT_SETTINGS: WayfarerSettings = {
   googleApiKey: "",
   languageCode: "zh-TW",
   uiLanguage: "auto",
-  mapSplit: 0.55,
+  listWidth: 260,
   dayHeadingLevel: 2,
   convertOnPaste: true,
-  addDayTag: false,
   addEmoji: true,
   followCursor: true,
   autoPhotos: true,
@@ -66,88 +63,72 @@ export class WayfarerSettingTab extends PluginSettingTab {
     const save = () => void this.plugin.saveSettings();
 
     new Setting(containerEl)
-      .setName("Interface language")
-      .setDesc("Also used for text the plugin writes into notes (travel times).")
+      .setName("Language")
       .addDropdown((d) => {
-        d.addOption("auto", "Follow Obsidian").addOption("en", "English").addOption("zh-TW", "繁體中文").addOption("ja", "日本語");
+        d.addOption("auto", "Follow Obsidian").addOption("en", "English").addOption("zh-TW", "繁體中文");
         d.setValue(s.uiLanguage).onChange((v) => { s.uiLanguage = v as WayfarerSettings["uiLanguage"]; save(); this.plugin.applyLocale(); this.plugin.refresh(); });
       });
 
     new Setting(containerEl)
-      .setName("Convert Google Maps links on paste")
-      .setDesc("Pasting a Google Maps link (including maps.app.goo.gl) turns it into [Name](geo:lat,lng).")
+      .setName("Convert Google Maps links when pasted")
+      .setDesc("A pasted link (including maps.app.goo.gl) becomes a place with a pin.")
       .addToggle((t) => t.setValue(s.convertOnPaste).onChange((v) => { s.convertOnPaste = v; save(); }));
 
     new Setting(containerEl)
-      .setName("Day heading level")
-      .setDesc("Headings at this level or higher start a new day. 2 means ## headings.")
-      .addDropdown((d) => {
-        for (const n of [1, 2, 3, 4]) d.addOption(String(n), "#".repeat(n));
-        d.setValue(String(s.dayHeadingLevel)).onChange((v) => { s.dayHeadingLevel = Number(v); save(); this.plugin.refresh(); });
-      });
-
-    new Setting(containerEl)
-      .setName("Tag converted stops with their day")
-      .setDesc("Appends tag:d1, tag:d2 ... so Map View display rules can colour them too.")
-      .addToggle((t) => t.setValue(s.addDayTag).onChange((v) => { s.addDayTag = v; save(); }));
-
-    new Setting(containerEl)
-      .setName("Add a category emoji to converted stops")
-      .setDesc("⛩️ 🍜 🏨 🚉 and so on, guessed from the place type or name. Your own emoji before the link always wins.")
+      .setName("Add an emoji to converted places")
+      .setDesc("⛩️ 🍜 🏨 🚉 based on what the place is. An emoji you typed before the link is kept.")
       .addToggle((t) => t.setValue(s.addEmoji).onChange((v) => { s.addEmoji = v; save(); }));
 
     new Setting(containerEl)
       .setName("Find photos automatically")
-      .setDesc("Wikipedia and Wikimedia Commons, no key needed. With a Google key, Google's own place photo is used first. An image you put on the stop's line always wins.")
+      .setDesc("From Wikipedia and Wikimedia Commons. No key needed.")
       .addToggle((t) => t.setValue(s.autoPhotos).onChange((v) => { s.autoPhotos = v; save(); this.plugin.refresh(); }));
 
     new Setting(containerEl)
       .setName("Map follows the cursor")
-      .setDesc("Moving the cursor onto a stop flies the map there. Dragging the map pauses this until the cursor moves to another line.")
       .addToggle((t) => t.setValue(s.followCursor).onChange((v) => { s.followCursor = v; save(); }));
 
     new Setting(containerEl)
-      .setName("Draw a line through each day")
-      .addToggle((t) => t.setValue(s.drawRoutes).onChange((v) => { s.drawRoutes = v; save(); this.plugin.refresh(); }));
-
-    new Setting(containerEl)
-      .setName("Route between stops")
-      .setDesc("Walking and driving legs are routed on OpenStreetMap (OSRM). Transit legs need a Google key and use Google Routes; without one they are estimated from the straight-line distance.")
-      .addToggle((t) => t.setValue(s.routeLegs).onChange((v) => { s.routeLegs = v; save(); this.plugin.refresh(); }));
-
-    new Setting(containerEl)
-      .setName("Use Google Routes for walking and driving too")
-      .setDesc("Only with a Google key. Better in Japan and other places where OSRM data is thin.")
-      .addToggle((t) => t.setValue(s.preferGoogleRoutes).onChange((v) => { s.preferGoogleRoutes = v; save(); this.plugin.refresh(); }));
-
-    new Setting(containerEl)
-      .setName("Open the map automatically")
-      .setDesc("When a note with stops becomes active and the map pane is closed.")
+      .setName("Open the map when a note has places")
       .addToggle((t) => t.setValue(s.autoOpen).onChange((v) => { s.autoOpen = v; save(); }));
 
-    new Setting(containerEl).setName("Google Places").setHeading();
-
+    new Setting(containerEl).setName("Google").setHeading();
     new Setting(containerEl)
-      .setName("Google Places API key")
-      .setDesc("Optional. With a key, pasted links get the exact pin, canonical name, rating and opening hours. Stored in this vault's plugin data, never in the note.")
+      .setName("Google API key")
+      .setDesc("Optional. Adds ratings, opening hours, Google's own photos, and real transit routes with line names. Places API (New) and Routes API must be enabled on the key. Stored only in this vault's plugin data.")
       .addText((t) => {
         t.inputEl.type = "password";
         t.setPlaceholder("AIza...").setValue(s.googleApiKey).onChange((v) => { s.googleApiKey = v.trim(); save(); });
       });
-
     new Setting(containerEl)
-      .setName("Language for place names")
-      .setDesc("BCP-47 code sent to Google, e.g. zh-TW, ja, en.")
+      .setName("Language for Google results")
+      .setDesc("Place names and opening hours, e.g. zh-TW, ja, en.")
       .addText((t) => t.setValue(s.languageCode).onChange((v) => { s.languageCode = v.trim() || "en"; save(); }));
 
-    new Setting(containerEl).setName("Map tiles").setHeading();
-
+    new Setting(containerEl).setName("Advanced").setHeading();
     new Setting(containerEl)
-      .setName("Tile URL template")
+      .setName("Heading level that starts a day")
+      .setDesc("Default ## . If the note has none at this level, larger headings count.")
+      .addDropdown((d) => {
+        for (const n of [1, 2, 3, 4]) d.addOption(String(n), "#".repeat(n));
+        d.setValue(String(s.dayHeadingLevel)).onChange((v) => { s.dayHeadingLevel = Number(v); save(); this.plugin.refresh(); });
+      });
+    new Setting(containerEl)
+      .setName("Route between places")
+      .setDesc("Walking and driving via OpenStreetMap (OSRM). Transit via Google when a key is set, otherwise estimated from distance.")
+      .addToggle((t) => t.setValue(s.routeLegs).onChange((v) => { s.routeLegs = v; save(); this.plugin.refresh(); }));
+    new Setting(containerEl)
+      .setName("Use Google for walking and driving too")
+      .setDesc("Needs a key. Better where OpenStreetMap is thin.")
+      .addToggle((t) => t.setValue(s.preferGoogleRoutes).onChange((v) => { s.preferGoogleRoutes = v; save(); this.plugin.refresh(); }));
+    new Setting(containerEl)
+      .setName("Draw lines between places")
+      .addToggle((t) => t.setValue(s.drawRoutes).onChange((v) => { s.drawRoutes = v; save(); this.plugin.refresh(); }));
+    new Setting(containerEl)
+      .setName("Map tiles URL")
       .addText((t) => t.setValue(s.tileUrl).onChange((v) => { s.tileUrl = v.trim() || DEFAULT_SETTINGS.tileUrl; save(); this.plugin.refresh(); }));
-
     new Setting(containerEl)
-      .setName("Tile attribution")
+      .setName("Map tiles attribution")
       .addText((t) => t.setValue(s.tileAttribution).onChange((v) => { s.tileAttribution = v; save(); this.plugin.refresh(); }));
   }
 }

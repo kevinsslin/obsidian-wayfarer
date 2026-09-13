@@ -61,6 +61,7 @@ class MetaWidget extends WidgetType {
     const today = todayHours(this.meta.hours);
     if (today) bits.push(today.replace(/^[^:]+:\s*/, ""));
     el.textContent = bits.join(" · ");
+    if (!bits.length) el.className = "wf-meta wf-meta-empty";
     if (this.meta.hours?.length || this.meta.address) {
       el.title = [this.meta.address, ...(this.meta.hours ?? [])].filter(Boolean).join("\n");
     }

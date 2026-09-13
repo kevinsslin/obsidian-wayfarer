@@ -1,6 +1,6 @@
 import { ItemView, MarkdownView, TFile, type WorkspaceLeaf } from "obsidian";
 import * as L from "leaflet";
-import { CATEGORY_EMOJI, TRANSPORT_EMOJI } from "../core/category";
+import { CATEGORY_EMOJI, TRANSPORT_EMOJI, type Transport } from "../core/category";
 import { dayColor } from "../core/colors";
 import { directionsUrl, placeUrl } from "../core/gmaps-out";
 import type { Day, Itinerary, Stop } from "../core/itinerary";
@@ -12,6 +12,8 @@ import type WayfarerPlugin from "../main";
 
 
 export const VIEW_TYPE_WAYFARER = "wayfarer";
+
+const TRANSPORT_LABEL: Record<Transport, string> = { walk: "walk", train: "train", bus: "bus", car: "car / taxi", bike: "bike", boat: "boat", flight: "flight" };
 
 /**
  * The map pane. Three bands: day chips on top, the map, and a strip of the
@@ -58,9 +60,10 @@ export class WayfarerView extends ItemView {
     root.empty();
     root.addClass("wayfarer-view");
     this.legendEl = root.createDiv({ cls: "wf-legend" });
-    this.mapEl = root.createDiv({ cls: "wf-map" });
-    const divider = root.createDiv({ cls: "wf-divider" });
-    this.stripEl = root.createDiv({ cls: "wf-strip" });
+    const body = root.createDiv({ cls: "wf-body" });
+    this.stripEl = body.createDiv({ cls: "wf-strip" });
+    const divider = body.createDiv({ cls: "wf-divider" });
+    this.mapEl = body.createDiv({ cls: "wf-map" });
     this.emptyEl = root.createDiv({ cls: "wf-empty" });
     this.emptyEl.setText(t("empty"));
     this.applySplit();
@@ -68,10 +71,8 @@ export class WayfarerView extends ItemView {
       down.preventDefault();
       divider.setPointerCapture(down.pointerId);
       const move = (e: PointerEvent) => {
-        const rect = root.getBoundingClientRect();
-        const top = this.legendEl.getBoundingClientRect().bottom;
-        const ratio = (e.clientY - top) / (rect.bottom - top);
-        this.plugin.settings.mapSplit = Math.min(0.9, Math.max(0.2, ratio));
+        const left = body.getBoundingClientRect().left;
+        this.plugin.settings.listWidth = Math.min(480, Math.max(160, Math.round(e.clientX - left)));
         this.applySplit();
         this.map?.invalidateSize();
       };
@@ -120,8 +121,7 @@ export class WayfarerView extends ItemView {
   }
 
   private applySplit(): void {
-    this.mapEl.style.flex = `${this.plugin.settings.mapSplit} 1 0`;
-    this.stripEl.style.flex = `${1 - this.plugin.settings.mapSplit} 1 0`;
+    this.stripEl.style.flex = `0 0 ${this.plugin.settings.listWidth}px`;
   }
 
   applyTiles(): void {
@@ -309,7 +309,7 @@ export class WayfarerView extends ItemView {
     const facts: string[] = [];
     if (slot?.arrive !== undefined) {
       let tt = `${slot.inferred ? "≈" : ""}${fmtMin(slot.arrive)} ${t("arrive")}`;
-      if (slot.depart !== undefined) tt += ` · ${t("leave", { t: fmtMin(slot.depart) })} (${t("stay", { t: formatDuration(slot.dwellMin * 60) })})`;
+      if (slot.depart !== undefined && slot.dwellMin) tt += ` · ${t("leave", { t: fmtMin(slot.depart) })} (${t("stay", { t: formatDuration(slot.dwellMin * 60) })})`;
       body.createDiv({ cls: "wf-card-time", text: tt });
     }
     const warn = slot ? this.hoursWarning(stop, slot, date) : null;
@@ -339,7 +339,7 @@ export class WayfarerView extends ItemView {
 
   private drawLegend(it: Itinerary): void {
     for (const day of it.days) {
-      const chip = this.legendEl.createEl("button", { cls: "wf-chip", text: day.label || t("day", { n: day.index + 1 }) });
+      const chip = this.legendEl.createEl("button", { cls: "wf-chip", text: day.label || (day.headingLine === -1 ? t("other") : t("day", { n: day.index + 1 })) });
       chip.style.setProperty("--wf-color", dayColor(day.index));
       chip.toggleClass("is-active", this.activeDay === day.index);
       chip.toggleClass("is-pinned", this.pinnedDay === day.index);
@@ -394,27 +394,20 @@ export class WayfarerView extends ItemView {
     }
   }
 
-  /** The active day's stops as a vertical timeline; the whole trip when no day is active. */
+  /** The active day's stops as a vertical timeline in the left column; the whole trip when no day is active. */
   private drawStrip(it: Itinerary): void {
     const day = it.days.find((d) => d.index === this.activeDay);
     const days = day ? [day] : it.days;
     for (const d of days) {
       const color = dayColor(d.index);
       if (!day) {
-        const h = this.stripEl.createDiv({ cls: "wf-strip-day", text: d.label || t("day", { n: d.index + 1 }) });
+        const h = this.stripEl.createDiv({ cls: "wf-strip-day", text: d.label || t("other") });
         h.style.setProperty("--wf-color", color);
       }
       const { legs, slots, date } = this.plan(d);
       d.stops.forEach((stop, i) => {
-        if (i > 0) {
-          const leg = legs[i - 1];
-          const conn = this.stripEl.createDiv({ cls: `wf-leg${leg.lateBy > 0 ? " is-late" : ""}` });
-          conn.style.setProperty("--wf-color", color);
-          const text = `${TRANSPORT_EMOJI[leg.mode]} ${leg.source === "estimate" ? "≈" : ""}${formatDuration(leg.durationS)} · ${formatDistance(leg.distanceM)}${leg.summary ? " · " + leg.summary : ""}`;
-          conn.createSpan({ cls: "wf-leg-text", text });
-          if (leg.lateBy) conn.createSpan({ cls: "wf-leg-late", text: t("late_by", { n: leg.lateBy }) });
-          conn.setAttr("aria-label", legTooltip(leg));
-        }
+        if (i > 0) this.drawLegRow(legs[i - 1], color);
+        const slot = slots[i];
         const card = this.stripEl.createEl("button", { cls: "wf-stop" });
         card.style.setProperty("--wf-color", color);
         card.toggleClass("is-focus", stop === this.focused);
@@ -427,19 +420,25 @@ export class WayfarerView extends ItemView {
         const body = card.createDiv({ cls: "wf-stop-body" });
         const top = body.createDiv({ cls: "wf-stop-top" });
         top.createSpan({ cls: "wf-stop-n", text: String(i + 1) });
-        const slot = slots[i];
         if (slot.arrive !== undefined) top.createSpan({ cls: `wf-stop-time${slot.inferred ? " is-inferred" : ""}`, text: `${slot.inferred ? "≈" : ""}${fmtMin(slot.arrive)}` });
-        if (slot.dwellMin && i < d.stops.length - 1) top.createSpan({ cls: "wf-stop-dwell", text: t("stay", { t: formatDuration(slot.dwellMin * 60) }) });
         const main = body.createDiv({ cls: "wf-stop-main" });
         main.createSpan({ cls: "wf-stop-glyph", text: stop.emoji ?? CATEGORY_EMOJI[stop.category] });
         main.createSpan({ cls: "wf-stop-name", text: stop.name });
         const warn = this.hoursWarning(stop, slot, date);
         const note = subNote(stop);
-        if (warn) body.createDiv({ cls: "wf-stop-sub is-late", text: `⚠ ${warn}` });
-        else if (note) body.createDiv({ cls: "wf-stop-sub", text: note });
-        else if (stop.meta?.rating) body.createDiv({ cls: "wf-stop-sub", text: `★ ${stop.meta.rating.toFixed(1)}` });
+        const sub = body.createDiv({ cls: "wf-stop-sub" });
+        if (warn) sub.createSpan({ cls: "is-late", text: `⚠ ${warn}` });
+        else if (note) sub.createSpan({ text: note });
+        else if (stop.meta?.rating) sub.createSpan({ text: `★ ${stop.meta.rating.toFixed(1)}` });
+        if (i < d.stops.length - 1 && !(slot.dwellMin === 0 && stop.dwellMin === undefined)) {
+          const stay = sub.createEl("a", { cls: `wf-stay${slot.dwellMin === undefined ? " is-unset" : ""}`, text: slot.dwellMin === undefined ? t("set_stay") : t("stay", { t: formatDuration(slot.dwellMin * 60) }) });
+          stay.setAttr("aria-label", t("stay_hint"));
+          stay.onclick = (e) => {
+            e.stopPropagation();
+            this.pickStay(stay, stop, slot.dwellMin);
+          };
+        }
         card.draggable = true;
-        card.dataset.line = String(stop.line);
         card.ondragstart = (e) => { e.dataTransfer?.setData("text/plain", String(stop.line)); card.addClass("is-dragging"); };
         card.ondragend = () => card.removeClass("is-dragging");
         card.ondragover = (e) => { e.preventDefault(); card.addClass("is-drop"); };
@@ -461,6 +460,51 @@ export class WayfarerView extends ItemView {
         if (stop === this.focused) window.setTimeout(() => card.scrollIntoView({ block: "nearest", behavior: "smooth" }), 0);
       });
     }
+  }
+
+  /** The arrow between two cards. Clicking the transport emoji cycles the mode and writes it to the note. */
+  private drawLegRow(leg: Leg, color: string): void {
+    const conn = this.stripEl.createDiv({ cls: `wf-leg${leg.lateBy > 0 ? " is-late" : ""}` });
+    conn.style.setProperty("--wf-color", color);
+    const mode = conn.createEl("a", { cls: `wf-leg-mode is-${leg.to.transportSource}`, text: TRANSPORT_EMOJI[leg.mode] });
+    const src = t(leg.to.transportSource === "chosen" ? "via_chosen" : leg.to.transportSource === "words" ? "via_words" : "via_guessed");
+    mode.setAttr("aria-label", `${src}. ${t("via_hint")}`);
+    mode.onclick = (e) => {
+      e.stopPropagation();
+      this.pickTransport(mode, leg);
+    };
+    const text = `${leg.source === "estimate" ? "≈" : ""}${formatDuration(leg.durationS)} · ${formatDistance(leg.distanceM)}${leg.summary ? " · " + leg.summary : ""}`;
+    conn.createSpan({ cls: "wf-leg-text", text });
+    if (leg.lateBy) conn.createSpan({ cls: "wf-leg-late", text: t("late_by", { n: leg.lateBy }) });
+    conn.setAttr("aria-label", legTooltip(leg));
+  }
+
+  private pickTransport(anchor: HTMLElement, leg: Leg): void {
+    const modes: Transport[] = ["walk", "train", "bus", "car", "bike", "boat", "flight"];
+    this.popover(anchor, modes.map((m) => ({ label: `${TRANSPORT_EMOJI[m]} ${TRANSPORT_LABEL[m]}`, active: m === leg.mode, pick: () => this.plugin.setStopMeta(leg.to.line, { via: m }) })));
+  }
+
+  private pickStay(anchor: HTMLElement, stop: Stop, current: number | undefined): void {
+    const choices = [15, 30, 45, 60, 90, 120, 180, 240];
+    const items = choices.map((m) => ({ label: formatDuration(m * 60), active: m === current, pick: () => this.plugin.setStopMeta(stop.line, { stay: m }) }));
+    if (current !== undefined) items.push({ label: "✕", active: false, pick: () => this.plugin.setStopMeta(stop.line, { stay: undefined }) });
+    this.popover(anchor, items);
+  }
+
+  /** A small menu anchored under an element; one click picks and closes. */
+  private popover(anchor: HTMLElement, items: Array<{ label: string; active: boolean; pick: () => void }>): void {
+    this.contentEl.querySelector(".wf-popover")?.remove();
+    const pop = this.contentEl.createDiv({ cls: "wf-popover" });
+    for (const it of items) {
+      const b = pop.createEl("button", { cls: `wf-popover-item${it.active ? " is-active" : ""}`, text: it.label });
+      b.onclick = (e) => { e.stopPropagation(); pop.remove(); it.pick(); };
+    }
+    const a = anchor.getBoundingClientRect();
+    const r = this.contentEl.getBoundingClientRect();
+    pop.style.left = `${Math.max(4, a.left - r.left)}px`;
+    pop.style.top = `${a.bottom - r.top + 4}px`;
+    const close = (e: MouseEvent) => { if (!pop.contains(e.target as Node)) { pop.remove(); document.removeEventListener("mousedown", close, true); } };
+    window.setTimeout(() => document.addEventListener("mousedown", close, true), 0);
   }
 
   /* ---------- camera ---------- */

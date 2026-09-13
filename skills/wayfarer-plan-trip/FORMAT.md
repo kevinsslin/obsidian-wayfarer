@@ -45,7 +45,7 @@ locations:
 | ` · 🚶 34 分 · 2.5 km · ≈08:47 到` at line end | Written by the plugin's write-back command. Do not author by hand. |
 | Words before the link | Transport: 巴士/バス/bus, 走/步行/walk, 電車/新幹線/JR/地鐵/train, 計程車/taxi/開車, 飛/flight, 船/ferry, 自転車/bike. |
 | Emoji before the link | The pin's icon. Otherwise guessed from `tag:`, Google type, or name. |
-| `tag:stay` and other `tag:x` | Category hint and Map View compatibility. |
+| `tag:x` | Optional, for Map View compatibility only. |
 | Rest of the line | Shown as the note in the stop's card. |
 | `![[img.jpg]]` or image URL on the line or the next | Photo in the card. |
 | `%%wf:{…}%%` | Written by the plugin (rating, hours, address). Do not write by hand. |

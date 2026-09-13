@@ -21,6 +21,10 @@ export interface PlaceMeta {
   type?: string;
   /** Google photo resource name (`places/…/photos/…`), fetched with the user's key at render time. */
   photo?: string;
+  /** How the user gets here, chosen in the timeline. Wins over words on the line. */
+  via?: Transport;
+  /** Planned stay in minutes, chosen in the timeline. Wins over `~1h30` on the line. */
+  stay?: number;
 }
 
 export interface Stop {
@@ -39,8 +43,9 @@ export interface Stop {
   category: Category;
   /** Leading "HH:MM" on the line, if any. */
   time?: string;
-  /** How one gets here, read from the words before the link. */
+  /** How one gets here: chosen in the timeline, read from words before the link, or guessed from distance. */
   transport?: Transport;
+  transportSource: "chosen" | "words" | "guessed";
   /** Planned stay in minutes, from `~1h30` on the line. */
   dwellMin?: number;
   /** The line's prose with links reduced to their names and markup removed. */
@@ -73,7 +78,11 @@ export interface Itinerary {
 }
 
 export interface ParseOptions {
-  /** Headings at this level or shallower start a new day. Default 2 (`##`). */
+  /**
+   * Heading level that starts a day. Default 2 (`##`). Shallower headings
+   * (the note's title) do not start days. When the note has no heading at this
+   * level, any heading up to it counts, so a note written with `#` days works.
+   */
   maxHeadingLevel?: number;
 }
 
@@ -81,7 +90,8 @@ import { firstEmoji, pickCategory, transportFrom, type Category, type Transport 
 import { DWELL_RE, parseDwell, WRITTEN_LEG_RE } from "./schedule";
 
 const GEO_LINK = /\[([^\]]*)\]\(geo:(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)(?:[^)]*)\)/g;
-const TRAILER = /^((?:\s+tag:[^\s%]+)*)(\s*%%wf:(\{.*?\})%%)?/;
+const TRAILER = /^((?:\s+tag:[^\s%]+)*)/;
+const META = /%%wf:(\{.*?\})%%/;
 const HEADING = /^(#{1,6})\s+(.*?)\s*#*\s*$/;
 const FENCE = /^\s*(```|~~~)/;
 const TIME = /^\s*(?:[-*+]|\d+[.)])?\s*(?:\S\s+)?(\d{1,2}:\d{2})/u;
@@ -90,6 +100,8 @@ const IMAGE = /!\[\[([^\]|]+)(?:\|[^\]]*)?\]\]|!\[[^\]]*\]\((\S+?)\)/;
 export function parseItinerary(markdown: string, opts: ParseOptions = {}): Itinerary {
   const maxLevel = opts.maxHeadingLevel ?? 2;
   const lines = markdown.split("\n");
+  const hasExact = lines.some((l) => { const h = HEADING.exec(l); return h && h[1].length === maxLevel; });
+  const isDayHeading = (level: number) => (hasExact ? level === maxLevel : level <= maxLevel);
   const days: Day[] = [];
   let current: Day = { title: "", headingLine: -1, endLine: lines.length, stops: [], index: -1, label: "" };
   let inFence = false;
@@ -108,7 +120,7 @@ export function parseItinerary(markdown: string, opts: ParseOptions = {}): Itine
     if (inFence) continue;
 
     const h = HEADING.exec(line);
-    if (h && h[1].length <= maxLevel) {
+    if (h && isDayHeading(h[1].length)) {
       current.endLine = i;
       days.push(current);
       current = { title: h[2], headingLine: i, endLine: lines.length, stops: [], index: -1, label: dayLabel(h[2]) };
@@ -128,10 +140,14 @@ export function parseItinerary(markdown: string, opts: ParseOptions = {}): Itine
       const rest = line.slice(m.index + m[0].length);
       const t = TRAILER.exec(rest);
       const tags = (t?.[1] ?? "").split(/\s+/).filter((x) => x.startsWith("tag:")).map((x) => x.slice(4));
+      // metadata may sit anywhere after the link, before the next link
+      const nextLink = rest.search(/\[[^\]]*\]\(geo:/);
+      const scope = nextLink === -1 ? rest : rest.slice(0, nextLink);
       let meta: PlaceMeta | undefined;
-      if (t?.[3]) {
+      const mm = META.exec(scope);
+      if (mm) {
         try {
-          meta = JSON.parse(t[3]) as PlaceMeta;
+          meta = JSON.parse(mm[1]) as PlaceMeta;
         } catch {
           meta = undefined;
         }
@@ -151,8 +167,9 @@ export function parseItinerary(markdown: string, opts: ParseOptions = {}): Itine
         emoji: firstEmoji(before.replace(/\d{1,2}:\d{2}/, "")) ?? undefined,
         category: pickCategory({ tags, googleType: meta?.type, name }),
         time,
-        transport: transportFrom(before) ?? undefined,
-        dwellMin,
+        transport: meta?.via ?? transportFrom(before) ?? undefined,
+        transportSource: meta?.via ? "chosen" : transportFrom(before) ? "words" : "guessed",
+        dwellMin: meta?.stay ?? dwellMin,
         note: plainNote(line),
         image: image ? (image[1] ?? image[2]) : undefined,
         index: current.stops.length,
@@ -215,6 +232,35 @@ export function dayLabel(title: string): string {
   return title.length > 12 ? title.slice(0, 12) : title;
 }
 
+/**
+ * Returns the line with `patch` merged into its `%%wf:{}%%` comment, adding
+ * one after the link (and tags) when the line has none. Used when the user
+ * changes transport or stay in the timeline.
+ */
+export function patchLineMeta(line: string, patch: Partial<PlaceMeta>): string {
+  const mm = META.exec(line);
+  let meta: PlaceMeta = {};
+  if (mm) {
+    try { meta = JSON.parse(mm[1]) as PlaceMeta; } catch { meta = {}; }
+  }
+  for (const [k, v] of Object.entries(patch)) {
+    if (v === undefined || v === null) delete (meta as Record<string, unknown>)[k];
+    else (meta as Record<string, unknown>)[k] = v;
+  }
+  const text = Object.keys(meta).length ? `%%wf:${JSON.stringify(compactMeta(meta))}%%` : "";
+  if (mm) return (line.slice(0, mm.index) + text + line.slice(mm.index + mm[0].length)).replace(/\s{2,}/g, " ").replace(/\s+$/, "");
+  if (!text) return line;
+  GEO_LINK.lastIndex = 0;
+  let last: RegExpExecArray | null = null;
+  let m: RegExpExecArray | null;
+  while ((m = GEO_LINK.exec(line))) last = m;
+  if (!last) return line;
+  const after = last.index + last[0].length;
+  const tagsLen = TRAILER.exec(line.slice(after))?.[1].length ?? 0;
+  const at = after + tagsLen;
+  return `${line.slice(0, at)} ${text}${line.slice(at)}`;
+}
+
 /** Serialises a stop back to its inline form. */
 export function formatStop(name: string, lat: number, lng: number, tags: string[] = [], meta?: PlaceMeta, emoji?: string): string {
   const parts = [`${emoji ? emoji + " " : ""}[${name.replace(/[[\]]/g, "")}](geo:${round(lat)},${round(lng)})`];
@@ -232,6 +278,8 @@ function compactMeta(meta: PlaceMeta): PlaceMeta {
   if (meta.placeId) out.placeId = meta.placeId;
   if (meta.type) out.type = meta.type;
   if (meta.photo) out.photo = meta.photo;
+  if (meta.via) out.via = meta.via;
+  if (meta.stay !== undefined) out.stay = meta.stay;
   return out;
 }
 

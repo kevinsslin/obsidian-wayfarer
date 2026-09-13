@@ -1,6 +1,6 @@
 import { MarkdownView, Notice, Platform, Plugin, TFile, debounce, type Editor, type MarkdownFileInfo, type WorkspaceLeaf } from "obsidian";
 import { isGoogleMapsUrl } from "./core/gmaps-url";
-import { dayAtLine, parseItinerary, type Itinerary } from "./core/itinerary";
+import { dayAtLine, parseItinerary, patchLineMeta, type Itinerary, type PlaceMeta } from "./core/itinerary";
 import { ResolveError, resolveMapsUrl, type ResolveDeps } from "./core/resolve";
 import { expandShortUrl, googlePlaces, nominatim } from "./net";
 import { DEFAULT_SETTINGS, WayfarerSettingTab, type WayfarerSettings } from "./settings";
@@ -258,6 +258,16 @@ export default class WayfarerPlugin extends Plugin {
     new Notice(t("wrote_legs", { a: edits.length, b: n }));
   }
 
+  /** Merges `patch` into the `%%wf:{}%%` comment of the stop on `line`. */
+  setStopMeta(line: number, patch: Partial<PlaceMeta>): void {
+    const md = this.activeMarkdown();
+    if (!md) return;
+    const text = md.editor.getLine(line);
+    const next = patchLineMeta(text, patch);
+    if (next !== text) md.editor.replaceRange(next, { line, ch: 0 }, { line, ch: text.length });
+    this.refresh();
+  }
+
   /** Moves the stop line at `from` to sit where `to` is (before it when moving up, after it when moving down). */
   async moveStopLine(from: number, to: number): Promise<void> {
     const md = this.activeMarkdown();
@@ -311,10 +321,6 @@ export default class WayfarerPlugin extends Plugin {
     try {
       const place = await resolveMapsUrl(url, this.resolveDeps());
       const tags: string[] = [];
-      if (this.settings.addDayTag) {
-        const heading = headingIndexAtLine(editor.getValue(), line, this.settings.dayHeadingLevel);
-        if (heading >= 0) tags.push(`d${heading + 1}`);
-      }
       const lineText = editor.getLine(line);
       const hasEmoji = firstEmoji(lineText.slice(0, Math.max(0, lineText.indexOf(url)))) !== null;
       if (!replaceUrlInEditor(editor, line, url, stopText(place, tags, this.settings.addEmoji && !hasEmoji))) {
@@ -336,13 +342,4 @@ export default class WayfarerPlugin extends Plugin {
     }
     new Notice(n ? `Wayfarer: converted ${n} link${n === 1 ? "" : "s"}` : "Wayfarer: no Google Maps links in this note");
   }
-}
-
-/** Zero-based index (among day headings, in order) of the heading above `line`, or -1. */
-export function headingIndexAtLine(markdown: string, line: number, maxLevel: number): number {
-  const re = new RegExp(`^#{1,${maxLevel}}\\s`);
-  let idx = -1;
-  const lines = markdown.split("\n");
-  for (let i = 0; i <= line && i < lines.length; i++) if (re.test(lines[i])) idx++;
-  return idx;
 }
