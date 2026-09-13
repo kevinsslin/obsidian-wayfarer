@@ -102,6 +102,8 @@ export class WayfarerView extends ItemView {
     this.map.on("dragstart", () => (this.userMoved = true));
     this.map.on("zoomstart", () => { if (!this.flying) this.userMoved = true; });
     this.map.on("moveend zoomend", () => (this.flying = false));
+    // Arrowheads sit a fixed number of pixels before the pin, so they move with the zoom.
+    this.map.on("zoomend", () => this.draw());
 
     // Leaflet measures its container once; the pane can be resized or hidden.
     const ro = new ResizeObserver(() => this.map?.invalidateSize());
@@ -269,17 +271,27 @@ export class WayfarerView extends ItemView {
     if (this.plugin.settings.drawRoutes) {
       for (const leg of this.legsOf(day)) {
         const mode = leg.mode;
-        // A routed leg follows the road; an unrouted one is the straight line, drawn dashed so it never reads as a route.
-        const dash = !leg.routed ? "6 6" : mode === "walk" ? "1 5" : undefined;
-        const line = L.polyline(leg.geometry.map(([a, b]) => L.latLng(a, b)), {
-          color: leg.lateBy > 0 && !dim ? "#d0342c" : color,
-          weight: dim ? 2 : mode === "walk" ? 3.5 : 4,
-          opacity: dim ? 0.25 : leg.routed ? 0.85 : 0.5,
-          dashArray: dash,
+        const lineColor = leg.lateBy > 0 && !dim ? "#d0342c" : color;
+        // A routed leg follows the road; an unrouted one is the straight line, drawn thinner and lighter.
+        const pts = leg.geometry.map(([a, b]) => L.latLng(a, b));
+        const line = L.polyline(pts, {
+          color: lineColor,
+          weight: dim ? 2 : leg.routed ? (mode === "walk" ? 3.5 : 4) : 2.5,
+          opacity: dim ? 0.25 : leg.routed ? 0.85 : 0.55,
           lineCap: "round",
+          lineJoin: "round",
           className: cls,
         }).addTo(this.layer);
         if (!dim) line.bindTooltip(legTooltip(leg), { sticky: true, className: "wf-tooltip" });
+        this.drawArrow(pts, lineColor, cls);
+        if (mode && !dim) {
+          const mid = midpointOf(pts);
+          L.marker(mid, {
+            icon: L.divIcon({ className: `wf-leg-glyph ${cls}`, html: `<span style="--wf-color:${lineColor}">${TRANSPORT_EMOJI[mode]}</span>`, iconSize: [24, 24], iconAnchor: [12, 12] }),
+            interactive: true,
+            keyboard: false,
+          }).bindTooltip(legTooltip(leg), { className: "wf-tooltip", direction: "top", offset: [0, -10] }).addTo(this.layer);
+        }
       }
     }
     day.stops.forEach((stop, i) => {
@@ -345,6 +357,34 @@ export class WayfarerView extends ItemView {
     if (stop.meta?.website) actions.createEl("a", { cls: "wf-ext", text: t("website"), attr: { href: stop.meta.website } });
     actions.createEl("a", { text: t("to_line"), attr: { href: "#", "data-wf-jump": "1" } });
     return root;
+  }
+
+  /** An arrowhead on the line, 22 px before the destination pin so the pin does not cover it. */
+  private drawArrow(pts: L.LatLng[], color: string, cls: string): void {
+    if (!this.map || pts.length < 2) return;
+    const px = pts.map((p) => this.map!.latLngToLayerPoint(p));
+    let remaining = 22;
+    let i = px.length - 1;
+    let tip = px[i];
+    while (i > 0) {
+      const seg = px[i].distanceTo(px[i - 1]);
+      if (seg >= remaining) {
+        const f = remaining / seg;
+        tip = L.point(px[i].x + (px[i - 1].x - px[i].x) * f, px[i].y + (px[i - 1].y - px[i].y) * f);
+        break;
+      }
+      remaining -= seg;
+      i--;
+      tip = px[i];
+    }
+    if (i === 0) return;
+    const from = px[i - 1];
+    const angle = (Math.atan2(tip.y - from.y, tip.x - from.x) * 180) / Math.PI;
+    L.marker(this.map.layerPointToLatLng(tip), {
+      icon: L.divIcon({ className: `wf-arrow ${cls}`, html: `<span style="--wf-color:${color};transform:rotate(${angle}deg)"></span>`, iconSize: [14, 14], iconAnchor: [7, 7] }),
+      interactive: false,
+      keyboard: false,
+    }).addTo(this.layer);
   }
 
   private drawLegend(it: Itinerary): void {
@@ -548,6 +588,22 @@ export function stopNotes(stop: Stop): string[] {
   if (stop.time) rest = rest.replace(stop.time, " ");
   rest = rest.replace(/\s+/g, " ").trim().replace(/^[,，、:：]+|[,，、:：]+$/g, "").trim();
   return rest ? [rest, ...stop.notes] : [...stop.notes];
+}
+
+/** The point halfway along a polyline by length. */
+function midpointOf(pts: L.LatLng[]): L.LatLng {
+  let total = 0;
+  for (let i = 1; i < pts.length; i++) total += pts[i - 1].distanceTo(pts[i]);
+  let acc = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const seg = pts[i - 1].distanceTo(pts[i]);
+    if (acc + seg >= total / 2) {
+      const f = seg ? (total / 2 - acc) / seg : 0;
+      return L.latLng(pts[i - 1].lat + (pts[i].lat - pts[i - 1].lat) * f, pts[i - 1].lng + (pts[i].lng - pts[i - 1].lng) * f);
+    }
+    acc += seg;
+  }
+  return pts[Math.floor(pts.length / 2)];
 }
 
 function legTooltip(leg: Leg): string {

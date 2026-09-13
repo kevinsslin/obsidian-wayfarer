@@ -732,6 +732,19 @@ svg.leaflet-image-layer.leaflet-interactive path {
 
 /* ---------- pins ---------- */
 .wayfarer-view .wf-pin { background: transparent; border: 0; }
+.wayfarer-view .wf-arrow { background: transparent; border: 0; pointer-events: none; }
+.wayfarer-view .wf-arrow > span {
+  display: block; width: 14px; height: 14px;
+  background: var(--wf-color);
+  clip-path: polygon(0 15%, 100% 50%, 0 85%, 28% 50%);
+}
+.wayfarer-view .wf-arrow.wf-dim > span { opacity: 0.3; }
+.wayfarer-view .wf-leg-glyph { background: transparent; border: 0; }
+.wayfarer-view .wf-leg-glyph > span {
+  display: flex; align-items: center; justify-content: center; width: 24px; height: 24px;
+  border-radius: 50%; background: var(--background-primary); border: 2px solid var(--wf-color);
+  font-size: 13px; line-height: 1; box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+}
 .wayfarer-view .wf-pin-body {
   position: relative;
   display: flex;

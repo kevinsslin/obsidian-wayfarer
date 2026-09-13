@@ -13,7 +13,7 @@ locations:
 搭 19:19 的リバティけごん 47 號。
 
 - [東武日光站](geo:36.7509,139.6187)
-- 🏨 [日光ステーションホテルクラシック](geo:36.7512,139.6201) tag:stay
+- 🏨 [日光ステーションホテルクラシック](geo:36.7512,139.6201)
 
 ## 9/17 週四 上山，走戰場之原，睡湯元
 
@@ -22,7 +22,7 @@ locations:
     木道有時封閉，出發前看官網
 3. 12:52 🚌 [中禪寺湖](geo:36.7345,139.4823)
 4. [華嚴瀑布](geo:36.7383,139.5030) 最後上電梯 17:00
-5. 回 ♨️ [湯元溫泉](geo:36.7955,139.4247) tag:stay
+5. 回 ♨️ [湯元溫泉](geo:36.7955,139.4247)
 
 ## 9/27 週日 福岡
 
@@ -45,8 +45,7 @@ locations:
 | ` · 🚶 34 分 · 2.5 km` at line end | Written by the plugin's write-back command. Do not author by hand. |
 | Transport emoji before the link | How you get there: 🚶 walk, 🚲 bike, 🚗 car, 🚕 taxi, 🚌 bus, 🚆 🚄 🚃 train, 🚇 metro / MRT, 🚊 tram / light rail, ⛴️ boat, ✈️ flight. Words are not read; the user can also pick it on the arrow in the map pane, which is stored as `%%wf:{"via":"bus"}%%` on the line. |
 | Indented lines under a stop | The stop's notes, shown verbatim on its card and popup. No format inside them is interpreted. |
-| Emoji before the link | The pin's icon. Otherwise guessed from `tag:`, Google type, or name. |
-| `tag:x` | Optional, for Map View compatibility only. |
+| Emoji before the link | The pin's icon. Otherwise from the Google type or the name. |
 | Rest of the line | Shown as the note in the stop's card. |
 | `![[img.jpg]]` or image URL on the line or the next | Photo in the card. |
 | `%%wf:{…}%%` | Written by the plugin (rating, hours, address). Do not write by hand. |

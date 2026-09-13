@@ -280,10 +280,9 @@ export default class WayfarerPlugin extends Plugin {
   private async convert(editor: Editor, line: number, url: string): Promise<void> {
     try {
       const place = await resolveMapsUrl(url, this.resolveDeps());
-      const tags: string[] = [];
       const lineText = editor.getLine(line);
       const hasEmoji = firstEmoji(lineText.slice(0, Math.max(0, lineText.indexOf(url)))) !== null;
-      if (!replaceUrlInEditor(editor, line, url, stopText(place, tags, this.settings.addEmoji && !hasEmoji))) {
+      if (!replaceUrlInEditor(editor, line, url, stopText(place, this.settings.addEmoji && !hasEmoji))) {
         new Notice(`Wayfarer: the link moved before it resolved. ${place.name} is at ${place.lat}, ${place.lng}.`);
       }
     } catch (e) {

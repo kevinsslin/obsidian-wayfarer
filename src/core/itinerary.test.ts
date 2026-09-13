@@ -11,8 +11,8 @@ locations:
 ## 9/16 週三 日光市區
 
 搭 19:19 的車。
-- [東武日光站](geo:36.7509,139.6187) tag:d1
-- [日光ステーションホテル](geo:36.7512,139.6201) tag:d1 tag:stay %%wf:{"rating":4.1,"hours":["Monday: Open 24 hours"]}%%
+- [東武日光站](geo:36.7509,139.6187)
+- [日光ステーションホテル](geo:36.7512,139.6201) %%wf:{"rating":4.1,"hours":["Monday: Open 24 hours"]}%%
 
 ## 9/17 週四 上山
 
@@ -45,9 +45,8 @@ describe("parseItinerary", () => {
   it("skips fenced code and frontmatter", () => {
     expect(it_.stops.some((s) => s.name === "not a stop")).toBe(false);
   });
-  it("parses tags and metadata", () => {
+  it("parses metadata", () => {
     const hotel = it_.days[1].stops[1];
-    expect(hotel.tags).toEqual(["d1", "stay"]);
     expect(hotel.meta).toEqual({ rating: 4.1, hours: ["Monday: Open 24 hours"] });
     expect(it_.days[1].stops[0].meta).toBeUndefined();
   });
@@ -86,14 +85,14 @@ describe("dayLabel", () => {
 
 describe("formatStop", () => {
   it("round-trips through the parser", () => {
-    const text = formatStop("千光寺 [本堂]", 34.40891234567, 133.20445678, ["d3"], { rating: 4.55, hours: ["Mon: 9–17"], website: "https://x" });
-    expect(text).toBe('[千光寺 本堂](geo:34.408912,133.204457) tag:d3 %%wf:{"rating":4.6,"hours":["Mon: 9–17"],"website":"https://x"}%%');
+    const text = formatStop("千光寺 [本堂]", 34.40891234567, 133.20445678, { rating: 4.55, hours: ["Mon: 9–17"], website: "https://x" });
+    expect(text).toBe('[千光寺 本堂](geo:34.408912,133.204457) %%wf:{"rating":4.6,"hours":["Mon: 9–17"],"website":"https://x"}%%');
     const parsed = parseItinerary(text);
-    expect(parsed.stops[0]).toMatchObject({ name: "千光寺 本堂", lat: 34.408912, lng: 133.204457, tags: ["d3"] });
+    expect(parsed.stops[0]).toMatchObject({ name: "千光寺 本堂", lat: 34.408912, lng: 133.204457 });
     expect(parsed.stops[0].meta?.rating).toBe(4.6);
   });
   it("omits empty metadata", () => {
-    expect(formatStop("A", 1, 2, [], {})).toBe("[A](geo:1,2)");
+    expect(formatStop("A", 1, 2, {})).toBe("[A](geo:1,2)");
   });
 });
 
@@ -102,9 +101,9 @@ describe("meta placement and day headings", () => {
     const it2 = parseItinerary(`## 9/17\n- 走到 [赤沼](geo:1,2) 備註 %%wf:{"via":"bus"}%%`);
     const st = it2.stops[0];
     expect(st.transport).toBe("bus");
-    const patched = patchLineMeta(`- [赤沼](geo:1,2) tag:stay 備註`, { via: "walk" });
-    expect(patched).toBe(`- [赤沼](geo:1,2) tag:stay %%wf:{"via":"walk"}%% 備註`);
-    expect(patchLineMeta(patched, { via: undefined })).toBe(`- [赤沼](geo:1,2) tag:stay 備註`);
+    const patched = patchLineMeta(`- [赤沼](geo:1,2) 備註`, { via: "walk" });
+    expect(patched).toBe(`- [赤沼](geo:1,2) %%wf:{"via":"walk"}%% 備註`);
+    expect(patchLineMeta(patched, { via: undefined })).toBe(`- [赤沼](geo:1,2) 備註`);
     expect(patchLineMeta(`- [赤沼](geo:1,2) %%wf:{"rating":4.4}%%`, { via: "train" })).toBe(`- [赤沼](geo:1,2) %%wf:{"rating":4.4,"via":"train"}%%`);
   });
   it("treats only the configured level as days when it exists", () => {

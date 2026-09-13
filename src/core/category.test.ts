@@ -10,11 +10,10 @@ describe("firstEmoji", () => {
 });
 
 describe("category", () => {
-  it("prefers tags, then google type, then name", () => {
-    expect(pickCategory({ tags: ["stay"], googleType: "restaurant", name: "神社" })).toBe("stay");
-    expect(pickCategory({ tags: [], googleType: "japanese_restaurant", name: "神社" })).toBe("food");
-    expect(pickCategory({ tags: [], name: "根津神社" })).toBe("shrine");
-    expect(pickCategory({ tags: [], name: "somewhere" })).toBe("place");
+  it("prefers google type, then name", () => {
+    expect(pickCategory({ googleType: "japanese_restaurant", name: "神社" })).toBe("food");
+    expect(pickCategory({ name: "根津神社" })).toBe("shrine");
+    expect(pickCategory({ name: "somewhere" })).toBe("place");
   });
   it("maps names in three languages", () => {
     expect(categoryFromName("日光ステーションホテル")).toBe("stay");

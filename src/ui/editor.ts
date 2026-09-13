@@ -19,10 +19,10 @@ export function findMapsUrl(line: string): { url: string; from: number; to: numb
 }
 
 /** The line should be replaced in place; returns the new text for the span. */
-export function stopText(place: ResolvedPlace, tags: string[], withEmoji = true): string {
-  const cat = pickCategory({ tags, googleType: place.meta?.type, name: place.name });
+export function stopText(place: ResolvedPlace, withEmoji = true): string {
+  const cat = pickCategory({ googleType: place.meta?.type, name: place.name });
   const emoji = withEmoji && cat !== "place" ? CATEGORY_EMOJI[cat] : undefined;
-  return formatStop(place.name, place.lat, place.lng, tags, place.meta, emoji);
+  return formatStop(place.name, place.lat, place.lng, place.meta, emoji);
 }
 
 /**
@@ -44,7 +44,7 @@ export function replaceUrlInEditor(editor: Editor, line: number, url: string, re
 
 /* ---------- Live Preview decorations ---------- */
 
-const META_RE = /\[([^\]]*)\]\(geo:(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)[^)]*\)((?:\s+tag:\S+)*)(\s*%%wf:(\{.*?\})%%)/g;
+const META_RE = /\[([^\]]*)\]\(geo:(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)[^)]*\)(\s*%%wf:(\{.*?\})%%)/g;
 
 class MetaWidget extends WidgetType {
   constructor(private meta: PlaceMeta) {
@@ -94,12 +94,12 @@ export const metaDecorations = ViewPlugin.fromClass(
         META_RE.lastIndex = 0;
         let m: RegExpExecArray | null;
         while ((m = META_RE.exec(text))) {
-          const start = from + m.index + m[0].length - m[5].length;
+          const start = from + m.index + m[0].length - m[4].length;
           const end = from + m.index + m[0].length;
           if (view.state.doc.lineAt(start).number === cursorLine) continue;
           let meta: PlaceMeta;
           try {
-            meta = JSON.parse(m[6]) as PlaceMeta;
+            meta = JSON.parse(m[5]) as PlaceMeta;
           } catch {
             continue;
           }

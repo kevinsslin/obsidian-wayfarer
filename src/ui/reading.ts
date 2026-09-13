@@ -38,7 +38,7 @@ export const readingPostProcessor: MarkdownPostProcessor = (el, ctx) => {
 
 function metaFor(source: string, name: string, lat: string, lng: string): PlaceMeta | null {
   const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const re = new RegExp(`\\[${esc(name)}\\]\\(geo:${esc(lat)},${esc(lng)}[^)]*\\)(?:\\s+tag:\\S+)*\\s*%%wf:(\\{.*?\\})%%`);
+  const re = new RegExp(`\\[${esc(name)}\\]\\(geo:${esc(lat)},${esc(lng)}[^)]*\\)\\s*%%wf:(\\{.*?\\})%%`);
   const m = re.exec(source);
   if (!m) return null;
   try {

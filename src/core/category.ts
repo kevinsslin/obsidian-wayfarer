@@ -1,7 +1,7 @@
 /**
  * Stop categories. A category picks the emoji shown on the pin and in the
  * day strip. It comes, in order, from an emoji the user wrote before the
- * link, a `tag:` token, the Google primary type saved in the metadata, or
+ * link, the Google primary type saved in the metadata, or
  * keywords in the name.
  */
 
@@ -21,22 +21,6 @@ const EMOJI_RE = /\p{Extended_Pictographic}(?:️|‍\p{Extended_Pictographic})*
 export function firstEmoji(text: string): string | null {
   const m = EMOJI_RE.exec(text);
   return m ? m[0] : null;
-}
-
-const TAG_MAP: Record<string, Category> = {
-  stay: "stay", hotel: "stay", sleep: "stay", food: "food", eat: "food", lunch: "food", dinner: "food", breakfast: "food",
-  cafe: "cafe", coffee: "cafe", bar: "bar", drink: "bar", club: "nightlife", shrine: "shrine", temple: "temple",
-  museum: "museum", art: "museum", park: "park", nature: "nature", hike: "nature", onsen: "onsen", shop: "shop",
-  market: "market", station: "station", train: "station", airport: "airport", flight: "airport", port: "port",
-  view: "view", castle: "castle", event: "event", show: "event",
-};
-
-export function categoryFromTags(tags: string[]): Category | null {
-  for (const t of tags) {
-    const c = TAG_MAP[t.toLowerCase()];
-    if (c) return c;
-  }
-  return null;
 }
 
 /** Maps a Google Places (New) primaryType to a category. */
@@ -98,8 +82,8 @@ export function categoryFromName(name: string): Category | null {
   return null;
 }
 
-export function pickCategory(input: { tags: string[]; googleType?: string; name: string }): Category {
-  return categoryFromTags(input.tags) ?? categoryFromGoogleType(input.googleType) ?? categoryFromName(input.name) ?? "place";
+export function pickCategory(input: { googleType?: string; name: string }): Category {
+  return categoryFromGoogleType(input.googleType) ?? categoryFromName(input.name) ?? "place";
 }
 
 export type Transport = "walk" | "bike" | "car" | "taxi" | "bus" | "train" | "metro" | "tram" | "boat" | "flight";

@@ -2,7 +2,7 @@
  * Parses a note into days and stops.
  *
  * Stops are Map View compatible inline geolinks: `[Name](geo:lat,lng)`,
- * optionally followed by `tag:x` tokens and a `%%wf:{...}%%` metadata comment
+ * optionally followed by a `%%wf:{...}%%` metadata comment
  * that this plugin writes when it has place details.
  *
  * Days are headings. Every stop belongs to the nearest heading above it; stops
@@ -34,7 +34,6 @@ export interface Stop {
   /** Character offsets of the whole `[..](geo:..)` link within the line. */
   from: number;
   to: number;
-  tags: string[];
   meta?: PlaceMeta;
   /** Emoji the user wrote before the link on this line, if any. */
   emoji?: string;
@@ -86,7 +85,6 @@ export interface ParseOptions {
 import { firstEmoji, isTransportEmoji, pickCategory, transportEmoji, type Category, type Transport } from "./category";
 
 const GEO_LINK = /\[([^\]]*)\]\(geo:(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)(?:[^)]*)\)/g;
-const TRAILER = /^((?:\s+tag:[^\s%]+)*)/;
 const META = /%%wf:(\{.*?\})%%/;
 const HEADING = /^(#{1,6})\s+(.*?)\s*#*\s*$/;
 const FENCE = /^\s*(```|~~~)/;
@@ -133,8 +131,6 @@ export function parseItinerary(markdown: string, opts: ParseOptions = {}): Itine
       const lng = Number(m[3]);
       if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
       const rest = line.slice(m.index + m[0].length);
-      const t = TRAILER.exec(rest);
-      const tags = (t?.[1] ?? "").split(/\s+/).filter((x) => x.startsWith("tag:")).map((x) => x.slice(4));
       // metadata may sit anywhere after the link, before the next link
       const nextLink = rest.search(/\[[^\]]*\]\(geo:/);
       const scope = nextLink === -1 ? rest : rest.slice(0, nextLink);
@@ -158,10 +154,9 @@ export function parseItinerary(markdown: string, opts: ParseOptions = {}): Itine
         line: i,
         from: m.index,
         to: m.index + m[0].length,
-        tags,
         meta,
         emoji: emojiBefore && !isTransportEmoji(emojiBefore) ? emojiBefore : undefined,
-        category: pickCategory({ tags, googleType: meta?.type, name }),
+        category: pickCategory({ googleType: meta?.type, name }),
         time,
         transport: meta?.via ?? transportEmoji(before) ?? undefined,
         note: plainNote(line),
@@ -215,12 +210,11 @@ function imageBelow(lines: string[], line: number): RegExpExecArray | null {
   return null;
 }
 
-/** The line as prose: list marker, time, links (kept as names), tags, meta and images removed. */
+/** The line as prose: list marker, time, links (kept as names), meta and images removed. */
 export function plainNote(line: string): string {
   return line
     .replace(/^\s*(?:[-*+]|\d+[.)])\s*/, "")
     .replace(/%%wf:\{.*?\}%%/g, "")
-    .replace(/\s+tag:\S+/g, "")
     .replace(IMAGE, "")
     .replace(/\[([^\]]*)\]\(geo:[^)]*\)/g, "$1")
     .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
@@ -282,15 +276,13 @@ export function patchLineMeta(line: string, patch: Partial<PlaceMeta>): string {
   while ((m = GEO_LINK.exec(line))) last = m;
   if (!last) return line;
   const after = last.index + last[0].length;
-  const tagsLen = TRAILER.exec(line.slice(after))?.[1].length ?? 0;
-  const at = after + tagsLen;
+  const at = after;
   return `${line.slice(0, at)} ${text}${line.slice(at)}`;
 }
 
 /** Serialises a stop back to its inline form. */
-export function formatStop(name: string, lat: number, lng: number, tags: string[] = [], meta?: PlaceMeta, emoji?: string): string {
+export function formatStop(name: string, lat: number, lng: number, meta?: PlaceMeta, emoji?: string): string {
   const parts = [`${emoji ? emoji + " " : ""}[${name.replace(/[[\]]/g, "")}](geo:${round(lat)},${round(lng)})`];
-  for (const t of tags) parts.push(`tag:${t}`);
   if (meta && Object.keys(meta).length > 0) parts.push(`%%wf:${JSON.stringify(compactMeta(meta))}%%`);
   return parts.join(" ");
 }
