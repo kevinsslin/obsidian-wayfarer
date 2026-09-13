@@ -1,6 +1,6 @@
 import type { Transport } from "./category";
 import { t } from "./i18n";
-import type { Stop } from "./itinerary";
+import type { LegMeta, Stop } from "./itinerary";
 
 /**
  * One move between consecutive stops of a day. The mode is known only when
@@ -34,9 +34,31 @@ export function haversineM(a: { lat: number; lng: number }, b: { lat: number; ln
   return 2 * r * Math.asin(Math.sqrt(h));
 }
 
-/** A leg with only what is known before any router is asked. */
+/**
+ * A leg with what the note alone knows: the mode, the straight-line distance,
+ * and, when the stop carries a route saved for this same previous stop and
+ * mode, that route's duration, distance and line names.
+ */
 export function bareLeg(from: Stop, to: Stop): Leg {
-  return finishLeg({ from, to, mode: to.transport, distanceM: haversineM(from, to), routed: false, geometry: [[from.lat, from.lng], [to.lat, to.lng]] });
+  const straight: [number, number][] = [[from.lat, from.lng], [to.lat, to.lng]];
+  const saved = to.meta?.leg;
+  if (saved && to.transport && saved.via === to.transport && saved.from === coordKey(from)) {
+    return finishLeg({ from, to, mode: to.transport, distanceM: saved.m, durationS: saved.s, summary: saved.line, routed: true, source: "google", geometry: straight });
+  }
+  return finishLeg({ from, to, mode: to.transport, distanceM: haversineM(from, to), routed: false, geometry: straight });
+}
+
+/** Rounded coordinates that identify a stop in saved leg metadata. */
+export function coordKey(p: { lat: number; lng: number }): string {
+  return `${p.lat.toFixed(4)},${p.lng.toFixed(4)}`;
+}
+
+/** What to save on the destination stop after a route came back. */
+export function legMetaFor(from: Stop, leg: Pick<Leg, "durationS" | "distanceM" | "summary">, via: NonNullable<Stop["transport"]>): LegMeta | null {
+  if (leg.durationS === undefined) return null;
+  const out: LegMeta = { from: coordKey(from), via, s: Math.round(leg.durationS), m: Math.round(leg.distanceM) };
+  if (leg.summary) out.line = leg.summary;
+  return out;
 }
 
 /** Fills in lateness from the stops' written times, when the duration is known. */

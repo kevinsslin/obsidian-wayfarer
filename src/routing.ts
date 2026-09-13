@@ -1,6 +1,7 @@
 import { TRANSIT_MODES, type Transport } from "./core/category";
 import type { Day, Stop } from "./core/itinerary";
-import { bareLeg, finishLeg, legKey, type Leg } from "./core/legs";
+import { bareLeg, finishLeg, legKey, legMetaFor, type Leg } from "./core/legs";
+import type { LegMeta } from "./core/itinerary";
 import { googleRoute } from "./net";
 import type { WayfarerSettings } from "./settings";
 
@@ -14,7 +15,11 @@ export class LegRouter {
   private cache = new Map<string, Pick<Leg, "distanceM" | "durationS" | "geometry" | "summary" | "source">>();
   private inflight = new Set<string>();
 
-  constructor(private settings: () => WayfarerSettings, private onUpdate: () => void) {}
+  /**
+   * `onRouted` receives the destination stop's line and what to save on it,
+   * so the numbers travel with the note.
+   */
+  constructor(private settings: () => WayfarerSettings, private onUpdate: () => void, private onRouted?: (line: number, leg: LegMeta) => void) {}
 
   legsFor(day: Day, dayDate: Date | null): Leg[] {
     const legs: Leg[] = [];
@@ -31,6 +36,7 @@ export class LegRouter {
       const hit = this.cache.get(key);
       if (hit) legs.push(finishLeg({ ...leg, ...hit, routed: true }));
       else {
+        // Saved numbers show at once; the road geometry is still fetched once per session.
         legs.push(leg);
         if (!this.inflight.has(key)) missing.push({ from, to, mode: leg.mode, key, departure: departureFor(dayDate, from) });
       }
@@ -50,6 +56,9 @@ export class LegRouter {
           if (r) {
             this.cache.set(it.key, { ...r, source: "google" });
             changed = true;
+            const meta = legMetaFor(it.from, r, it.mode);
+            const saved = it.to.meta?.leg;
+            if (meta && this.onRouted && (!saved || saved.from !== meta.from || saved.via !== meta.via || saved.s !== meta.s || saved.m !== meta.m || saved.line !== meta.line)) this.onRouted(it.to.line, meta);
           }
         } catch {
           /* nothing to show; the leg keeps its distance only */

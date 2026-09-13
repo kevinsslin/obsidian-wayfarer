@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { setLocale } from "./i18n";
 import { parseItinerary } from "./itinerary";
-import { bareLeg, decodePolyline, finishLeg, formatDuration, haversineM, legText, minutesOf } from "./legs";
+import { bareLeg, coordKey, decodePolyline, finishLeg, formatDuration, haversineM, legMetaFor, legText, minutesOf } from "./legs";
 
 beforeAll(() => setLocale("zh-TW"));
 
@@ -36,6 +36,20 @@ describe("legs", () => {
     expect(formatDuration(59 * 60)).toBe("59 分");
     expect(formatDuration(125 * 60)).toBe("2 時 5 分");
     expect(legText(bareLeg(yudaki, akanuma))).toBe("2.3 km");
+  });
+  it("uses a saved route only for the same previous stop and mode", () => {
+    const saved = parseItinerary(`## 2026-09-17
+1. [湯滝](geo:36.7938,139.4316)
+2. [赤沼](geo:36.7754,139.4432) %%wf:{"via":"bus","leg":{"from":"36.7938,139.4316","via":"bus","s":900,"m":4100,"line":"日光 2 號"}}%%
+3. [中禪寺湖](geo:36.7345,139.4823) %%wf:{"via":"bus","leg":{"from":"0,0","via":"bus","s":900,"m":4100}}%%
+`).stops;
+    const ok = bareLeg(saved[0], saved[1]);
+    expect(ok).toMatchObject({ routed: true, durationS: 900, distanceM: 4100, summary: "日光 2 號", source: "google" });
+    const stale = bareLeg(saved[1], saved[2]);
+    expect(stale.routed).toBe(false);
+    expect(stale.durationS).toBeUndefined();
+    expect(legMetaFor(saved[0], { durationS: 899.6, distanceM: 4100.4, summary: "X" }, "bus")).toEqual({ from: coordKey(saved[0]), via: "bus", s: 900, m: 4100, line: "X" });
+    expect(legMetaFor(saved[0], { durationS: undefined, distanceM: 1 }, "bus")).toBeNull();
   });
   it("decodes a polyline", () => {
     const pts = decodePolyline("_p~iF~ps|U_ulLnnqC_mqNvxq`@");

@@ -18,3 +18,4 @@ data.json
 .DS_Store
 *.log
 test-vault/.obsidian/workspace*.json
+test-vault/*.kml

@@ -40,7 +40,13 @@ locations:
 
 ## Sharing a plan
 
-Send the `.md` file. Anyone with Obsidian and Wayfarer sees the same pins, order, times, notes and chosen transport, because all of it is in the file. Routes and Google photos are fetched again on their side with their own key; without one they see distances instead of routes. Without the plugin, the note is a plain, readable itinerary: the `%%wf:{…}%%` comments are hidden by Obsidian in Reading view.
+Send the `.md` file. Anyone with Obsidian and Wayfarer sees the same pins, order, times, notes, chosen transport and the routed times and distances, because all of it is in the file: when Google answers a route, its duration, distance and line names are saved on the destination stop's `%%wf:{…}%%` (tagged with the previous stop's coordinates, so a reordered stop drops the stale entry and refetches). Companions without a key see those numbers with a straight line; with a key they also get the road drawn and Google photos. Without the plugin, the note is a plain, readable itinerary: the `%%wf:{…}%%` comments are hidden by Obsidian in Reading view.
+
+## Taking it to Google Maps
+
+Run **Export to Google My Maps (KML)**. It writes `<note title>.kml` next to the note (`Japan 2026.kml` for a note called `Japan 2026`), one folder per day, one placemark per stop named `1. 07:53 🏞️ 湯滝` with your notes, hours, address and a Google Maps link in its description, pins in the day's colour. Then in [Google My Maps](https://mymaps.google.com): *Create a new map → Import → pick the file*. Each day becomes a layer you can switch on and off; the map appears in the Google Maps app under *Saved → Maps* and can be shared with companions.
+
+There is no API for writing into a Google account's saved places, so this is one-way and there is no sync: the note is the plan, the My Maps copy is a snapshot. After changing the plan, export again and replace the old map (delete its layers, import the new file). The file is regenerated in full every time, so two exports of the same note are identical.
 
 ## Google Maps links
 
@@ -69,6 +75,7 @@ The key is stored in this vault's `.obsidian/plugins/wayfarer/data.json`. It is 
 - **Insert day headings for a trip**
 - **Convert Google Maps link on this line to a stop**
 - **Convert every Google Maps link in this note**
+- **Export to Google My Maps (KML)**
 
 ## Settings
 

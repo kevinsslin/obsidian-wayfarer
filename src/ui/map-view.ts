@@ -3,7 +3,7 @@ import * as L from "leaflet";
 import { CATEGORY_EMOJI, TRANSPORT_EMOJI, type Transport } from "../core/category";
 import { dayColor } from "../core/colors";
 import { directionsUrl, placeUrl } from "../core/gmaps-out";
-import type { Day, Itinerary, Stop } from "../core/itinerary";
+import { stopNotes, type Day, type Itinerary, type Stop } from "../core/itinerary";
 import { legText, type Leg } from "../core/legs";
 import { checkHours, describeHours } from "../core/schedule";
 import { minutesOf } from "../core/legs";
@@ -586,18 +586,6 @@ export class WayfarerView extends ItemView {
     view.editor.setCursor(pos);
     view.editor.scrollIntoView({ from: pos, to: { line: stop.line, ch: stop.to } }, true);
   }
-}
-
-/**
- * The user's notes for a stop, verbatim: its line as prose (time removed,
- * the place name kept where it was written), then the indented lines under
- * it. A line that is nothing but the name adds nothing.
- */
-export function stopNotes(stop: Stop): string[] {
-  let line = stop.note;
-  if (stop.time) line = line.replace(stop.time, " ");
-  line = line.replace(/\s+/g, " ").trim();
-  return line && line !== stop.name ? [line, ...stop.notes] : [...stop.notes];
 }
 
 /** The point halfway along a polyline by length. */

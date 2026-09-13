@@ -21,8 +21,25 @@ export interface PlaceMeta {
   type?: string;
   /** Google photo resource name (`places/…/photos/…`), fetched with the user's key at render time. */
   photo?: string;
-  /** How the user gets here, chosen in the timeline. Wins over words on the line. */
+  /** How the user gets here, chosen in the timeline or written as an emoji before the link. */
   via?: Transport;
+  /**
+   * The route Google returned for the leg into this stop, kept so companions
+   * without a key see the same numbers. `from` is the previous stop's
+   * rounded coordinates: after a reorder it no longer matches and the entry
+   * is ignored and refetched.
+   */
+  leg?: LegMeta;
+}
+
+export interface LegMeta {
+  from: string;
+  via: Transport;
+  /** Duration in seconds and distance in metres. */
+  s: number;
+  m: number;
+  /** Transit line names, when any. */
+  line?: string;
 }
 
 export interface Stop {
@@ -321,9 +338,22 @@ function compactMeta(meta: PlaceMeta): PlaceMeta {
   if (meta.type) out.type = meta.type;
   if (meta.photo) out.photo = meta.photo;
   if (meta.via) out.via = meta.via;
+  if (meta.leg) out.leg = meta.leg;
   return out;
 }
 
 function round(n: number): string {
   return String(Math.round(n * 1e6) / 1e6);
+}
+
+/**
+ * The user's notes for a stop, verbatim: its line as prose (time removed,
+ * the place name kept where it was written), then the indented lines under
+ * it. A line that is nothing but the name adds nothing.
+ */
+export function stopNotes(stop: Stop): string[] {
+  let line = stop.note;
+  if (stop.time) line = line.replace(stop.time, " ");
+  line = line.replace(/\s+/g, " ").trim();
+  return line && line !== stop.name ? [line, ...stop.notes] : [...stop.notes];
 }

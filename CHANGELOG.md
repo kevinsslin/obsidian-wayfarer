@@ -12,6 +12,8 @@ First release.
 - Routes between stops from Google Routes when a key is set (walk, bike, drive, transit with line names), drawn along the way with the mode's emoji at the midpoint; distance only otherwise. Late warning when a routed leg cannot fit between two written times.
 - Opening-hours check against the written time for the heading's weekday.
 - Indented lines under a stop are its notes, shown verbatim.
+- Routed times, distances and line names are saved on the stop so companions without a key see them; stale after a reorder, then refetched.
+- "Export to Google My Maps (KML)": one folder per day, named after the note, regenerated in full each time.
 - `%%wf:{…}%%` metadata shown as a small chip in Live Preview and Reading view.
 - "Insert day headings for a trip" command writing `## YYYY-MM-DD 週X` headings.
 - Interface in English or Traditional Chinese, following Obsidian by default.

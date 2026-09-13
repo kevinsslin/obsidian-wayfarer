@@ -9,10 +9,11 @@ import { WayfarerView, VIEW_TYPE_WAYFARER } from "./ui/map-view";
 import { readingPostProcessor } from "./ui/reading";
 import { NewTripModal } from "./ui/new-trip-modal";
 import { tripSkeleton } from "./core/gmaps-out";
+import { tripKml } from "./core/kml";
 import { firstEmoji } from "./core/category";
 import { LegRouter } from "./routing";
 import { photoFor, type StopPhoto } from "./photos";
-import { getLocale, localeFor, setLocale } from "./core/i18n";
+import { getLocale, localeFor, setLocale, t } from "./core/i18n";
 
 /**
  * Wayfarer: the note is the plan, the pane is the map.
@@ -23,7 +24,11 @@ import { getLocale, localeFor, setLocale } from "./core/i18n";
 export default class WayfarerPlugin extends Plugin {
   settings: WayfarerSettings = { ...DEFAULT_SETTINGS };
   private views = new Set<WayfarerView>();
-  readonly router = new LegRouter(() => this.settings, () => { for (const v of this.views) v.redraw(); });
+  readonly router = new LegRouter(
+    () => this.settings,
+    () => { for (const v of this.views) v.redraw(); },
+    (line, leg) => this.setStopMeta(line, { leg }, true),
+  );
   photoFor(stop: Stop): StopPhoto | null {
     return photoFor(stop, this.settings, (link) => {
       const from = this.current?.file.path ?? "";
@@ -65,6 +70,11 @@ export default class WayfarerPlugin extends Plugin {
           const text = editor.getValue().trim() ? skeleton.replace(/^---\nlocations:\n---\n\n/, "") : skeleton;
           editor.replaceSelection(text);
         }).open(),
+    });
+    this.addCommand({
+      id: "export-kml",
+      name: "Export to Google My Maps (KML)",
+      editorCallback: (editor, ctx) => void this.exportKml(editor, ctx),
     });
     this.addCommand({
       id: "convert-all-maps-links",
@@ -207,13 +217,38 @@ export default class WayfarerPlugin extends Plugin {
     return first?.view instanceof MarkdownView ? first.view : null;
   }
 
+  /* ---------- export ---------- */
+
+  /**
+   * Writes `<note title>.kml` next to the note, one folder per day, for
+   * importing into Google My Maps. Every export regenerates the whole file:
+   * the note is the plan, the map on Google is a copy of it.
+   */
+  private async exportKml(editor: Editor, ctx: MarkdownView | MarkdownFileInfo): Promise<void> {
+    const file = ctx.file;
+    if (!file) return;
+    const it = parseItinerary(editor.getValue(), { maxHeadingLevel: this.settings.dayHeadingLevel });
+    if (it.stops.length === 0) {
+      new Notice(t("empty"));
+      return;
+    }
+    const kml = tripKml(it, file.basename, getLocale() === "en" ? "Day {n}" : "第 {n} 天");
+    const path = `${file.parent && file.parent.path !== "/" ? file.parent.path + "/" : ""}${file.basename}.kml`;
+    const existing = this.app.vault.getAbstractFileByPath(path);
+    if (existing instanceof TFile) await this.app.vault.modify(existing, kml);
+    else await this.app.vault.create(path, kml);
+    new Notice(t("kml_written", { f: path }), 12000);
+  }
+
   /* ---------- state chosen on the map ---------- */
 
   /** Merges `patch` into the `%%wf:{}%%` comment of the stop on `line`. */
-  setStopMeta(line: number, patch: Partial<PlaceMeta>): void {
+  setStopMeta(line: number, patch: Partial<PlaceMeta>, quiet = false): void {
     const md = this.activeMarkdown();
-    if (!md) return;
+    if (!md || (quiet && md.file?.path !== this.current?.file.path)) return;
     const text = md.editor.getLine(line);
+    // A background write must land on the line it was computed for.
+    if (quiet && !/\]\(geo:/.test(text)) return;
     const next = patchLineMeta(text, patch);
     if (next !== text) md.editor.replaceRange(next, { line, ch: 0 }, { line, ch: text.length });
     this.refresh();
