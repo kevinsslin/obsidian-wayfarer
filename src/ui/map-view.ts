@@ -5,7 +5,8 @@ import { dayColor } from "../core/colors";
 import { directionsUrl, placeUrl } from "../core/gmaps-out";
 import type { Day, Itinerary, Stop } from "../core/itinerary";
 import { daySummary, formatDistance, formatDuration, type Leg } from "../core/legs";
-import { buildSchedule, checkHours, describeHours, fmtMin, type Slot } from "../core/schedule";
+import { checkHours, describeHours } from "../core/schedule";
+import { minutesOf } from "../core/legs";
 import { dateFromLabel } from "../routing";
 import { t } from "../core/i18n";
 import type WayfarerPlugin from "../main";
@@ -194,18 +195,16 @@ export class WayfarerView extends ItemView {
     return this.plan(day).legs;
   }
 
-  /** Legs plus the inferred timetable; lateness on legs comes from the timetable. */
-  plan(day: Day): { legs: Leg[]; slots: Slot[]; date: Date | null } {
+  /** Legs for a day plus the date read from its heading. */
+  plan(day: Day): { legs: Leg[]; date: Date | null } {
     const date = dateFromLabel(day.label);
-    const legs = this.plugin.router.legsFor(day, date);
-    const slots = buildSchedule(day, legs);
-    legs.forEach((leg, i) => (leg.lateBy = slots[i + 1]?.lateBy ?? 0));
-    return { legs, slots, date };
+    return { legs: this.plugin.router.legsFor(day, date), date };
   }
 
-  private hoursWarning(stop: Stop, slot: Slot, date: Date | null): string | null {
+  /** Opening-hours problem for a stop with a written time, or null. */
+  private hoursWarning(stop: Stop, date: Date | null): string | null {
     if (!date || !stop.meta?.hours) return null;
-    const st = checkHours(stop.meta.hours, date.getDay(), slot.arrive, slot.dwellMin);
+    const st = checkHours(stop.meta.hours, date.getDay(), minutesOf(stop.time) ?? undefined);
     return st ? describeHours(st) : null;
   }
 
@@ -304,15 +303,9 @@ export class WayfarerView extends ItemView {
     if (stop.time) sub.push(stop.time);
     if (stop.transport) sub.push(TRANSPORT_EMOJI[stop.transport]);
     body.createDiv({ cls: "wf-card-sub", text: sub.join(" · ") });
-    const { slots, date } = this.plan(day);
-    const slot = slots[stop.index];
+    const { date } = this.plan(day);
     const facts: string[] = [];
-    if (slot?.arrive !== undefined) {
-      let tt = `${slot.inferred ? "≈" : ""}${fmtMin(slot.arrive)} ${t("arrive")}`;
-      if (slot.depart !== undefined && slot.dwellMin) tt += ` · ${t("leave", { t: fmtMin(slot.depart) })} (${t("stay", { t: formatDuration(slot.dwellMin * 60) })})`;
-      body.createDiv({ cls: "wf-card-time", text: tt });
-    }
-    const warn = slot ? this.hoursWarning(stop, slot, date) : null;
+    const warn = this.hoursWarning(stop, date);
     if (warn) body.createDiv({ cls: "wf-card-warn", text: `⚠ ${warn}` });
     if (stop.meta?.rating) facts.push(`★ ${stop.meta.rating.toFixed(1)}`);
     const today = todayHours(stop.meta?.hours);
@@ -363,14 +356,12 @@ export class WayfarerView extends ItemView {
     };
     const activeDay = it.days.find((d) => d.index === this.activeDay);
     if (activeDay) {
-      const { legs, slots, date } = this.plan(activeDay);
+      const { legs, date } = this.plan(activeDay);
       const sum = daySummary(activeDay, legs);
       const bits = [t("stops", { n: activeDay.stops.length }), t("moving", { t: formatDuration(sum.movingS) })];
-      const first = slots[0]?.arrive;
-      const last = slots[slots.length - 1]?.arrive;
-      if (first !== undefined && last !== undefined && slots.length > 1) bits.push(t("span", { a: fmtMin(first), b: `${slots[slots.length - 1].inferred ? "≈" : ""}${fmtMin(last)}` }));
+      if (sum.first && sum.last) bits.push(t("span", { a: sum.first, b: sum.last }));
       if (sum.late) bits.push(t("late_legs", { n: sum.late }));
-      const closed = activeDay.stops.filter((st, i) => this.hoursWarning(st, slots[i], date)).length;
+      const closed = activeDay.stops.filter((st) => this.hoursWarning(st, date)).length;
       if (closed) bits.push(t("hours_issues", { n: closed }));
       this.legendEl.createSpan({ cls: `wf-summary${sum.late || closed ? " is-late" : ""}`, text: bits.join(" · ") });
     }
@@ -404,10 +395,9 @@ export class WayfarerView extends ItemView {
         const h = this.stripEl.createDiv({ cls: "wf-strip-day", text: d.label || t("other") });
         h.style.setProperty("--wf-color", color);
       }
-      const { legs, slots, date } = this.plan(d);
+      const { legs, date } = this.plan(d);
       d.stops.forEach((stop, i) => {
         if (i > 0) this.drawLegRow(legs[i - 1], color);
-        const slot = slots[i];
         const card = this.stripEl.createEl("button", { cls: "wf-stop" });
         card.style.setProperty("--wf-color", color);
         card.toggleClass("is-focus", stop === this.focused);
@@ -420,24 +410,16 @@ export class WayfarerView extends ItemView {
         const body = card.createDiv({ cls: "wf-stop-body" });
         const top = body.createDiv({ cls: "wf-stop-top" });
         top.createSpan({ cls: "wf-stop-n", text: String(i + 1) });
-        if (slot.arrive !== undefined) top.createSpan({ cls: `wf-stop-time${slot.inferred ? " is-inferred" : ""}`, text: `${slot.inferred ? "≈" : ""}${fmtMin(slot.arrive)}` });
+        if (stop.time) top.createSpan({ cls: "wf-stop-time", text: stop.time });
         const main = body.createDiv({ cls: "wf-stop-main" });
         main.createSpan({ cls: "wf-stop-glyph", text: stop.emoji ?? CATEGORY_EMOJI[stop.category] });
         main.createSpan({ cls: "wf-stop-name", text: stop.name });
-        const warn = this.hoursWarning(stop, slot, date);
+        const warn = this.hoursWarning(stop, date);
         const note = subNote(stop);
         const sub = body.createDiv({ cls: "wf-stop-sub" });
         if (warn) sub.createSpan({ cls: "is-late", text: `⚠ ${warn}` });
         else if (note) sub.createSpan({ text: note });
         else if (stop.meta?.rating) sub.createSpan({ text: `★ ${stop.meta.rating.toFixed(1)}` });
-        if (i < d.stops.length - 1 && !(slot.dwellMin === 0 && stop.dwellMin === undefined)) {
-          const stay = sub.createEl("a", { cls: `wf-stay${slot.dwellMin === undefined ? " is-unset" : ""}`, text: slot.dwellMin === undefined ? t("set_stay") : t("stay", { t: formatDuration(slot.dwellMin * 60) }) });
-          stay.setAttr("aria-label", t("stay_hint"));
-          stay.onclick = (e) => {
-            e.stopPropagation();
-            this.pickStay(stay, stop, slot.dwellMin);
-          };
-        }
         card.draggable = true;
         card.ondragstart = (e) => { e.dataTransfer?.setData("text/plain", String(stop.line)); card.addClass("is-dragging"); };
         card.ondragend = () => card.removeClass("is-dragging");
@@ -482,13 +464,6 @@ export class WayfarerView extends ItemView {
   private pickTransport(anchor: HTMLElement, leg: Leg): void {
     const modes: Transport[] = ["walk", "train", "bus", "car", "bike", "boat", "flight"];
     this.popover(anchor, modes.map((m) => ({ label: `${TRANSPORT_EMOJI[m]} ${TRANSPORT_LABEL[m]}`, active: m === leg.mode, pick: () => this.plugin.setStopMeta(leg.to.line, { via: m }) })));
-  }
-
-  private pickStay(anchor: HTMLElement, stop: Stop, current: number | undefined): void {
-    const choices = [15, 30, 45, 60, 90, 120, 180, 240];
-    const items = choices.map((m) => ({ label: formatDuration(m * 60), active: m === current, pick: () => this.plugin.setStopMeta(stop.line, { stay: m }) }));
-    if (current !== undefined) items.push({ label: "✕", active: false, pick: () => this.plugin.setStopMeta(stop.line, { stay: undefined }) });
-    this.popover(anchor, items);
   }
 
   /** A small menu anchored under an element; one click picks and closes. */

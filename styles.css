@@ -870,7 +870,6 @@ svg.leaflet-image-layer.leaflet-interactive path {
   background: var(--wf-color); color: #fff; font-size: 9.5px; font-weight: 700;
 }
 .wayfarer-view .wf-stop-time { font-variant-numeric: tabular-nums; }
-.wayfarer-view .wf-stop-time.is-inferred { opacity: 0.7; }
 .wayfarer-view .wf-stop-main { display: flex; align-items: baseline; gap: 5px; min-width: 0; }
 .wayfarer-view .wf-stop-glyph { flex: 0 0 auto; font-size: 1em; }
 .wayfarer-view .wf-stop-name { flex: 1 1 auto; min-width: 0; font-size: var(--font-ui-small); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -878,9 +877,6 @@ svg.leaflet-image-layer.leaflet-interactive path {
 .wayfarer-view .wf-stop-sub > span { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .wayfarer-view .wf-stop-sub:empty { display: none; }
 .wayfarer-view .wf-stop-sub .is-late { color: #d0342c; }
-.wayfarer-view .wf-stay { flex: 0 0 auto; margin-left: auto; text-decoration: none; color: var(--text-muted); white-space: nowrap; border-bottom: 1px dotted var(--text-faint); }
-.wayfarer-view .wf-stay.is-unset { color: var(--text-faint); }
-.wayfarer-view .wf-stay:hover { color: var(--text-accent); }
 
 /* the arrow between two cards */
 .wayfarer-view .wf-leg {

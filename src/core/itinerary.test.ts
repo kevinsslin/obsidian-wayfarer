@@ -99,15 +99,14 @@ describe("formatStop", () => {
 
 describe("meta placement and day headings", () => {
   it("reads meta anywhere after the link and patches it", () => {
-    const it2 = parseItinerary(`## 9/17\n- 走到 [赤沼](geo:1,2) ~1h45 %%wf:{"via":"bus","stay":30}%%`);
+    const it2 = parseItinerary(`## 9/17\n- 走到 [赤沼](geo:1,2) 備註 %%wf:{"via":"bus"}%%`);
     const st = it2.stops[0];
     expect(st.transport).toBe("bus");
     expect(st.transportSource).toBe("chosen");
-    expect(st.dwellMin).toBe(30);
     const patched = patchLineMeta(`- [赤沼](geo:1,2) tag:stay 備註`, { via: "walk" });
     expect(patched).toBe(`- [赤沼](geo:1,2) tag:stay %%wf:{"via":"walk"}%% 備註`);
     expect(patchLineMeta(patched, { via: undefined })).toBe(`- [赤沼](geo:1,2) tag:stay 備註`);
-    expect(patchLineMeta(`- [赤沼](geo:1,2) %%wf:{"rating":4.4}%%`, { stay: 45 })).toBe(`- [赤沼](geo:1,2) %%wf:{"rating":4.4,"stay":45}%%`);
+    expect(patchLineMeta(`- [赤沼](geo:1,2) %%wf:{"rating":4.4}%%`, { via: "train" })).toBe(`- [赤沼](geo:1,2) %%wf:{"rating":4.4,"via":"train"}%%`);
   });
   it("treats only the configured level as days when it exists", () => {
     const it2 = parseItinerary(`# Trip\n[A](geo:1,1)\n## 9/16\n[B](geo:2,2)\n## 9/17\n[C](geo:3,3)`);

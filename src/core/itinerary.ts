@@ -23,8 +23,6 @@ export interface PlaceMeta {
   photo?: string;
   /** How the user gets here, chosen in the timeline. Wins over words on the line. */
   via?: Transport;
-  /** Planned stay in minutes, chosen in the timeline. Wins over `~1h30` on the line. */
-  stay?: number;
 }
 
 export interface Stop {
@@ -46,8 +44,6 @@ export interface Stop {
   /** How one gets here: chosen in the timeline, read from words before the link, or guessed from distance. */
   transport?: Transport;
   transportSource: "chosen" | "words" | "guessed";
-  /** Planned stay in minutes, from `~1h30` on the line. */
-  dwellMin?: number;
   /** The line's prose with links reduced to their names and markup removed. */
   note: string;
   /** Image on the same line or the line after: a vault `![[file]]` link or a URL. */
@@ -87,7 +83,7 @@ export interface ParseOptions {
 }
 
 import { firstEmoji, pickCategory, transportFrom, type Category, type Transport } from "./category";
-import { DWELL_RE, parseDwell, WRITTEN_LEG_RE } from "./schedule";
+import { WRITTEN_LEG_RE } from "./schedule";
 
 const GEO_LINK = /\[([^\]]*)\]\(geo:(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)(?:[^)]*)\)/g;
 const TRAILER = /^((?:\s+tag:[^\s%]+)*)/;
@@ -131,7 +127,6 @@ export function parseItinerary(markdown: string, opts: ParseOptions = {}): Itine
     let m: RegExpExecArray | null;
     let prevEnd = 0;
     const time = TIME.exec(line)?.[1];
-    const dwellMin = parseDwell(line);
     const image = IMAGE.exec(line) ?? (lines[i + 1] && !HEADING.test(lines[i + 1]) ? IMAGE.exec(lines[i + 1]) : null);
     while ((m = GEO_LINK.exec(line))) {
       const lat = Number(m[2]);
@@ -169,7 +164,6 @@ export function parseItinerary(markdown: string, opts: ParseOptions = {}): Itine
         time,
         transport: meta?.via ?? transportFrom(before) ?? undefined,
         transportSource: meta?.via ? "chosen" : transportFrom(before) ? "words" : "guessed",
-        dwellMin: meta?.stay ?? dwellMin,
         note: plainNote(line),
         image: image ? (image[1] ?? image[2]) : undefined,
         index: current.stops.length,
@@ -191,7 +185,6 @@ export function parseItinerary(markdown: string, opts: ParseOptions = {}): Itine
 export function plainNote(line: string): string {
   return line
     .replace(WRITTEN_LEG_RE, "")
-    .replace(DWELL_RE, " ")
     .replace(/^\s*(?:[-*+]|\d+[.)])\s*/, "")
     .replace(/%%wf:\{.*?\}%%/g, "")
     .replace(/\s+tag:\S+/g, "")
@@ -279,7 +272,6 @@ function compactMeta(meta: PlaceMeta): PlaceMeta {
   if (meta.type) out.type = meta.type;
   if (meta.photo) out.photo = meta.photo;
   if (meta.via) out.via = meta.via;
-  if (meta.stay !== undefined) out.stay = meta.stay;
   return out;
 }
 

@@ -77,7 +77,7 @@ export default class WayfarerPlugin extends Plugin {
     });
     this.addCommand({
       id: "write-legs",
-      name: "Write travel times and estimated arrivals into this note",
+      name: "Write travel times into this note",
       editorCallback: (editor) => this.writeLegs(editor),
     });
     this.addCommand({
@@ -227,9 +227,8 @@ export default class WayfarerPlugin extends Plugin {
   /* ---------- writing the plan back ---------- */
 
   /**
-   * Appends ` · 🚶 34 分 · 2.5 km · ≈10:05 到` to every stop that has a leg
-   * before it, replacing an earlier trailer. Times are inferred only where the
-   * line has none of its own, so the user's anchors stay untouched.
+   * Appends ` · 🚶 34 分 · 2.5 km` to every stop that has a leg before it,
+   * replacing an earlier trailer.
    */
   writeLegs(editor: Editor): void {
     const view = [...this.views][0];
@@ -241,13 +240,12 @@ export default class WayfarerPlugin extends Plugin {
     let n = 0;
     const edits: Array<{ line: number; text: string }> = [];
     for (const day of it.days) {
-      const { legs, slots } = view.plan(day);
+      const { legs } = view.plan(day);
       day.stops.forEach((stop, i) => {
         if (i === 0) return;
         const leg = legs[i - 1];
-        const slot = slots[i];
         const legText = `${TRANSPORT_EMOJI[leg.mode]} ${leg.source === "estimate" ? "≈" : ""}${formatDuration(leg.durationS)}`;
-        const trailer = legTrailer(legText, leg.source === "estimate" && leg.mode !== "walk" ? null : formatDistance(leg.distanceM), slot.arrive, slot.inferred);
+        const trailer = legTrailer(legText, leg.source === "estimate" && leg.mode !== "walk" ? null : formatDistance(leg.distanceM));
         const { base } = splitTrailer(editor.getLine(stop.line));
         const text = base.replace(/\s+$/, "") + trailer;
         if (text !== editor.getLine(stop.line)) edits.push({ line: stop.line, text });
