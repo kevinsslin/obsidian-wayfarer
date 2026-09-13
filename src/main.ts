@@ -11,6 +11,8 @@ import { NewTripModal } from "./ui/new-trip-modal";
 import { tripSkeleton } from "./core/gmaps-out";
 import { firstEmoji } from "./core/category";
 import { LegRouter } from "./routing";
+import { PhotoFinder } from "./photos";
+import type { FoundPhoto } from "./net";
 import { formatDistance, formatDuration } from "./core/legs";
 import { legTrailer, splitTrailer } from "./core/schedule";
 import { TRANSPORT_EMOJI } from "./core/category";
@@ -25,6 +27,18 @@ export default class WayfarerPlugin extends Plugin {
   settings: WayfarerSettings = { ...DEFAULT_SETTINGS };
   private views = new Set<WayfarerView>();
   readonly router = new LegRouter(() => this.settings, () => { for (const v of this.views) v.redraw(); });
+  private photoCache: Record<string, FoundPhoto | null> = {};
+  readonly photos = new PhotoFinder(
+    () => this.settings,
+    this.photoCache,
+    () => { for (const v of this.views) v.redraw(); },
+    debounce(() => void this.saveSettings(), 2000, true),
+    (link) => {
+      const from = this.current?.file.path ?? "";
+      const f = this.app.metadataCache.getFirstLinkpathDest(link, from);
+      return f ? this.app.vault.getResourcePath(f) : null;
+    },
+  );
   private current: { file: TFile; itinerary: Itinerary } | null = null;
 
   async onload(): Promise<void> {
@@ -88,10 +102,16 @@ export default class WayfarerPlugin extends Plugin {
   /* ---------- settings ---------- */
 
   async loadSettings(): Promise<void> {
-    this.settings = { ...DEFAULT_SETTINGS, ...((await this.loadData()) as Partial<WayfarerSettings> | null) };
+    const data = ((await this.loadData()) ?? {}) as Partial<WayfarerSettings> & { photoCache?: Record<string, FoundPhoto | null> };
+    const { photoCache, ...rest } = data;
+    this.settings = { ...DEFAULT_SETTINGS, ...rest };
+    if (photoCache) Object.assign(this.photoCache, photoCache);
   }
   async saveSettings(): Promise<void> {
-    await this.saveData(this.settings);
+    // keep the cache bounded; newest entries are at the end of insertion order
+    const keys = Object.keys(this.photoCache);
+    for (const k of keys.slice(0, Math.max(0, keys.length - 400))) delete this.photoCache[k];
+    await this.saveData({ ...this.settings, photoCache: this.photoCache });
   }
 
   /* ---------- map pane ---------- */

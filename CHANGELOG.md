@@ -15,4 +15,5 @@ First release.
 - `skills/wayfarer-plan-trip` skill for AI assistants, with the note format reference.
 - Routed legs between stops (OSRM for walking and driving, Google Routes for transit), midpoint labels, strip connectors, day summary, and late warnings from written times.
 - Timetable inference from written anchors and `~1h30` stays, opening-hours check per weekday, write-back command for legs and arrivals, drag to reorder stops in the strip.
+- Automatic photos from Wikipedia and Wikimedia Commons (no key), cached in plugin data; thumbnails in the strip.
 - Optional Google Places (New) resolution; Nominatim fallback for text-only links.

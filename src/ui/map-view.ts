@@ -8,7 +8,7 @@ import { daySummary, formatDistance, formatDuration, type Leg } from "../core/le
 import { buildSchedule, checkHours, describeHours, fmtMin, type Slot } from "../core/schedule";
 import { dateFromLabel } from "../routing";
 import type WayfarerPlugin from "../main";
-import { googlePhotoUrl } from "../net";
+
 
 export const VIEW_TYPE_WAYFARER = "wayfarer";
 
@@ -275,10 +275,12 @@ export class WayfarerView extends ItemView {
 
   private popupEl(day: Day, stop: Stop): HTMLElement {
     const root = createDiv({ cls: "wf-card" });
-    const img = this.imageUrl(stop);
-    if (img) {
-      const el = root.createEl("img", { cls: "wf-card-img", attr: { src: img, alt: "" } });
-      el.onerror = () => el.remove();
+    const photo = this.plugin.photos.get(stop);
+    if (photo) {
+      const wrap = root.createDiv({ cls: "wf-card-imgwrap" });
+      const el = wrap.createEl("img", { cls: "wf-card-img", attr: { src: photo.url, alt: "" } });
+      el.onerror = () => wrap.remove();
+      if (photo.credit) wrap.createSpan({ cls: "wf-card-credit", text: photo.credit });
     }
     const body = root.createDiv({ cls: "wf-card-body" });
     const title = body.createDiv({ cls: "wf-card-title" });
@@ -318,18 +320,6 @@ export class WayfarerView extends ItemView {
     if (stop.meta?.website) actions.createEl("a", { cls: "wf-ext", text: "網站 ↗", attr: { href: stop.meta.website } });
     actions.createEl("a", { text: "到這行", attr: { href: "#", "data-wf-jump": "1" } });
     return root;
-  }
-
-  /** A vault image (`![[file]]`), a URL, or the Google photo when a key is set. */
-  private imageUrl(stop: Stop): string | null {
-    if (stop.image) {
-      if (/^https?:\/\//.test(stop.image)) return stop.image;
-      const f = this.file ? this.plugin.app.metadataCache.getFirstLinkpathDest(stop.image, this.file.path) : null;
-      return f ? this.plugin.app.vault.getResourcePath(f) : null;
-    }
-    const key = this.plugin.settings.googleApiKey;
-    if (stop.meta?.photo && key) return googlePhotoUrl(key, stop.meta.photo);
-    return null;
   }
 
   private drawLegend(it: Itinerary): void {
@@ -407,6 +397,12 @@ export class WayfarerView extends ItemView {
         const card = this.stripEl.createEl("button", { cls: "wf-stop" });
         card.style.setProperty("--wf-color", dayColor(d.index));
         card.toggleClass("is-focus", stop === this.focused);
+        const photo = this.plugin.photos.get(stop);
+        if (photo) {
+          const th = card.createEl("img", { cls: "wf-stop-thumb", attr: { src: photo.url, alt: "", loading: "lazy" } });
+          th.onerror = () => th.remove();
+          card.addClass("has-thumb");
+        }
         const top = card.createDiv({ cls: "wf-stop-top" });
         top.createSpan({ cls: "wf-stop-n", text: String(i + 1) });
         const slot = slots[i];

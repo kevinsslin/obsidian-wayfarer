@@ -14,6 +14,8 @@ export interface WayfarerSettings {
   addDayTag: boolean;
   /** Prefix converted stops with a category emoji (⛩️ 🍜 🏨 ...). */
   addEmoji: boolean;
+  /** Look up a photo for every stop from Wikipedia and Wikimedia Commons; Google when a key is set. */
+  autoPhotos: boolean;
   /** The map flies to the stop on the cursor line. */
   followCursor: boolean;
   /** Raster tile URL template. */
@@ -37,6 +39,7 @@ export const DEFAULT_SETTINGS: WayfarerSettings = {
   addDayTag: false,
   addEmoji: true,
   followCursor: true,
+  autoPhotos: true,
   tileUrl: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
   tileAttribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
   drawRoutes: true,
@@ -78,6 +81,11 @@ export class WayfarerSettingTab extends PluginSettingTab {
       .setName("Add a category emoji to converted stops")
       .setDesc("⛩️ 🍜 🏨 🚉 and so on, guessed from the place type or name. Your own emoji before the link always wins.")
       .addToggle((t) => t.setValue(s.addEmoji).onChange((v) => { s.addEmoji = v; save(); }));
+
+    new Setting(containerEl)
+      .setName("Find photos automatically")
+      .setDesc("Wikipedia and Wikimedia Commons, no key needed. With a Google key, Google's own place photo is used first. An image you put on the stop's line always wins.")
+      .addToggle((t) => t.setValue(s.autoPhotos).onChange((v) => { s.autoPhotos = v; save(); this.plugin.refresh(); }));
 
     new Setting(containerEl)
       .setName("Map follows the cursor")
