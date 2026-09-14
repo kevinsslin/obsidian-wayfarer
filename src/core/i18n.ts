@@ -50,6 +50,7 @@ export function localeFor(code: string | null | undefined): Locale {
 
 export function t(key: StringKey, vars: Record<string, string | number> = {}): string {
   let s: string = TABLE[current][key] ?? TABLE.en[key];
-  for (const [k, v] of Object.entries(vars)) s = s.replace(`{${k}}`, String(v));
+  // split/join rather than replace: a value with `$&` or `$'` in it (a stop name) must come through as written
+  for (const [k, v] of Object.entries(vars)) s = s.split(`{${k}}`).join(String(v));
   return s;
 }

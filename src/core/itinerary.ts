@@ -117,7 +117,7 @@ import { TRANSPORT_EMOJI, firstEmoji, isTransportEmoji, pickCategory, transportE
 const GEO_LINK = /\[([^\]]*)\]\(geo:(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)(?:[^)]*)\)/g;
 const META = /%%wf:(\{.*?\})%%/;
 const HEADING = /^(#{1,6})\s+(.*?)\s*#*\s*$/;
-const FENCE = /^\s*(```|~~~)/;
+const FENCE = /^\s*(`{3,}|~{3,})/;
 // list marker, optional task box, optional emoji (with its variation selector or joined sequence), then the time
 const TIME = /^\s*(?:[-*+]|\d+[.)])?\s*(?:\[[ xX]\]\s*)?(?:\S(?:\uFE0F|\u200D\S)*\s+)?(\d{1,2}:\d{2})/u;
 const IMAGE = /!\[\[([^\]|]+)(?:\|[^\]]*)?\]\]|!\[[^\]]*\]\((\S+?)\)/;
@@ -129,7 +129,7 @@ export function parseItinerary(markdown: string, opts: ParseOptions = {}): Itine
   const isDayHeading = (level: number) => (hasExact ? level === maxLevel : level <= maxLevel);
   const days: Day[] = [];
   let current: Day = { title: "", headingLine: -1, endLine: lines.length, stops: [], index: -1, label: "", date: null, dateEnd: null };
-  let inFence = false;
+  let fence = "";
   let inComment = false;
   let inFrontmatter = lines[0] === "---";
   let timezone: string | undefined;
@@ -146,11 +146,12 @@ export function parseItinerary(markdown: string, opts: ParseOptions = {}): Itine
       }
       continue;
     }
-    if (FENCE.test(raw)) {
-      inFence = !inFence;
+    const f = FENCE.exec(raw)?.[1];
+    if (f && (fence ? closesFence(f, fence) : true)) {
+      fence = fence ? "" : f;
       continue;
     }
-    if (inFence) continue;
+    if (fence) continue;
     // Obsidian comments are not part of the plan; the plugin's own `%%wf:{}%%` comments are kept.
     const stripped = stripComments(raw, inComment);
     inComment = stripped.inComment;
@@ -173,12 +174,14 @@ export function parseItinerary(markdown: string, opts: ParseOptions = {}): Itine
     let m: RegExpExecArray | null;
     let prevEnd = 0;
     const time = TIME.exec(line)?.[1];
-    const image = IMAGE.exec(line) ?? imageBelow(lines, i);
+    let image: RegExpExecArray | null | undefined;
     while ((m = GEO_LINK.exec(line))) {
       const lat = Number(m[2]);
       const lng = Number(m[3]);
       if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
       noteBase = indent;
+      // Looked for only on a line that is a stop; the lines under a plain bullet are not scanned.
+      if (image === undefined) image = IMAGE.exec(line) ?? imageBelow(lines, i);
       const rest = line.slice(m.index + m[0].length);
       // metadata may sit anywhere after the link, before the next link
       const nextLink = rest.search(/\[[^\]]*\]\(geo:/);
@@ -269,17 +272,26 @@ function indentWidth(l: string): number {
   return (/^\s*/.exec(l) as RegExpExecArray)[0].replace(/\t/g, "    ").length;
 }
 
-/** Heading levels present outside fenced blocks and frontmatter. */
+/** A fence closes on the same character, at least as long as the one that opened it. */
+function closesFence(candidate: string, open: string): boolean {
+  return candidate[0] === open[0] && candidate.length >= open.length;
+}
+
+/** Heading levels present outside fenced blocks, comments and frontmatter. */
 function headingLevels(lines: string[]): Set<number> {
   const out = new Set<number>();
-  let inFence = false;
+  let fence = "";
+  let inComment = false;
   let inFrontmatter = lines[0] === "---";
   for (let i = 0; i < lines.length; i++) {
     const l = lines[i];
     if (inFrontmatter) { if (i > 0 && l.trim() === "---") inFrontmatter = false; continue; }
-    if (FENCE.test(l)) { inFence = !inFence; continue; }
-    if (inFence) continue;
-    const h = HEADING.exec(l);
+    const f = FENCE.exec(l)?.[1];
+    if (f && (fence ? closesFence(f, fence) : true)) { fence = fence ? "" : f; continue; }
+    if (fence) continue;
+    const stripped = stripComments(l, inComment);
+    inComment = stripped.inComment;
+    const h = HEADING.exec(stripped.text);
     if (h) out.add(h[1].length);
   }
   return out;
@@ -501,13 +513,14 @@ export function parseMeta(json: string): PlaceMeta | undefined {
   const out: PlaceMeta = {};
   if (typeof r.rating === "number" && Number.isFinite(r.rating)) out.rating = r.rating;
   if (Array.isArray(r.hours) && r.hours.every((h) => typeof h === "string")) out.hours = r.hours as string[];
-  for (const k of ["address", "website", "placeId", "type", "photo", "via"] as const) {
+  for (const k of ["address", "website", "placeId", "type", "photo"] as const) {
     if (typeof r[k] === "string") (out as Record<string, unknown>)[k] = r[k];
   }
+  if (typeof r.via === "string" && r.via in TRANSPORT_EMOJI) out.via = r.via as Transport;
   const leg = r.leg;
   if (leg && typeof leg === "object" && !Array.isArray(leg)) {
     const l = leg as Record<string, unknown>;
-    if (typeof l.from === "string" && typeof l.via === "string" && typeof l.s === "number" && typeof l.m === "number") {
+    if (typeof l.from === "string" && typeof l.via === "string" && l.via in TRANSPORT_EMOJI && typeof l.s === "number" && typeof l.m === "number") {
       const saved: LegMeta = { from: l.from, via: l.via as Transport, s: l.s, m: l.m };
       if (typeof l.line === "string") saved.line = l.line;
       if (typeof l.p === "string") saved.p = l.p;

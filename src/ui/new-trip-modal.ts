@@ -2,7 +2,7 @@ import { App, Modal, Setting } from "obsidian";
 
 /** Asks for a start date and a length, then hands back the pair. */
 export class NewTripModal extends Modal {
-  private start = new Date().toISOString().slice(0, 10);
+  private start = localDate(new Date());
   private days = 7;
 
   constructor(app: App, private onSubmit: (start: Date, days: number) => void) {
@@ -19,7 +19,8 @@ export class NewTripModal extends Modal {
       t.inputEl.type = "number";
       t.inputEl.min = "1";
       t.inputEl.max = "60";
-      t.setValue(String(this.days)).onChange((v) => (this.days = Math.max(1, Math.min(60, Number(v) || 1))));
+      t.inputEl.step = "1";
+      t.setValue(String(this.days)).onChange((v) => (this.days = Math.max(1, Math.min(60, Math.floor(Number(v)) || 1))));
     });
     new Setting(this.contentEl).addButton((b) =>
       b.setButtonText("Insert day headings").setCta().onClick(() => {
@@ -30,4 +31,10 @@ export class NewTripModal extends Modal {
       }),
     );
   }
+}
+
+/** Today as the calendar reads it here, not in UTC. */
+function localDate(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }

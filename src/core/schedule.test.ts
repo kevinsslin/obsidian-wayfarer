@@ -35,3 +35,12 @@ describe("zonedTime", () => {
     expect(zonedTime(2026, 0, 1, 12, 0, "Mars/Olympus")).toBeNull();
   });
 });
+
+describe("checkHours across midnight", () => {
+  const hours = ["Monday: 6:00 PM – 2:00 AM", "Tuesday: Closed", "Wednesday: 9:00 AM – 5:00 PM"];
+  it("is open at 01:00 Tuesday because Monday runs past midnight", () => {
+    expect(checkHours(hours, 2, 60)).toEqual({ kind: "ok" });
+    expect(checkHours(hours, 2, 3 * 60)).toEqual({ kind: "closed-day" });
+    expect(checkHours(hours, 3, 8 * 60)).toEqual({ kind: "not-open-yet", opensAt: 9 * 60 });
+  });
+});

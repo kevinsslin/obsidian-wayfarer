@@ -74,6 +74,12 @@ export function checkHours(hours: string[] | undefined, weekday: number, arrive:
   if (!line || arrive === undefined) return null;
   const dh = parseDayHours(line);
   if (dh.unknown) return null;
+  // A place open past midnight the day before is open now, whatever today's line says.
+  const prev = hoursForWeekday(hours, (weekday + 6) % 7);
+  if (prev) {
+    const pd = parseDayHours(prev);
+    if (!pd.unknown && !pd.closed && !pd.allDay && pd.ranges.some(([o, c]) => c > 1440 && arrive + 1440 >= o && arrive + 1440 < c)) return { kind: "ok" };
+  }
   if (dh.closed) return { kind: "closed-day" };
   if (dh.allDay) return { kind: "ok" };
   const inside = dh.ranges.find(([o, c]) => arrive >= o && arrive < c);

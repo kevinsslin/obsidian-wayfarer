@@ -54,11 +54,12 @@ export function replaceUrlInEditor(editor: Editor, line: number, url: string, re
 const META_RE = /\[([^\]]*)\]\(geo:(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)[^)]*\)(\s*%%wf:(\{.*?\})%%)/g;
 
 class MetaWidget extends WidgetType {
-  constructor(private meta: PlaceMeta) {
+  /** Keeps the raw JSON: comparing strings is what CodeMirror does on every update, parsing happens once per drawn widget. */
+  constructor(private json: string, private meta: PlaceMeta) {
     super();
   }
   eq(other: MetaWidget): boolean {
-    return JSON.stringify(other.meta) === JSON.stringify(this.meta);
+    return other.json === this.json;
   }
   toDOM(): HTMLElement {
     const el = document.createElement("span");
@@ -87,15 +88,19 @@ class MetaWidget extends WidgetType {
 export const metaDecorations = ViewPlugin.fromClass(
   class {
     decorations: DecorationSet;
+    private cursorLine = -1;
     constructor(view: EditorView) {
       this.decorations = this.build(view);
     }
     update(u: ViewUpdate): void {
-      if (u.docChanged || u.viewportChanged || u.selectionSet) this.decorations = this.build(u.view);
+      // The cursor line is the one line shown raw, so a move within the same line changes nothing.
+      const line = u.view.state.doc.lineAt(u.view.state.selection.main.head).number;
+      if (u.docChanged || u.viewportChanged || (u.selectionSet && line !== this.cursorLine)) this.decorations = this.build(u.view);
     }
     build(view: EditorView): DecorationSet {
       const b = new RangeSetBuilder<Decoration>();
       const cursorLine = view.state.doc.lineAt(view.state.selection.main.head).number;
+      this.cursorLine = cursorLine;
       for (const { from, to } of view.visibleRanges) {
         const text = view.state.doc.sliceString(from, to);
         META_RE.lastIndex = 0;
@@ -106,7 +111,7 @@ export const metaDecorations = ViewPlugin.fromClass(
           if (view.state.doc.lineAt(start).number === cursorLine) continue;
           const meta = parseMeta(m[5]);
           if (!meta) continue;
-          b.add(start, end, Decoration.replace({ widget: new MetaWidget(meta) }));
+          b.add(start, end, Decoration.replace({ widget: new MetaWidget(m[5], meta) }));
         }
       }
       return b.finish();

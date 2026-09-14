@@ -26,7 +26,13 @@ export class WayfarerView extends ItemView {
   private map: L.Map | null = null;
   private tiles: L.TileLayer | null = null;
   private layer: L.LayerGroup = L.layerGroup();
+  /** Arrowheads live apart from the rest: they sit a fixed number of pixels before the pin, so only they move with the zoom. */
+  private arrows: L.LayerGroup = L.layerGroup();
+  private arrowSpecs: Array<[L.LatLng[], string, string]> = [];
   private markers = new Map<Stop, L.Marker>();
+  /** Legs and dates per day, computed once per draw and reused by the map, the strip and the popups. */
+  private plans = new Map<Day, { legs: Leg[]; date: Date | null }>();
+  private tilesKey = "";
   private legendEl!: HTMLElement;
   private mapEl!: HTMLElement;
   private stripEl!: HTMLElement;
@@ -36,6 +42,8 @@ export class WayfarerView extends ItemView {
   private activeDay = -1;
   /** Day pinned by clicking the legend; -1 follows the cursor. */
   private pinnedDay = -1;
+  /** The pinned day's heading line: the index shifts when days appear or vanish, the heading does not. */
+  private pinnedHeading: number | null = null;
   private focused: Stop | null = null;
   private fittedFor: string | null = null;
   /** Set while the user pans; cleared when the cursor moves to another line. */
@@ -110,16 +118,11 @@ export class WayfarerView extends ItemView {
     this.map.setView([35.68, 139.76], 5);
     this.applyTiles();
     this.layer.addTo(this.map);
+    this.arrows.addTo(this.map);
     this.map.on("dragstart", () => (this.userMoved = true));
     this.map.on("zoomstart", () => { if (!this.flying) this.userMoved = true; });
     this.map.on("moveend zoomend", () => (this.flying = false));
-    // Arrowheads sit a fixed number of pixels before the pin, so they move with the zoom.
-    // The rebuild removes the markers, and with them an open popup, so put the focused one back.
-    this.map.on("zoomend", () => {
-      const keep = this.focused && this.markers.get(this.focused)?.isPopupOpen() ? this.focused : null;
-      this.draw();
-      if (keep) this.openPopup(keep);
-    });
+    this.map.on("zoomend", () => this.redrawArrows());
 
     // Leaflet measures its container once; the pane can be resized or hidden.
     const ro = new ResizeObserver(() => this.map?.invalidateSize());
@@ -135,8 +138,6 @@ export class WayfarerView extends ItemView {
         window.open(a.href);
         return;
       }
-      const jump = t.closest?.("[data-wf-jump]");
-      if (jump instanceof HTMLElement && this.focused) void this.jumpTo(this.focused);
     });
 
     this.plugin.attachView(this);
@@ -164,6 +165,9 @@ export class WayfarerView extends ItemView {
 
   applyTiles(): void {
     if (!this.map) return;
+    const key = `${this.plugin.settings.tileUrl}|${this.plugin.settings.tileAttribution}`;
+    if (key === this.tilesKey) return;
+    this.tilesKey = key;
     this.tiles?.remove();
     this.tiles = L.tileLayer(this.plugin.settings.tileUrl, {
       attribution: this.plugin.settings.tileAttribution,
@@ -175,20 +179,31 @@ export class WayfarerView extends ItemView {
   render(file: TFile | null, itinerary: Itinerary | null, cursorDay: number): void {
     if (!this.map) return;
     const fileChanged = file?.path !== this.file?.path;
+    const prevItinerary = this.itinerary;
+    const prevFocused = this.focused;
     this.file = file;
     this.itinerary = itinerary;
     if (fileChanged) {
-      this.pinnedDay = -1;
+      this.pinnedHeading = null;
       this.focused = null;
       this.userMoved = false;
     }
+    const pinned = this.pinnedHeading === null ? undefined : itinerary?.days.find((d) => d.headingLine === this.pinnedHeading);
+    if (!pinned) this.pinnedHeading = null;
+    this.pinnedDay = pinned ? pinned.index : -1;
     this.activeDay = this.pinnedDay >= 0 ? this.pinnedDay : cursorDay;
     if (this.focused) this.focused = this.sameStop(this.focused);
     (this.leaf as WorkspaceLeaf & { updateHeader?: () => void }).updateHeader?.();
+    this.emptyEl.setText(t("empty"));
 
     // A leaf change re-sends the same note. Rebuilding the pane then would swallow the click
     // that caused it (the chip under the pointer is replaced between mousedown and mouseup).
-    if (this.signature() === this.lastSig) return;
+    // The drawn markers are keyed by the old stop objects, so those stay in use.
+    if (this.signature() === this.lastSig) {
+      this.itinerary = prevItinerary;
+      this.focused = prevFocused;
+      return;
+    }
     this.draw();
     const stops = itinerary?.stops ?? [];
     this.emptyEl.toggleClass("is-hidden", stops.length > 0);
@@ -237,8 +252,13 @@ export class WayfarerView extends ItemView {
 
   /** Legs for a day plus the date read from its heading. */
   plan(day: Day): { legs: Leg[]; date: Date | null } {
-    const date = dateForDay(day);
-    return { legs: this.plugin.router.legsFor(day, date, this.file?.path ?? "", this.itinerary?.timezone), date };
+    let p = this.plans.get(day);
+    if (!p) {
+      const date = dateForDay(day);
+      p = { legs: this.plugin.router.legsFor(day, date, this.file?.path ?? "", this.itinerary?.timezone), date };
+      this.plans.set(day, p);
+    }
+    return p;
   }
 
   /** Opening-hours problem for a stop with a written time, or null. */
@@ -279,7 +299,10 @@ export class WayfarerView extends ItemView {
 
   private draw(): void {
     this.lastSig = this.signature();
+    this.plans.clear();
     this.layer.clearLayers();
+    this.arrows.clearLayers();
+    this.arrowSpecs = [];
     this.markers.clear();
     this.legendEl.empty();
     this.stripEl.empty();
@@ -310,7 +333,7 @@ export class WayfarerView extends ItemView {
           lineJoin: "round",
           className: cls,
         }).addTo(this.layer);
-        if (!dim) line.bindTooltip(tipEl(legTooltip(leg)), { sticky: true, className: "wf-tooltip" });
+        if (!dim) line.bindTooltip(() => tipEl(legTooltip(leg)), { sticky: true, className: "wf-tooltip" });
         this.drawArrow(pts, lineColor, cls);
         if (mode && !dim) {
           const mid = midpointOf(pts);
@@ -318,7 +341,7 @@ export class WayfarerView extends ItemView {
             icon: L.divIcon({ className: `wf-leg-glyph ${cls}`, html: `<span style="--wf-color:${lineColor}">${TRANSPORT_EMOJI[mode]}</span>`, iconSize: [24, 24], iconAnchor: [12, 12] }),
             interactive: true,
             keyboard: false,
-          }).bindTooltip(tipEl(legTooltip(leg)), { className: "wf-tooltip", direction: "top", offset: [0, -10] }).addTo(this.layer);
+          }).bindTooltip(() => tipEl(legTooltip(leg)), { className: "wf-tooltip", direction: "top", offset: [0, -10] }).addTo(this.layer);
         }
       }
     }
@@ -333,7 +356,7 @@ export class WayfarerView extends ItemView {
         popupAnchor: [0, -16],
       });
       const marker = L.marker([stop.lat, stop.lng], { icon, title: stop.name, zIndexOffset: focus ? 2000 : dim ? 0 : 1000 });
-      marker.bindTooltip(tipEl(stop.time ? `${stop.time} ${stop.name}` : stop.name), { direction: "top", offset: [0, -14], className: "wf-tooltip", permanent: focus });
+      marker.bindTooltip(() => tipEl(stop.time ? `${stop.time} ${stop.name}` : stop.name), { direction: "top", offset: [0, -14], className: "wf-tooltip", permanent: focus });
       marker.bindPopup(() => this.popupEl(day, stop), { className: "wf-popup", closeButton: false, maxWidth: 320, minWidth: 260 });
       marker.on("click", () => {
         this.userMoved = true;
@@ -398,13 +421,26 @@ export class WayfarerView extends ItemView {
       body.insertBefore(t2, actions);
     }
     if (stop.meta?.website && /^https?:\/\//i.test(stop.meta.website)) actions.createEl("a", { cls: "wf-ext", text: t("website"), attr: { href: stop.meta.website } });
-    actions.createEl("a", { text: t("to_line"), attr: { href: "#", "data-wf-jump": "1" } });
+    const jump = actions.createEl("a", { text: t("to_line"), attr: { href: "#" } });
+    jump.onclick = (e) => { e.preventDefault(); void this.jumpTo(stop); };
     return root;
   }
 
   /** An arrowhead on the line, 22 px before the destination pin so the pin does not cover it. */
   private drawArrow(pts: L.LatLng[], color: string, cls: string): void {
     if (!this.map || pts.length < 2) return;
+    this.arrowSpecs.push([pts, color, cls]);
+    this.placeArrow(pts, color, cls);
+  }
+
+  /** Zoom changed: the pins and lines stay, the arrowheads are placed again. */
+  private redrawArrows(): void {
+    this.arrows.clearLayers();
+    for (const [pts, color, cls] of this.arrowSpecs) this.placeArrow(pts, color, cls);
+  }
+
+  private placeArrow(pts: L.LatLng[], color: string, cls: string): void {
+    if (!this.map) return;
     const px = pts.map((p) => this.map!.latLngToLayerPoint(p));
     let remaining = 22;
     let i = px.length - 1;
@@ -427,13 +463,14 @@ export class WayfarerView extends ItemView {
       icon: L.divIcon({ className: `wf-arrow ${cls}`, html: `<span style="--wf-color:${color};transform:rotate(${angle}deg)"></span>`, iconSize: [14, 14], iconAnchor: [7, 7] }),
       interactive: false,
       keyboard: false,
-    }).addTo(this.layer);
+    }).addTo(this.arrows);
   }
 
   private drawLegend(it: Itinerary): void {
     const all = this.legendEl.createEl("button", { cls: "wf-chip wf-chip-all", text: t("all") });
     all.toggleClass("is-active", this.activeDay === -1);
     all.onclick = () => {
+      this.pinnedHeading = null;
       this.pinnedDay = -1;
       this.activeDay = -1;
       this.focused = null;
@@ -447,7 +484,8 @@ export class WayfarerView extends ItemView {
       chip.toggleClass("is-pinned", this.pinnedDay === day.index);
       chip.setAttr("aria-label", `${day.title} (${day.stops.length})`);
       chip.onclick = () => {
-        this.pinnedDay = this.pinnedDay === day.index ? -1 : day.index;
+        this.pinnedHeading = this.pinnedDay === day.index ? null : day.headingLine;
+        this.pinnedDay = this.pinnedHeading === null ? -1 : day.index;
         this.activeDay = this.pinnedDay;
         this.focused = null;
         this.draw();
@@ -509,15 +547,21 @@ export class WayfarerView extends ItemView {
           for (const n of notes) box.createDiv({ cls: "wf-stop-note", text: n });
         }
         card.draggable = true;
-        card.ondragstart = (e) => { e.dataTransfer?.setData("text/plain", String(stop.line)); card.addClass("is-dragging"); };
+        card.ondragstart = (e) => {
+          // A private type: a card dropped on the editor by mistake must not type its line number into the note.
+          e.dataTransfer?.setData(DRAG_TYPE, `${this.file?.path ?? ""}\n${stop.line}`);
+          if (e.dataTransfer) e.dataTransfer.effectAllowed = "move";
+          card.addClass("is-dragging");
+        };
         card.ondragend = () => card.removeClass("is-dragging");
         card.ondragover = (e) => { e.preventDefault(); card.addClass("is-drop"); };
         card.ondragleave = () => card.removeClass("is-drop");
         card.ondrop = (e) => {
           e.preventDefault();
           card.removeClass("is-drop");
-          const src = Number(e.dataTransfer?.getData("text/plain"));
-          if (Number.isFinite(src) && src !== stop.line) void this.plugin.moveStopLine(src, stop.line);
+          const [path, line] = (e.dataTransfer?.getData(DRAG_TYPE) ?? "").split("\n");
+          const src = Number(line);
+          if (line !== undefined && path === (this.file?.path ?? "") && Number.isInteger(src) && src !== stop.line && this.itinerary?.stops.some((x) => x.line === src)) void this.plugin.moveStopLine(src, stop.line);
         };
         card.onclick = () => {
           this.focused = stop;
@@ -644,7 +688,7 @@ export class WayfarerView extends ItemView {
   }
 
   private sameStop(s: Stop): Stop | null {
-    return this.itinerary?.stops.find((x) => x.line === s.line && x.from === s.from) ?? this.itinerary?.stops.find((x) => x.name === s.name && x.lat === s.lat && x.lng === s.lng) ?? null;
+    return this.itinerary?.stops.find((x) => x.line === s.line && x.from === s.from && x.lat === s.lat && x.lng === s.lng) ?? this.itinerary?.stops.find((x) => x.name === s.name && x.lat === s.lat && x.lng === s.lng) ?? null;
   }
 
   /** Puts the editor cursor on the stop and scrolls it into view. */
@@ -703,7 +747,15 @@ export function todayHours(hours: string[] | undefined, now = new Date()): strin
 }
 
 /** Everything the pane draws from an itinerary, as a string, to skip a rebuild when nothing changed. */
+const digests = new WeakMap<Itinerary, string>();
 function signatureOf(it: Itinerary | null): string {
   if (!it) return "";
-  return JSON.stringify(it.days.map((d) => [d.headingLine, d.title, d.stops.map((s) => [s.line, s.from, s.name, s.lat, s.lng, s.transport, s.time, s.emoji, s.note, s.notes, s.meta])]));
+  let d = digests.get(it);
+  if (d === undefined) {
+    d = JSON.stringify([it.timezone, it.days.map((d) => [d.headingLine, d.title, d.stops.map((s) => [s.line, s.from, s.name, s.lat, s.lng, s.transport, s.time, s.emoji, s.image, s.note, s.notes, s.meta])])]);
+    digests.set(it, d);
+  }
+  return d;
 }
+
+const DRAG_TYPE = "application/x-wayfarer-stop";

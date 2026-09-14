@@ -288,3 +288,18 @@ describe("moveBlock onto its own notes", () => {
     expect(moveBlock(lines, 1, 3)).toEqual(lines);
   });
 });
+
+describe("fences and comments in heading discovery", () => {
+  it("keeps a triple fence inside a four-backtick fence hidden", () => {
+    const it = parseItinerary("## 2026-09-16\n- [A](geo:1,2)\n````\n```\n- [B](geo:3,4)\n```\n````\n- [C](geo:5,6)");
+    expect(it.stops.map((s) => s.name)).toEqual(["A", "C"]);
+  });
+  it("does not let a commented-out heading pick the day level", () => {
+    const it = parseItinerary("# Day 1\n- [A](geo:1,2)\n%%\n## hidden\n%%\n# Day 2\n- [B](geo:3,4)");
+    expect(it.days.map((d) => d.title)).toEqual(["Day 1", "Day 2"]);
+  });
+  it("only accepts a known transport in metadata", () => {
+    expect(parseMeta('{"via":"walking"}')).toEqual({});
+    expect(parseMeta('{"via":"walk","leg":{"from":"1,2","via":"driving","s":1,"m":2}}')).toEqual({ via: "walk" });
+  });
+});

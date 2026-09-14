@@ -80,7 +80,8 @@ export default class WayfarerPlugin extends Plugin {
           const skeleton = tripSkeleton(start, days, getLocale() === "en" ? ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] : undefined, this.settings.dayHeadingLevel);
           // A blank note takes the frontmatter too; a note with content only gets the headings.
           const text = editor.getValue().trim() ? skeleton.replace(/^---\nlocations:\n---\n\n/, "") : skeleton;
-          editor.replaceSelection(text);
+          // A heading has to start its own line.
+          editor.replaceSelection(editor.getCursor().ch > 0 ? "\n" + text : text);
         }).open(),
     });
     this.addCommand({
@@ -186,7 +187,6 @@ export default class WayfarerPlugin extends Plugin {
     }
     const itinerary = parseItinerary(md.editor.getValue(), { maxHeadingLevel: this.settings.dayHeadingLevel });
     this.current = { file: md.file, itinerary };
-    for (const v of this.views) v.applyTiles();
     this.pushToViews();
     if (this.settings.autoOpen && itinerary.stops.length > 0 && this.views.size === 0 && !Platform.isMobile) this.autoOpenSoon();
   }
@@ -214,6 +214,9 @@ export default class WayfarerPlugin extends Plugin {
 
   private onEdit(editor: Editor, info: MarkdownFileInfo): void {
     if (!info.file) return;
+    // The debounce can deliver an edit from a note the user has already left.
+    const md = this.activeMarkdown();
+    if (md?.file && md.file.path !== info.file.path) return;
     this.current = { file: info.file, itinerary: parseItinerary(editor.getValue(), { maxHeadingLevel: this.settings.dayHeadingLevel }) };
     this.pushToViews();
   }
@@ -259,8 +262,13 @@ export default class WayfarerPlugin extends Plugin {
     const kml = tripKml(it, file.basename, getLocale() === "en" ? "Day {n}" : "第 {n} 天");
     const path = `${file.parent && file.parent.path !== "/" ? file.parent.path + "/" : ""}${file.basename}.kml`;
     const existing = this.app.vault.getAbstractFileByPath(path);
-    if (existing instanceof TFile) await this.app.vault.modify(existing, kml);
-    else await this.app.vault.create(path, kml);
+    try {
+      if (existing instanceof TFile) await this.app.vault.modify(existing, kml);
+      else await this.app.vault.create(path, kml);
+    } catch (e) {
+      new Notice(`Wayfarer: could not write ${path} (${(e as Error).message ?? e})`, 8000);
+      return;
+    }
     new Notice(t("kml_written", { f: path }), 12000);
   }
 
@@ -275,7 +283,11 @@ export default class WayfarerPlugin extends Plugin {
   setStopMeta(stop: Stop, patch: Partial<PlaceMeta>, quiet = false): void {
     const md = this.activeMarkdown();
     if (!md?.file || !this.current || md.file.path !== this.current.file.path) return;
-    const live = this.current.itinerary.stops.find((s) => s.lat === stop.lat && s.lng === stop.lng && s.name === stop.name) ?? (quiet ? null : stop);
+    // The same place can appear twice (the hotel at the end of every day), so the line it was parsed from is tried first.
+    const stops = this.current.itinerary.stops;
+    const live = stops.find((s) => s.line === stop.line && s.from === stop.from && s.lat === stop.lat && s.lng === stop.lng)
+      ?? stops.find((s) => s.lat === stop.lat && s.lng === stop.lng && s.name === stop.name)
+      ?? (quiet ? null : stop);
     if (!live) return;
     void this.rewriteLine(md, live.line, (text) => (stopStillAt(text, live) ? patchLineMeta(text, patch, live) : text));
   }
@@ -292,18 +304,21 @@ export default class WayfarerPlugin extends Plugin {
       await this.app.vault.process(md.file, (data) => {
         const lines = data.split("\n");
         if (line >= lines.length) return data;
+        // The line was chosen from the editor's buffer; if the file on disk reads differently there, the two are out of step and nothing is written.
+        if (line < md.editor.lineCount() && md.editor.getLine(line) !== lines[line]) return data;
         const next = fn(lines[line]);
         if (next === lines[line]) return data;
         lines[line] = next;
         return lines.join("\n");
       });
+      this.refresh();
     } else {
+      // The editor change reaches the pane through the editor-change handler; a refresh here would parse and draw once more per write.
       if (line >= md.editor.lineCount()) return;
       const text = md.editor.getLine(line);
       const next = fn(text);
       if (next !== text) md.editor.replaceRange(next, { line, ch: 0 }, { line, ch: text.length });
     }
-    this.refresh();
   }
 
   /** Writes the transport picked in the pane as the emoji before the stop's link, so the text says what the map says. */
@@ -393,12 +408,14 @@ export default class WayfarerPlugin extends Plugin {
 
   private onPaste(evt: ClipboardEvent, editor: Editor): void {
     if (!this.settings.convertOnPaste || evt.defaultPrevented) return;
-    const text = evt.clipboardData?.getData("text/plain")?.trim() ?? "";
+    const raw = evt.clipboardData?.getData("text/plain")?.trim() ?? "";
+    // A link copied out of a sentence often brings its full stop along.
+    const text = raw.replace(/[),.;!?]+$/, "");
     if (!text || /\s/.test(text) || !isGoogleMapsUrl(text)) return;
     evt.preventDefault();
     // Insert the URL right away so typing is never blocked, then swap it once resolved.
     const cursor = editor.getCursor();
-    editor.replaceSelection(text);
+    editor.replaceSelection(raw);
     void this.convert(editor, cursor.line, text);
   }
 
