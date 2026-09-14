@@ -14,9 +14,9 @@ const UA = "ObsidianWayfarer/0.1 (+https://github.com/kevinsslin/wayfarer)";
  * with our own UA and walk the redirects ourselves.
  */
 export async function expandShortUrl(url: string, maxHops = 5): Promise<string> {
-  if (!Platform.isDesktopApp) throw new Error("Short link expansion needs the desktop app");
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const https = require("node:https") as typeof import("node:https");
+  if (!Platform.isDesktop) throw new Error("Short link expansion needs the desktop app");
+  // Node is only reachable through the renderer's require; the guard above keeps this off mobile.
+  const https = (window as unknown as { require: (id: string) => typeof import("node:https") }).require("node:https");
   let current = url;
   for (let i = 0; i < maxHops; i++) {
     const location = await new Promise<string | null>((resolve, reject) => {

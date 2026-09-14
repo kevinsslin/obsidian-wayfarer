@@ -65,7 +65,7 @@ export class WayfarerSettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
-      .setName("Convert Google Maps links when pasted")
+      .setName("Convert map links when pasted")
       .setDesc("A pasted link (including maps.app.goo.gl) becomes a place with a pin.")
       .addToggle((t) => t.setValue(s.convertOnPaste).onChange((v) => { s.convertOnPaste = v; save(); }));
 
@@ -75,7 +75,7 @@ export class WayfarerSettingTab extends PluginSettingTab {
       .addToggle((t) => t.setValue(s.addEmoji).onChange((v) => { s.addEmoji = v; save(); }));
 
     new Setting(containerEl)
-      .setName("Map follows the cursor")
+      .setName("Map follows the line you edit")
       .addToggle((t) => t.setValue(s.followCursor).onChange((v) => { s.followCursor = v; save(); }));
 
     new Setting(containerEl)
@@ -83,18 +83,17 @@ export class WayfarerSettingTab extends PluginSettingTab {
       .addToggle((t) => t.setValue(s.autoOpen).onChange((v) => { s.autoOpen = v; save(); }));
 
     new Setting(containerEl).setName("Google").setHeading();
-    const keyDesc = document.createDocumentFragment();
-    keyDesc.append("Your own key. It unlocks exact pins with ratings, opening hours and photos, and routes between stops (walking, cycling, driving and transit with line names). Without it the plugin still reads pins from pasted links, and legs show their distance only. Stored in this vault's plugin data, never in a note. ");
-    const how = document.createElement("a");
-    how.href = "https://github.com/kevinsslin/wayfarer#google-api-key";
-    how.textContent = "How to get one";
-    keyDesc.append(how, ".");
+    const keyDesc = createFragment((f) => {
+      f.appendText("Your own key. It unlocks exact pins with ratings, opening hours and photos, and routes between stops (walking, cycling, driving and transit with line names). Without it the plugin still reads pins from pasted links, and legs show their distance only. Stored in this vault's plugin data, never in a note. ");
+      f.createEl("a", { text: "How to get one", href: "https://github.com/kevinsslin/wayfarer#google-api-key" });
+      f.appendText(".");
+    });
     new Setting(containerEl)
       .setName("Google API key")
       .setDesc(keyDesc)
       .addText((t) => {
         t.inputEl.type = "password";
-        t.setPlaceholder("AIza...").setValue(s.googleApiKey).onChange((v) => { s.googleApiKey = v.trim(); save(); });
+        t.setPlaceholder("Paste your key").setValue(s.googleApiKey).onChange((v) => { s.googleApiKey = v.trim(); save(); });
       })
       .addButton((b) => {
         b.setButtonText("Test key").onClick(async () => {
@@ -119,8 +118,16 @@ export class WayfarerSettingTab extends PluginSettingTab {
       });
     new Setting(containerEl)
       .setName("Language for Google results")
-      .setDesc("Place names and opening hours, e.g. zh-TW, ja, en.")
+      .setDesc("Language code for place names and opening hours, for example ja or en.")
       .addText((t) => t.setValue(s.languageCode).onChange((v) => { s.languageCode = v.trim() || "en"; save(); }));
+
+    new Setting(containerEl).setName("Plan with an AI agent").setHeading();
+    const agentDesc = createFragment((f) => {
+      f.appendText("Teaches an AI coding agent to research a trip and write the note in the format this plugin reads, planning notes included. ");
+      f.createEl("a", { text: "Install the skill", href: "https://github.com/kevinsslin/wayfarer#planning-with-an-ai-assistant" });
+      f.appendText(".");
+    });
+    new Setting(containerEl).setName("Trip planning skill").setDesc(agentDesc);
 
     new Setting(containerEl).setName("Advanced").setHeading();
     new Setting(containerEl)

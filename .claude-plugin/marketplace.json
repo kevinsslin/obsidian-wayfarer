@@ -1,0 +1,12 @@
+{
+  "name": "wayfarer",
+  "owner": { "name": "Kevin Lin", "url": "https://github.com/kevinsslin" },
+  "plugins": [
+    {
+      "name": "wayfarer",
+      "source": "./",
+      "description": "Plan a trip as an Obsidian note that the Wayfarer plugin renders as a map.",
+      "skills": ["./skills/wayfarer-plan-trip"]
+    }
+  ]
+}

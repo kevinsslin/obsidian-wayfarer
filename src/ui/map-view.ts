@@ -93,8 +93,7 @@ export class WayfarerView extends ItemView {
     };
     this.mapEl = body.createDiv({ cls: "wf-map" });
     // Set inline so Leaflet sees it at construction even before styles.css has loaded; otherwise it forces position: relative.
-    this.mapEl.style.position = "absolute";
-    this.mapEl.style.inset = "0";
+    this.mapEl.setCssProps({ position: "absolute", inset: "0" });
     this.emptyEl = root.createDiv({ cls: "wf-empty" });
     this.emptyEl.setText(t("empty"));
     this.applySplit();
@@ -392,7 +391,7 @@ export class WayfarerView extends ItemView {
       });
       marker.on("mouseout", () => this.closeHoverPopup(stop, marker));
       marker.on("popupopen", (e) => {
-        const el = (e as L.PopupEvent).popup.getElement();
+        const el = e.popup.getElement();
         if (!el) return;
         el.onmouseenter = () => window.clearTimeout(this.hoverClose);
         el.onmouseleave = () => this.closeHoverPopup(stop, marker);
@@ -758,9 +757,7 @@ function midpointOf(pts: L.LatLng[]): L.LatLng {
 
 /** Tooltip content as a node: Leaflet would otherwise set a string as innerHTML, and names come from the note. */
 function tipEl(text: string): HTMLElement {
-  const el = document.createElement("span");
-  el.textContent = text;
-  return el;
+  return createSpan({ text });
 }
 
 function legTooltip(leg: Leg): string {

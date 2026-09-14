@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.1.4] - 2026-09-14
+
+- The trip-planning skill now covers the whole job (intake, research, day structure, the note, and the planning notes with constraints, bookings, per-stretch reasoning with a backup, and open questions), comes with a finished example note, and installs with `npx skills add kevinsslin/wayfarer` or as a Claude Code plugin marketplace (`.claude-plugin/`). Settings point to it. The plugin now passes Obsidian's plugin lint (eslint-plugin-obsidianmd): command and setting names in sentence case without brand words, Obsidian's element helpers instead of raw DOM calls, `getLanguage()` for the UI language, no inline styles from code, and the Node https guard written as `Platform.isDesktop`. Command names changed: "Convert the map link on this line to a stop", "Convert every map link in this note", "Export the trip as a map file".
+
 ## [0.1.3] - 2026-09-14
 
 - Runs on mobile. The map opens as its own tab on a phone, and on any pane narrower than a phone landscape the timeline is an overlay, closed until asked for, that does not touch the saved desktop layout. Short-link expansion stays desktop only (it needs Node's https); the message says so and suggests pasting the full link.

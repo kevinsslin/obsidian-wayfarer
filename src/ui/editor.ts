@@ -62,8 +62,7 @@ class MetaWidget extends WidgetType {
     return other.json === this.json;
   }
   toDOM(): HTMLElement {
-    const el = document.createElement("span");
-    el.className = "wf-meta";
+    const el = createSpan({ cls: "wf-meta" });
     const bits: string[] = [];
     if (this.meta.rating) bits.push(`★ ${this.meta.rating.toFixed(1)}`);
     const today = todayHours(this.meta.hours);

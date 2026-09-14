@@ -1,4 +1,4 @@
-import { MarkdownView, Notice, Platform, Plugin, TFile, debounce, type Editor, type MarkdownFileInfo, type WorkspaceLeaf } from "obsidian";
+import { MarkdownView, Notice, Platform, Plugin, TFile, debounce, getLanguage, type Editor, type MarkdownFileInfo, type WorkspaceLeaf } from "obsidian";
 import { isGoogleMapsUrl } from "./core/gmaps-url";
 import { dayAtLine, moveBlock, parseItinerary, patchLineMeta, setTransportOnLine, stopStillAt, type Itinerary, type PlaceMeta, type Stop } from "./core/itinerary";
 import type { Transport } from "./core/category";
@@ -63,7 +63,7 @@ export default class WayfarerPlugin extends Plugin {
     this.addCommand({ id: "open-map", name: "Open itinerary map", callback: () => void this.openMap() });
     this.addCommand({
       id: "convert-maps-link",
-      name: "Convert Google Maps link on this line to a stop",
+      name: "Convert the map link on this line to a stop",
       editorCheckCallback: (checking, editor) => {
         const line = editor.getCursor().line;
         const found = findMapsUrl(editor.getLine(line));
@@ -84,12 +84,12 @@ export default class WayfarerPlugin extends Plugin {
     });
     this.addCommand({
       id: "export-kml",
-      name: "Export to Google My Maps (KML)",
+      name: "Export the trip as a map file",
       editorCallback: (editor, ctx) => void this.exportKml(editor, ctx),
     });
     this.addCommand({
       id: "convert-all-maps-links",
-      name: "Convert every Google Maps link in this note",
+      name: "Convert every map link in this note",
       editorCallback: (editor) => void this.convertAll(editor),
     });
     this.addCommand({
@@ -124,7 +124,7 @@ export default class WayfarerPlugin extends Plugin {
   applyLocale(): void {
     let code: string | null = this.settings.uiLanguage;
     if (code === "auto") {
-      try { code = window.localStorage?.getItem("language") ?? null; } catch { code = null; }
+      code = getLanguage();
     }
     setLocale(localeFor(code));
   }
@@ -422,7 +422,7 @@ export default class WayfarerPlugin extends Plugin {
 
   private resolveDeps(): ResolveDeps {
     return {
-      expandShortUrl: Platform.isDesktopApp ? expandShortUrl : undefined,
+      expandShortUrl: Platform.isDesktop ? expandShortUrl : undefined,
       places: this.settings.googleApiKey ? googlePlaces(this.settings.googleApiKey, this.settings.languageCode) : undefined,
     };
   }

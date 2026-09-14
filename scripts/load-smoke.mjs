@@ -24,6 +24,7 @@ const fakeEl = () => ({
   setText() {},
   setAttr() {},
   addEventListener() {},
+  setCssProps() {},
 });
 
 class Component {
@@ -68,6 +69,7 @@ const obsidianStub = {
   ItemView: ItemViewStub,
   PluginSettingTab: PluginSettingTabStub,
   Setting: SettingStub,
+  getLanguage: () => "en",
   Notice: class {},
   Modal: class { constructor(app) { this.app = app; this.contentEl = fakeEl(); } setTitle() {} open() {} close() {} },
   MarkdownView: class {},

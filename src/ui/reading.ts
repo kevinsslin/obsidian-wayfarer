@@ -28,8 +28,7 @@ export const readingPostProcessor: MarkdownPostProcessor = (el, ctx) => {
     hit.used = true;
     const meta = hit.meta;
     if (!meta) return;
-    const chip = document.createElement("span");
-    chip.className = "wf-meta";
+    const chip = createSpan({ cls: "wf-meta" });
     const bits: string[] = [];
     if (meta.rating) bits.push(`★ ${meta.rating.toFixed(1)}`);
     const today = todayHours(meta.hours);

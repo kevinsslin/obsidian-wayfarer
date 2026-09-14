@@ -508,7 +508,7 @@ export function parseMeta(json: string): PlaceMeta | undefined {
   const out: PlaceMeta = {};
   if (typeof r.rating === "number" && Number.isFinite(r.rating)) out.rating = r.rating;
   if (typeof r.utc === "number" && Number.isInteger(r.utc)) out.utc = r.utc;
-  if (Array.isArray(r.hours) && r.hours.every((h) => typeof h === "string")) out.hours = r.hours as string[];
+  if (Array.isArray(r.hours) && r.hours.every((h) => typeof h === "string")) out.hours = r.hours;
   for (const k of ["address", "website", "placeId", "type", "photo"] as const) {
     if (typeof r[k] === "string") (out as Record<string, unknown>)[k] = r[k];
   }

@@ -47,7 +47,17 @@ Run **Insert day headings for a trip** to get the headings, then paste links und
 
 ## Planning with an AI assistant
 
-`skills/wayfarer-plan-trip/` is a skill for Claude Code, Codex and similar agents: how to research a trip (opening days, geography, pace) and exactly how to write the note so the plugin reads it. Copy the folder into your agent's skills directory (for Claude Code, `~/.claude/skills/`), open the vault, and ask for a plan. You review it on the map, move things around, and ask for changes; the agent edits the same note.
+The repo ships a skill that teaches an agent to plan a trip the way this plugin expects: intake, research (hours, closed days, transport, coordinates), day structure, the note itself, and the planning notes behind it (constraints, bookings, the reasoning for each stretch with a backup, open questions). With it, Claude Code, Codex or any agent that reads skills produces a complete plan you then review on the map.
+
+Install it once, from a terminal:
+
+```bash
+npx skills add kevinsslin/wayfarer
+```
+
+That works for Claude Code, Codex, Cursor and the other agents the `skills` CLI supports and asks which to install to. Claude Code users can instead add the repo as a plugin marketplace: `/plugin marketplace add kevinsslin/wayfarer` then `/plugin install wayfarer@wayfarer`. Or copy `skills/wayfarer-plan-trip/` by hand into your agent's skills folder (`~/.claude/skills/` for Claude Code, `~/.agents/skills/` for Codex).
+
+Then open the vault in the agent and ask, for example: "Plan four days in Kyoto and Nara from 3 to 6 November for two, slow pace, one temple a day at most, we land at Kansai at 15:00." The agent writes `Kyoto 2026.md`; you open it beside the map, run **Convert every map link in this note** for any links it left, **Fetch Google details for stops without them** for hours and photos, pick transport on the arrows, and ask the agent for changes. It edits the same note.
 
 ## Google API key
 
@@ -68,7 +78,7 @@ Works on desktop and mobile. On a phone the map opens as its own tab and the tim
 
 ## Commands
 
-**Open itinerary map** · **Insert day headings for a trip** · **Convert Google Maps link on this line to a stop** · **Convert every Google Maps link in this note** · **Fetch Google details for stops without them** · **Export to Google My Maps (KML)**
+**Open itinerary map** · **Insert day headings for a trip** · **Convert the map link on this line to a stop** · **Convert every map link in this note** · **Fetch Google details for stops without them** · **Export the trip as a map file** (KML for Google My Maps)
 
 ## Development
 

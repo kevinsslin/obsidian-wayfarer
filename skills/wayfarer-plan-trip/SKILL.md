@@ -1,49 +1,84 @@
 ---
 name: wayfarer-plan-trip
-description: Write or revise a day-by-day travel itinerary as an Obsidian note that the Wayfarer plugin renders as a map. Use when the user asks to plan a trip, add stops or days, reorder a day, or turn research (places, opening hours, transport) into an itinerary note.
+description: Research and write a complete day-by-day trip plan as an Obsidian note that the Wayfarer plugin renders as a map, with stops, times, transport, and the planning notes behind them. Use when the user asks to plan a trip, add or move stops or days, compare options for a stretch, or turn research (places, hours, transport, bookings) into an itinerary note.
 ---
 
 # Plan a trip in Obsidian
 
-The user keeps trips as Markdown notes. The Wayfarer plugin reads a note and shows a map beside it: headings are days, `[Name](geo:lat,lng)` links are stops, the line carries the time, an optional transport emoji, and a short note. Your job is to write that note well. Read `FORMAT.md` in this folder once before writing.
+The user keeps trips as Markdown notes. The Wayfarer plugin shows a map beside the note: headings are days, `[Name](geo:lat,lng)` links are stops, the line carries a time, a transport emoji and a remark. Your job is the whole plan, not just the list of stops: the research, the day structure, the reasoning and the fallbacks, written into one note the plugin reads. Read `FORMAT.md` in this folder once before writing; `EXAMPLE.md` is a finished note to imitate.
 
-## Before writing
+## 1. Intake
 
-1. Ask, or find in the conversation: dates, where the nights are spent, pace (how many stops per day the user tolerates), must-sees, and hard bookings (flights, trains, tickets). Do not invent bookings.
-2. Look each place up before placing it. You need coordinates and, ideally, opening hours and the closed weekday. Museums and restaurants closed on the planned day are the most common planning error, so check the weekday of every visit.
-3. Group stops by geography and by opening hours. A day's stops should be walkable or one transit ride apart. Put fixed-time items first, then fill around them.
+Find in the conversation, or ask once, briefly:
 
-## Writing rules
+- Dates, arrival and departure times, and where each night is spent (or whether that is still open).
+- Who is going and the pace they tolerate: stops per day, early starts or not, walking limits, children, mobility.
+- Fixed things: flights, trains, tickets and reservations already bought. Never invent a booking or a price.
+- Must-sees, must-avoids, food priorities, budget ceiling.
+- Season and weather risk (typhoon, snow closures, rainy season, heat), and what the user does if the weather turns.
 
-- One `##` heading per day, in date order: `## 2026-09-17 週四 上山，走戰場之原，睡湯元`. Full date first (year included, so the weekday is never ambiguous), weekday second, a short theme last. The plugin reads the date from the heading.
-- Stops go under the heading as a list, in the order the user will visit them. Numbered lists for a fixed sequence, bullets for a loose one.
-- Every stop is `[Name](geo:lat,lng)` with 4 to 6 decimals. Use the name the user will see on signs (local script), optionally followed by a familiar name: `[湯滝](geo:36.7938,139.4316)`.
-- When you are not sure of coordinates, paste the place's Google Maps share URL instead of guessing; the plugin converts it when the user runs the convert command on desktop. Never write a `geo:` link with made-up numbers, and never write a search URL (`?q=name`): it carries no pin and is refused.
-- Write times on stops that have a fixed departure or entry (buses, trains, reservations, last entry). The plugin computes each leg's duration and flags a red leg when two written times are too close for the leg between them.
-- Start the line with the time when it matters: `07:53 🚌 [湯滝](geo:…)`. Put a transport emoji before the link only when the user said how they get there (🚶 🚲 🚗 🚕 🚌 🚆 🚇 🚊 ⛴️ ✈️); the plugin routes that leg and draws it. Do not guess a mode; leave it out and the user picks it on the map pane.
-- Put a category emoji before the link when the category is not obvious from the name (🍜 food, ☕ cafe, 🏨 stay, ⛩️ shrine, 🛕 temple, 🖼️ museum, 🏞️ nature, ♨️ onsen, 🛍️ shop, 🚉 station, 🛬 airport, ⚓ port, 🔭 view, 🏯 castle, 🎭 event). Names that already say 神社, 寺, 駅, ホテル, 美術館 do not need one.
-- The rest of the line is the user's note: why go, what to order, the catch (`最後入場 16:30`, `週一休`, `要脫鞋`). Keep it to one line. Longer notes go on indented lines directly below the stop; the plugin shows them as that stop's notes, verbatim.
-- The night's hotel is the last stop of the day. Write 🏨 before the link or let the name (ホテル, hotel, 旅館) say so.
-- An image for a stop goes on the same line or the next: `![[photo.jpg]]` or a URL. Do not add images the user did not provide.
-- Everything you were unsure about goes in a final `## 待確認` section as a checklist, not into the day plans as fact.
+Do not stall on missing answers. Plan on stated assumptions and list them in the open questions.
 
-## What not to do
+## 2. Research before placing anything
 
-- Do not write ` · 🚶 34 分 · 2.5 km` trailers by hand; the user generates them with a command once the routes are in.
-- Do not write `%%wf:{…}%%` comments; the plugin writes those itself when it has place details.
-- Do not add frontmatter. The plugin needs none; a written time is local time at that place.
-- Do not use em dashes or en dashes anywhere. Use commas, full stops, or parentheses.
-- Do not pad days with filler stops. Four to six stops a day is a full day for most people; leave room.
-- Do not move or delete stops the user placed without saying so.
+For every candidate place:
+
+- **Coordinates.** From the place's Google Maps page (the `!3d…!4d…` pair in the URL, or the pin), 4 to 6 decimals. When not certain, paste the full Google Maps URL instead of a `geo:` link and the plugin converts it on the user's computer. Never guess numbers; never write a search URL (`?q=name`), it has no pin.
+- **Opening days and hours, last entry, seasonal closure.** The single most common planning error is a museum, temple hall, shop or restaurant closed on the planned weekday. Check the weekday of every visit.
+- **Getting there and back.** Which bus or train, how often it runs, first and last departures that matter (last bus down the mountain, last ferry), whether a pass covers it, how long it takes.
+- **Time needed on site**, and the cost of tickets.
+- **What is nearby**, so a day can be walked or covered by one ride.
+
+Prefer official sites and current timetables; note the source in the planning notes when it matters (a timetable, a closure notice).
+
+## 3. Structure the days
+
+- Cluster by geography and by opening hours. A day's stops should be walkable or one transit ride apart.
+- Anchor each day on its fixed-time items (a departure, a reservation, a last entry) and fill around them, moving outward in the morning and back toward the night's hotel.
+- Give each day a theme in its heading (`## 2026-09-17 Thu Up to Senjogahara, sleep at Yumoto`) and make the night's hotel its last stop.
+- Four to six stops is a full day for most people. Leave slack after long transfers and before fixed times.
+- A stretch the user has not decided yet stays one range heading (`## 2026-09-19 ~ 2026-09-26 Tokyo`) with a line saying what is undecided. Do not invent a per-day schedule to fill it.
+- For any stretch with a real choice (this base or that one, mountain or coast, day trip or not), decide, and keep the runner-up as a written backup with the trigger that would switch to it (weather, a closure, a sold-out train).
+
+## 4. Write the note
+
+Two parts, one note. The plugin reads the first; the second is why the first looks the way it does.
+
+**The itinerary**: one heading per day in date order, full `YYYY-MM-DD` first, then weekday and theme. Under it, the stops as a list in visiting order (numbered when the sequence is fixed, bullets when loose). Each stop line:
+
+```
+- 07:53 🚌 [Yudaki Falls](geo:36.7959,139.4285) bus from Tobu-Nikko, buy the two-day pass
+    Falls are at the bus stop; the trail down to the lake starts left of the tea house
+```
+
+- Time first, only when the stop has a fixed time (departure, entry slot, last entry).
+- A transport emoji before the link only when the user said how they get there or it follows from the plan (🚶 🚲 🚗 🚕 🚌 🚆 🚇 🚊 ⛴️ ✈️). The plugin routes that leg and draws it. Do not guess a mode; leave it out and the user picks it on the map.
+- A category emoji before the link when the name does not say what it is (🍜 food, ☕ cafe, 🏨 stay, ⛩️ shrine, 🛕 temple, 🖼️ museum, 🏞️ nature, ♨️ onsen, 🛍️ shop, 🚉 station, 🛬 airport, ⚓ port, 🔭 view, 🏯 castle, 🎭 event).
+- The rest of the line is the one-line remark: why go, what to order, the catch (`last entry 16:30`, `closed Mondays`, `cash only`). Longer notes go on indented lines directly below; the plugin shows them verbatim on the stop's card.
+- Names in the script the user will see on signs, optionally followed by a familiar name.
+
+**The planning notes**: undated `##` sections after the last day. Their links stay off the map. Use the sections that apply, in this order:
+
+- `## Hard constraints`: dates, arrival and departure times, budget, mobility, anything non-negotiable.
+- `## Bookings`: two lists, confirmed and still to book, each with date, time, price if known, and where to book. Confirmed only when the user said so.
+- One section per stretch that needed a decision (`## Sep 16 to 18: escaping the Tokyo heat`): the decision in one line, the reasoning, the costs (money, time, energy), the backup with its switch trigger, and the sources you relied on.
+- `## Open questions`: a checklist of what still needs the user or a later check (a forecast date, a ticket release, a place whose hours you could not confirm).
+
+Write in the user's language. Keep sentences short and concrete; the user reads this on a phone at a bus stop.
+
+## 5. Hand back
+
+Tell the user, in three or four lines: open the note with the Wayfarer map beside it; on the computer run **Convert every map link in this note** for any URLs you left, then **Fetch Google details for stops without them** so cards get hours and photos; pick the transport on the arrows for legs you left unmarked; watch for red legs (two written times too close for the leg between them) and "closed that day" chips. Then list the open questions.
+
+## Rules
+
+- Never write `%%wf:{…}%%` comments; the plugin owns them.
+- No frontmatter. A written time is local time at that place; the plugin handles time zones per stop.
+- Never write ` · 🚶 34 min · 2.5 km` trailers by hand; the plugin computes legs.
+- No em dashes or en dashes anywhere. Use commas, full stops, or parentheses.
+- Do not pad days with filler stops, and do not move or delete stops the user placed without saying so.
+- Everything you were unsure about goes into the open questions, not into a day as fact.
 
 ## Revising an existing note
 
-Read the whole note first. Keep the user's headings, order and wording. Add stops in the form above, on new lines. When reordering a day, move whole lines. When a place turns out closed, keep the line and add the reason after it rather than silently swapping the place.
-
-## Checklist before handing back
-
-- Every day heading starts with a full date (`2026-09-17`). Research, alternatives, to-do checklists and candidate places go in undated `##` sections of the same note; they are not on the map, so keep them there rather than in a second note. A stretch the user has not planned day by day stays one range heading (`2026-09-19 ~ 2026-09-26 東京`); do not invent a per-day schedule to fill it.
-- Every stop has real coordinates or a full Google Maps URL.
-- Times are in 24-hour `HH:MM`.
-- Closed days checked for every museum, shop and restaurant.
-- A `## 待確認` section lists what still needs the user's decision.
+Read the whole note first, including the planning notes. Keep the user's headings, order and wording. Add stops on new lines in the form above. When reordering a day, move whole lines (a stop's indented notes travel with it). When a place turns out closed or wrong, keep the line, strike or annotate the reason, and propose the replacement rather than silently swapping. Update the affected planning-notes section and the open questions in the same edit.

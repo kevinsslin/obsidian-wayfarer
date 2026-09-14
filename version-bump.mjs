@@ -19,6 +19,10 @@ const manifest = JSON.parse(readFileSync("manifest.json", "utf8"));
 manifest.version = targetVersion;
 write("manifest.json", manifest, "\t");
 
+const plugin = JSON.parse(readFileSync(".claude-plugin/plugin.json", "utf8"));
+plugin.version = targetVersion;
+write(".claude-plugin/plugin.json", plugin, "  ");
+
 const versions = JSON.parse(readFileSync("versions.json", "utf8"));
 versions[targetVersion] = manifest.minAppVersion;
 write("versions.json", versions, "\t");
