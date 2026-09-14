@@ -158,6 +158,84 @@ try {
     assert(popup && popup.x >= 0 && popup.right <= width + 1, "Popup fits phone width: " + JSON.stringify(popup));
     await screenshot(`mobile-${width}-detail.png`);
   }
+  // Reconstruct the host chrome seen in the user's iPhone screenshots. The real
+  // Obsidian mobile CSS supplies navbar dimensions; our fixture supplies markup.
+  await rpc("Emulation.setDeviceMetricsOverride", { width:402,height:874,deviceScaleFactor:2,mobile:false });
+  await evaluate(`(() => {
+    const q=window.wfQA;
+    const host=document.createElement("div");host.id="wf-qa-host";
+    const header=host.createDiv({cls:"view-header"});header.createSpan({text:"▣"});header.createSpan({text:"•••"});
+    host.appendChild(q.v.contentEl);document.body.appendChild(host);
+    const status=document.body.createDiv({attr:{id:"wf-qa-status"},text:"10:16                          ▰ 91%"});
+    const nav=document.body.createDiv({cls:"mobile-navbar",attr:{id:"wf-qa-navbar"}});
+    const actions=nav.createDiv({cls:"mobile-navbar-actions"});
+    for (const text of ["‹","›","⌕","+","▣","☰"]) actions.createDiv({cls:"mobile-navbar-action",text});
+    document.body.addClass("is-mobile","is-phone","is-ios","emulate-mobile");
+    const style=document.body.createEl("style",{attr:{id:"wf-qa-host-style"}});
+    style.textContent = '#wf-qa-status {position:fixed;top:0;left:0;right:0;height:114px;padding:20px 28px;background:var(--background-primary);z-index:10000;font-size:16px;} #wf-qa-host > .view-header {position:fixed;top:59px;left:12px;right:12px;width:auto;height:46px;margin:0;padding:0;display:flex;justify-content:space-between;z-index:10001;} #wf-qa-host > .view-header span {border-radius:50%;padding:12px;background:var(--background-secondary);} #wf-qa-host > .wf-qa-pane {top:var(--wf-qa-top,114px) !important;height:calc(100vh - var(--wf-qa-top,114px)) !important;} #wf-qa-navbar {z-index:10002;display:flex;position:fixed;box-shadow:0 0 1px var(--text-muted);} #wf-qa-navbar .mobile-navbar-action {display:flex;align-items:center;justify-content:center;font-size:28px;}';
+    q.v.journeyOpen=false;q.v.narrowOpen=false;q.v.returnToCurrent();
+  })()`);
+  for (const [name,width,height,floating,hidden,fontSize,paneTop=114] of [
+    ["iphone-floating",402,874,true,false,16],
+    ["iphone-hidden-nav",402,874,true,true,16],
+    ["iphone-overlay-header",402,874,true,false,16,59],
+    ["phone-large-text",320,740,true,false,20],
+    ["phone-docked",390,844,false,false,16],
+  ]) {
+    await rpc("Emulation.setDeviceMetricsOverride", {width,height,deviceScaleFactor:2,mobile:false});
+    await evaluate(`(() => {
+      document.body.toggleClass("is-floating-nav",${floating});document.body.toggleClass("is-hidden-nav",${hidden});
+      document.getElementById("wf-qa-host").style.setProperty("--font-text-size","${fontSize}px");
+      document.getElementById("wf-qa-host").style.setProperty("--font-ui-small","${fontSize * .937}px");
+      document.getElementById("wf-qa-host").style.setProperty("--font-ui-smaller","${fontSize * .8}px");
+      document.getElementById("wf-qa-host").style.setProperty("--wf-qa-top","${paneTop}px");
+      const v=window.wfQA.v;v.map.closePopup();v.journeyOpen=false;v.narrowOpen=false;v.applySplit();
+    })()`);
+    await pause();
+    const layout=await evaluate(`(() => {
+      const v=window.wfQA.v, root=v.contentEl.getBoundingClientRect(), legend=v.legendEl.getBoundingClientRect(), card=v.journeyEl.getBoundingClientRect();
+      const zoom=v.mapEl.querySelector(".leaflet-control-zoom").getBoundingClientRect();
+      const nav=document.getElementById("wf-qa-navbar").getBoundingClientRect();
+      return {fontSize:getComputedStyle(v.contentEl.querySelector(".wf-day-select")).fontSize,topGap:legend.top-root.top,zoomGap:zoom.top-legend.bottom,footerGap:nav.top-card.bottom,
+        root:root.toJSON(),legend:legend.toJSON(),card:card.toJSON(),nav:nav.toJSON()};
+    })()`);
+    assert(layout.topGap>=Math.max(0,105-paneTop)+7 && layout.topGap<=Math.max(0,105-paneTop)+9 && layout.zoomGap>=8 && (hidden || layout.footerGap>=8), name+": chrome collision "+JSON.stringify(layout));
+    await screenshot(name+"-map.png");
+    await evaluate('window.wfQA.v.contentEl.querySelector(".wf-journey-toggle").click()');
+    await pause();
+    const expanded=await evaluate(`(() => {
+      const v=window.wfQA.v,card=v.journeyEl.getBoundingClientRect(),nav=document.getElementById("wf-qa-navbar").getBoundingClientRect();
+      const actions=[...v.journeyEl.querySelectorAll("button")].map(el=>el.getBoundingClientRect());
+      return {clear:card.bottom<=nav.top-8,overflow:actions.some(r=>r.left<card.left || r.right>card.right+1)};
+    })()`);
+    assert((hidden || expanded.clear) && !expanded.overflow,name+": expanded card collision "+JSON.stringify(expanded));
+    await screenshot(name+"-progress.png");
+    await evaluate(`(() => {const v=window.wfQA.v;v.chooseDay(v.itinerary.days[1]);v.contentEl.querySelector(".wf-list-toggle").click();})()`);
+    await pause();
+    const list=await evaluate(`(() => {
+      const v=window.wfQA.v, list=v.stripEl.getBoundingClientRect(),legend=v.legendEl.getBoundingClientRect(),card=v.journeyEl.getBoundingClientRect();
+      return {clear:list.top>=legend.bottom+8 && list.bottom<=card.top-8,collapsed:!v.journeyOpen,mapHidden:getComputedStyle(v.mapEl).visibility==="hidden",transportButtons:v.stripEl.querySelectorAll(".wf-leg-mode").length,scrollHeight:v.stripEl.scrollHeight,height:v.stripEl.clientHeight};
+    })()`);
+    assert(list.clear && list.collapsed && list.mapHidden && list.transportButtons===0,name+": list reading surface "+JSON.stringify(list));
+    await screenshot(name+"-list.png");
+    await evaluate('window.wfQA.v.stripEl.scrollTop=window.wfQA.v.stripEl.scrollHeight');
+    const last=await evaluate(`(() => {const v=window.wfQA.v;const r=v.stripEl.lastElementChild.getBoundingClientRect();return r.bottom<=v.stripEl.getBoundingClientRect().bottom+1;})()`);
+    assert(last,name+": last stop can be scrolled into view");
+    await evaluate('window.wfQA.v.stripEl.querySelector(".wf-stop").click()');
+    await pause();
+    const detail=await evaluate(`(() => {
+      const v=window.wfQA.v,popup=v.mapEl.querySelector(".leaflet-popup");if(!popup)return null;
+      const r=popup.getBoundingClientRect(),legend=v.legendEl.getBoundingClientRect(),card=v.journeyEl.getBoundingClientRect();
+      return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,aboveFooter:r.bottom<=card.top,belowLegend:r.top>=legend.bottom};
+    })()`);
+    assert(detail && detail.left>=0 && detail.right<=width+1 && detail.aboveFooter && detail.belowLegend,name+": place details avoid host chrome "+JSON.stringify(detail));
+    receipts.push({hostScenario:name,layout,expanded,list,lastStopVisible:last,detail});
+  }
+  await evaluate(`(() => {
+    const q=window.wfQA;document.body.appendChild(q.v.contentEl);
+    for(const id of ["wf-qa-host","wf-qa-status","wf-qa-navbar","wf-qa-host-style"])document.getElementById(id)?.remove();
+    document.body.className=q.theme;
+  })()`);
   await evaluate(`(() => {const v=window.wfQA.v;v.map.closePopup();v.journeyOpen=true;v.returnToCurrent();document.body.removeClass("theme-dark");document.body.addClass("theme-light");})()`);
   await screenshot("mobile-320-light.png");
   const finish = await evaluate(`(() => {
@@ -186,6 +264,7 @@ try {
     document.body.className=q.theme;
     q.v.contentEl.removeClass("wf-qa-pane");
     if(q.parent) q.parent.insertBefore(q.v.contentEl,q.sibling);
+    for(const id of ["wf-qa-host","wf-qa-status","wf-qa-navbar","wf-qa-host-style"])document.getElementById(id)?.remove();
     app.saveLocalStorage(q.key,q.storage ?? null);
     q.v.progress=q.current;
     const p=app.plugins.plugins.wayfarer;

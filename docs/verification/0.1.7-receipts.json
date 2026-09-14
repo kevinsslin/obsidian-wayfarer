@@ -1,0 +1,530 @@
+[
+  {
+    "progress": {
+      "firstDisabled": true,
+      "previous": true,
+      "unchanged": true,
+      "browsed": true,
+      "returned": true,
+      "advanced": true,
+      "persisted": true,
+      "destination": true,
+      "noOrigin": true
+    }
+  },
+  {
+    "restored": true
+  },
+  {
+    "desktopCamera": {
+      "zoom": 14,
+      "stop": "日光ステーションホテルクラシック"
+    }
+  },
+  {
+    "width": 390,
+    "height": 844,
+    "map": {
+      "x": 0,
+      "y": 0,
+      "w": 390,
+      "h": 844
+    },
+    "card": {
+      "x": 10,
+      "y": 626.609375,
+      "w": 370,
+      "h": 193.390625
+    },
+    "legend": {
+      "x": 10,
+      "y": 87,
+      "w": 370,
+      "h": 52
+    },
+    "controls": [
+      {
+        "x": 14,
+        "y": 91,
+        "w": 266,
+        "h": 44
+      },
+      {
+        "x": 286,
+        "y": 91,
+        "w": 44,
+        "h": 44
+      },
+      {
+        "x": 332,
+        "y": 91,
+        "w": 44,
+        "h": 44
+      },
+      {
+        "x": 11,
+        "y": 627.609375,
+        "w": 320,
+        "h": 44
+      },
+      {
+        "x": 331,
+        "y": 627.609375,
+        "w": 44,
+        "h": 44
+      },
+      {
+        "x": 23,
+        "y": 690.8046875,
+        "w": 203.671875,
+        "h": 44
+      },
+      {
+        "x": 23,
+        "y": 763,
+        "w": 66.796875,
+        "h": 44
+      },
+      {
+        "x": 95.796875,
+        "y": 763,
+        "w": 198.40625,
+        "h": 44
+      },
+      {
+        "x": 300.203125,
+        "y": 763,
+        "w": 66.796875,
+        "h": 44
+      }
+    ],
+    "overflow": false,
+    "small": false,
+    "pinVisible": true
+  },
+  {
+    "width": 390,
+    "list": {
+      "open": true,
+      "stops": 3,
+      "clear": true
+    }
+  },
+  {
+    "width": 320,
+    "height": 640,
+    "map": {
+      "x": 0,
+      "y": 0,
+      "w": 320,
+      "h": 640
+    },
+    "card": {
+      "x": 10,
+      "y": 570,
+      "w": 300,
+      "h": 46
+    },
+    "legend": {
+      "x": 10,
+      "y": 86,
+      "w": 300,
+      "h": 52
+    },
+    "controls": [
+      {
+        "x": 14,
+        "y": 90,
+        "w": 196,
+        "h": 44
+      },
+      {
+        "x": 216,
+        "y": 90,
+        "w": 44,
+        "h": 44
+      },
+      {
+        "x": 262,
+        "y": 90,
+        "w": 44,
+        "h": 44
+      },
+      {
+        "x": 11,
+        "y": 571,
+        "w": 298,
+        "h": 44
+      }
+    ],
+    "overflow": false,
+    "small": false,
+    "pinVisible": true
+  },
+  {
+    "width": 320,
+    "list": {
+      "open": true,
+      "stops": 3,
+      "clear": true
+    }
+  },
+  {
+    "hostScenario": "iphone-floating",
+    "layout": {
+      "fontSize": "14.992px",
+      "topGap": 8,
+      "zoomGap": 10,
+      "footerGap": 10,
+      "root": {
+        "x": 0,
+        "y": 114,
+        "width": 402,
+        "height": 760,
+        "top": 114,
+        "right": 402,
+        "bottom": 874,
+        "left": 0
+      },
+      "legend": {
+        "x": 10,
+        "y": 122,
+        "width": 382,
+        "height": 52,
+        "top": 122,
+        "right": 392,
+        "bottom": 174,
+        "left": 10
+      },
+      "card": {
+        "x": 44.2109375,
+        "y": 734,
+        "width": 347.7890625,
+        "height": 46,
+        "top": 734,
+        "right": 392,
+        "bottom": 780,
+        "left": 44.2109375
+      },
+      "nav": {
+        "x": 43,
+        "y": 790,
+        "width": 316,
+        "height": 52,
+        "top": 790,
+        "right": 359,
+        "bottom": 842,
+        "left": 43
+      }
+    },
+    "expanded": {
+      "clear": true,
+      "overflow": false
+    },
+    "list": {
+      "clear": true,
+      "collapsed": true,
+      "mapHidden": true,
+      "transportButtons": 0,
+      "scrollHeight": 540,
+      "height": 540
+    },
+    "lastStopVisible": true,
+    "detail": {
+      "left": 60,
+      "right": 341,
+      "top": 278.6640625,
+      "bottom": 425,
+      "aboveFooter": true,
+      "belowLegend": true
+    }
+  },
+  {
+    "hostScenario": "iphone-hidden-nav",
+    "layout": {
+      "fontSize": "14.992px",
+      "topGap": 8,
+      "zoomGap": 10,
+      "footerGap": 46,
+      "root": {
+        "x": 0,
+        "y": 114,
+        "width": 402,
+        "height": 760,
+        "top": 114,
+        "right": 402,
+        "bottom": 874,
+        "left": 0
+      },
+      "legend": {
+        "x": 10,
+        "y": 122,
+        "width": 382,
+        "height": 52,
+        "top": 122,
+        "right": 392,
+        "bottom": 174,
+        "left": 10
+      },
+      "card": {
+        "x": 44.2109375,
+        "y": 784,
+        "width": 347.7890625,
+        "height": 46,
+        "top": 784,
+        "right": 392,
+        "bottom": 830,
+        "left": 44.2109375
+      },
+      "nav": {
+        "x": 43,
+        "y": 876,
+        "width": 316,
+        "height": 52,
+        "top": 876,
+        "right": 359,
+        "bottom": 928,
+        "left": 43
+      }
+    },
+    "expanded": {
+      "clear": true,
+      "overflow": false
+    },
+    "list": {
+      "clear": true,
+      "collapsed": true,
+      "mapHidden": true,
+      "transportButtons": 0,
+      "scrollHeight": 590,
+      "height": 590
+    },
+    "lastStopVisible": true,
+    "detail": {
+      "left": 60,
+      "right": 341,
+      "top": 303.6640625,
+      "bottom": 450,
+      "aboveFooter": true,
+      "belowLegend": true
+    }
+  },
+  {
+    "hostScenario": "iphone-overlay-header",
+    "layout": {
+      "fontSize": "14.992px",
+      "topGap": 54,
+      "zoomGap": 10,
+      "footerGap": 10,
+      "root": {
+        "x": 0,
+        "y": 59,
+        "width": 402,
+        "height": 815,
+        "top": 59,
+        "right": 402,
+        "bottom": 874,
+        "left": 0
+      },
+      "legend": {
+        "x": 10,
+        "y": 113,
+        "width": 382,
+        "height": 52,
+        "top": 113,
+        "right": 392,
+        "bottom": 165,
+        "left": 10
+      },
+      "card": {
+        "x": 44.2109375,
+        "y": 734,
+        "width": 347.7890625,
+        "height": 46,
+        "top": 734,
+        "right": 392,
+        "bottom": 780,
+        "left": 44.2109375
+      },
+      "nav": {
+        "x": 43,
+        "y": 790,
+        "width": 316,
+        "height": 52,
+        "top": 790,
+        "right": 359,
+        "bottom": 842,
+        "left": 43
+      }
+    },
+    "expanded": {
+      "clear": true,
+      "overflow": false
+    },
+    "list": {
+      "clear": true,
+      "collapsed": true,
+      "mapHidden": true,
+      "transportButtons": 0,
+      "scrollHeight": 549,
+      "height": 549
+    },
+    "lastStopVisible": true,
+    "detail": {
+      "left": 60,
+      "right": 341,
+      "top": 273.6640625,
+      "bottom": 420,
+      "aboveFooter": true,
+      "belowLegend": true
+    }
+  },
+  {
+    "hostScenario": "phone-large-text",
+    "layout": {
+      "fontSize": "18.74px",
+      "topGap": 8,
+      "zoomGap": 10,
+      "footerGap": 10,
+      "root": {
+        "x": 0,
+        "y": 114,
+        "width": 320,
+        "height": 626,
+        "top": 114,
+        "right": 320,
+        "bottom": 740,
+        "left": 0
+      },
+      "legend": {
+        "x": 10,
+        "y": 122,
+        "width": 300,
+        "height": 52,
+        "top": 122,
+        "right": 310,
+        "bottom": 174,
+        "left": 10
+      },
+      "card": {
+        "x": 10,
+        "y": 600,
+        "width": 300,
+        "height": 46,
+        "top": 600,
+        "right": 310,
+        "bottom": 646,
+        "left": 10
+      },
+      "nav": {
+        "x": 2,
+        "y": 656,
+        "width": 316,
+        "height": 52,
+        "top": 656,
+        "right": 318,
+        "bottom": 708,
+        "left": 2
+      }
+    },
+    "expanded": {
+      "clear": true,
+      "overflow": false
+    },
+    "list": {
+      "clear": true,
+      "collapsed": true,
+      "mapHidden": true,
+      "transportButtons": 0,
+      "scrollHeight": 509,
+      "height": 406
+    },
+    "lastStopVisible": true,
+    "detail": {
+      "left": 19,
+      "right": 300,
+      "top": 185.578125,
+      "bottom": 396,
+      "aboveFooter": true,
+      "belowLegend": true
+    }
+  },
+  {
+    "hostScenario": "phone-docked",
+    "layout": {
+      "fontSize": "14.992px",
+      "topGap": 8,
+      "zoomGap": 10,
+      "footerGap": 10,
+      "root": {
+        "x": 0,
+        "y": 114,
+        "width": 390,
+        "height": 730,
+        "top": 114,
+        "right": 390,
+        "bottom": 844,
+        "left": 0
+      },
+      "legend": {
+        "x": 10,
+        "y": 122,
+        "width": 370,
+        "height": 52,
+        "top": 122,
+        "right": 380,
+        "bottom": 174,
+        "left": 10
+      },
+      "card": {
+        "x": 32.2109375,
+        "y": 708,
+        "width": 347.7890625,
+        "height": 46,
+        "top": 708,
+        "right": 380,
+        "bottom": 754,
+        "left": 32.2109375
+      },
+      "nav": {
+        "x": 0,
+        "y": 764,
+        "width": 390,
+        "height": 80,
+        "top": 764,
+        "right": 390,
+        "bottom": 844,
+        "left": 0
+      }
+    },
+    "expanded": {
+      "clear": true,
+      "overflow": false
+    },
+    "list": {
+      "clear": true,
+      "collapsed": true,
+      "mapHidden": true,
+      "transportButtons": 0,
+      "scrollHeight": 514,
+      "height": 514
+    },
+    "lastStopVisible": true,
+    "detail": {
+      "left": 54,
+      "right": 335,
+      "top": 265.6640625,
+      "bottom": 412,
+      "aboveFooter": true,
+      "belowLegend": true
+    }
+  },
+  {
+    "finish": {
+      "crossed": true,
+      "crossedBack": true,
+      "finished": true,
+      "navHidden": true
+    }
+  }
+]

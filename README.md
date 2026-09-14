@@ -47,15 +47,15 @@ Run **Insert day headings for a trip** to get the headings, then paste links und
 
 ## Following the trip
 
-On a phone, a compact date selector and map/list buttons float over the full map pane. The desktop keeps its day chips and floating timeline.
+On a phone, a compact date selector and **Map / List** text buttons sit at the available top of the map pane. Controls leave room for Obsidian’s mobile header and bottom navigation. The desktop keeps its day chips and floating timeline.
 
-Open **Current trip** at the bottom, then **Start here** to begin at the selected stop. The card shows the trip, day, current stop and next stop. **Previous** and **Next stop** move through the itinerary manually, including between days; **Navigate to next** opens Google Maps from your device's location without changing progress. Browse other dates freely and use **Back to current stop** to return. Tap a stop's name for details, or **Set as current stop** on a place card to correct progress. The card folds into a single small row.
+Open **Current trip** at the bottom, then **Start here** to begin at the selected stop. The card shows the trip, day, current stop and next stop. **Previous** and **Next stop** move through the itinerary manually, including between days; **Navigate to next** opens Google Maps from your device's location without changing progress. Browse other dates freely and use **Back to current stop** to return. Tap a stop's name for details, or **Set as current stop** on a place card to correct progress. The card folds into a single small row. On a phone, List is a dedicated reading surface with progress collapsed; expanding progress switches back to the map. Transport legs show the mode and duration or distance; open a stop’s details to **Change transport**.
 
 Progress is saved per note path on this device, separately from the Markdown plan. It is not GPS tracking and does not sync between devices. Renaming a note requires selecting the current stop again. The **…** menu resets progress.
 
-<p align="center"><img src="docs/screenshots/journey/mobile-390-collapsed.png" alt="Compact map with the current trip card collapsed, in a 390 px simulated phone pane" width="30%"> <img src="docs/screenshots/journey/mobile-390.png" alt="Current and next stop with separate navigation and advance buttons" width="30%"> <img src="docs/screenshots/journey/mobile-390-list.png" alt="The original floating timeline adapted to a phone-width pane" width="30%"></p>
+<p align="center"><img src="docs/screenshots/mobile-layout/iphone-floating-map.png" alt="Compact map with the current trip card collapsed, with reconstructed mobile host chrome" width="30%"> <img src="docs/screenshots/mobile-layout/iphone-floating-progress.png" alt="Current and next stop with separate navigation and advance buttons" width="30%"> <img src="docs/screenshots/mobile-layout/iphone-floating-list.png" alt="A dedicated reading list on a phone" width="30%"></p>
 
-These are captures of the real Obsidian plugin renderer at phone dimensions, not iOS/Android device screenshots. [Desktop capture](docs/screenshots/journey/desktop.png) · [UX research and remaining proposals](docs/research/mobile-obsidian-best-practices.md).
+These captures combine the real plugin renderer with reconstructed mobile host chrome using Obsidian’s CSS; they are not iOS/Android device screenshots. [Host-layout verification](docs/verification/0.1.7.md). [Desktop capture](docs/screenshots/journey/desktop.png) · [UX research and remaining proposals](docs/research/mobile-obsidian-best-practices.md).
 
 ## Planning with an AI assistant
 

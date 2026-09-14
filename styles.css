@@ -1576,7 +1576,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 /* Narrow panes get a single date selector; the map fills the whole pane. */
 .wayfarer-view.is-narrow .wf-legend {
   position: absolute;
-  top: max(10px, env(safe-area-inset-top));
+  top: var(--wf-controls-top, 8px);
   left: 10px;
   right: 10px;
   z-index: 510;
@@ -1624,7 +1624,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
   height: 18px;
 }
 .wayfarer-view.is-narrow .wf-divider { display: none; }
-.wayfarer-view.is-narrow .leaflet-top { top: 66px; }
+.wayfarer-view.is-narrow .leaflet-top { top: var(--wf-legend-bottom, 60px); }
 
 .wayfarer-view.is-narrow .leaflet-control-zoom a {
   width: 44px;
@@ -1633,9 +1633,9 @@ svg.leaflet-image-layer.leaflet-interactive path {
 }
 
 .wayfarer-view.is-narrow .wf-strip {
-  top: 72px;
+  top: calc(var(--wf-legend-bottom, 60px) + 10px);
   bottom: auto;
-  max-height: calc(100% - var(--wf-journey-h, 44px) - 106px - env(safe-area-inset-bottom));
+  max-height: calc(100% - var(--wf-journey-h, 44px) - var(--wf-legend-bottom, 60px) - var(--wf-controls-bottom, 24px) - 20px);
   width: calc(100% - 20px);
 }
 
@@ -1644,7 +1644,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 
 .wayfarer-view.is-narrow .wf-journey {
   right: 10px;
-  bottom: calc(24px + env(safe-area-inset-bottom));
+  bottom: var(--wf-controls-bottom, 24px);
   max-width: calc(100% - 20px);
 }
 .wayfarer-view.is-narrow .wf-journey.is-expanded { width: calc(100% - 20px); }
@@ -1659,7 +1659,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
   min-width: 44px;
   min-height: 44px;
 }
-.wayfarer-view.is-narrow .wf-card { max-height: calc(var(--wf-map-h, 600px) - 210px); }
+.wayfarer-view.is-narrow .wf-card { max-height: var(--wf-popup-max-h, calc(var(--wf-map-h, 600px) - 210px)); }
 
 .wayfarer-view.is-narrow .wf-card-actions a {
   display: inline-flex;
@@ -1717,4 +1717,55 @@ svg.leaflet-image-layer.leaflet-interactive path {
 .wayfarer-view .wf-journey-actions button:disabled {
   opacity: 0.4;
   cursor: default;
+}
+
+.wayfarer-view.is-narrow .wf-legend-right .wf-chip {
+  padding: 0 10px;
+  border-radius: 8px;
+  opacity: 1;
+}
+
+.wayfarer-view.is-narrow .wf-legend-right .wf-chip.is-active {
+  background: var(--background-modifier-hover);
+  color: var(--text-accent);
+}
+
+/* On a phone, the list is a reading surface, not another map overlay. */
+.wayfarer-view.is-narrow.is-list .wf-body { background: var(--background-primary); }
+.wayfarer-view.is-narrow.is-list .wf-map { visibility: hidden; }
+
+.wayfarer-view.is-narrow .wf-strip {
+  left: 0;
+  width: 100%;
+  bottom: calc(var(--wf-journey-h, 44px) + var(--wf-controls-bottom, 24px) + 10px);
+  max-height: none;
+  border: 0;
+  border-radius: 0;
+  background: var(--background-primary);
+  backdrop-filter: none;
+  box-shadow: none;
+  padding: 4px 12px 16px;
+  overscroll-behavior: contain;
+}
+
+.wayfarer-view.is-narrow .wf-leg {
+  padding: 12px 4px 12px 22px;
+  min-height: 0;
+}
+
+.wayfarer-view.is-narrow .wf-leg.is-unknown .wf-leg-text { color: var(--text-muted); }
+.wayfarer-view.is-narrow .wf-journey-context { white-space: normal; }
+
+.wayfarer-view.is-narrow .wf-journey.is-expanded {
+  max-height: var(--wf-journey-max-h, 60%);
+  display: flex;
+  flex-direction: column;
+}
+
+.wayfarer-view.is-narrow .wf-journey-head { flex: 0 0 auto; }
+
+.wayfarer-view.is-narrow .wf-journey-content {
+  overflow-y: auto;
+  min-height: 0;
+  overscroll-behavior: contain;
 }

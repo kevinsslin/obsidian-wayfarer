@@ -11,6 +11,7 @@ import { dateForDay, routable } from "../routing";
 import { t } from "../core/i18n";
 import type WayfarerPlugin from "../main";
 import { attachPhoto } from "../photos";
+import { mapClearance } from "../core/map-layout";
 import { nextStop, previousStop, readProgress, resolveStop, stopRef, type Progress } from "../core/journey";
 
 
@@ -139,9 +140,42 @@ export class WayfarerView extends ItemView {
       this.contentEl.style.setProperty("--wf-journey-h", `${this.journeyEl.offsetHeight}px`);
     };
     sizeVar();
-    const ro = new ResizeObserver(() => { sizeVar(); this.applySplit(); this.map?.invalidateSize(); });
+    const ro = new ResizeObserver(() => { sizeVar(); this.applySplit(); this.updateChromeClearance(); this.map?.invalidateSize(); });
     ro.observe(this.mapEl);
     ro.observe(this.journeyEl);
+    ro.observe(this.legendEl);
+    const observed = new WeakSet<Element>();
+    const chromeAttributes = new MutationObserver(() => this.updateChromeClearance());
+    this.register(() => chromeAttributes.disconnect());
+    const observeChrome = () => {
+      const header = root.parentElement?.querySelector(".view-header");
+      const chrome = [...document.querySelectorAll(".mobile-navbar, .mobile-toolbar")];
+      if (header) chrome.push(header);
+      for (const el of chrome) {
+        if (!observed.has(el)) { observed.add(el); ro.observe(el); chromeAttributes.observe(el, { attributes: true, attributeFilter: ["class", "style"] }); }
+      }
+      this.updateChromeClearance();
+    };
+    observeChrome();
+    // Host navigation can be hidden, shown, moved or inserted without resizing the pane.
+    const hostChanges = new MutationObserver(observeChrome);
+    hostChanges.observe(document.body, { attributes: true, attributeFilter: ["class", "style"], childList: true });
+    const chromeTree = new MutationObserver((records) => {
+      if (records.some((record) => [...record.addedNodes, ...record.removedNodes].some((node) => node instanceof Element && (node.matches(".mobile-navbar, .mobile-toolbar, .view-header") || node.querySelector(".mobile-navbar, .mobile-toolbar, .view-header"))))) observeChrome();
+    });
+    chromeTree.observe(document.body, { childList: true, subtree: true });
+    this.register(() => { hostChanges.disconnect(); chromeTree.disconnect(); });
+    this.registerEvent(this.app.workspace.on("layout-change", observeChrome));
+    this.registerDomEvent(document, "transitionend", (event) => {
+      if (event.target instanceof HTMLElement && event.target.matches(".mobile-navbar, .mobile-toolbar, .view-header")) this.updateChromeClearance();
+    });
+    this.registerDomEvent(window, "resize", observeChrome);
+    const viewport = window.visualViewport;
+    if (viewport) {
+      viewport.addEventListener("resize", observeChrome);
+      viewport.addEventListener("scroll", observeChrome);
+      this.register(() => { viewport.removeEventListener("resize", observeChrome); viewport.removeEventListener("scroll", observeChrome); });
+    }
     this.register(() => ro.disconnect());
 
     // Popup anchors live inside Leaflet's DOM, outside Obsidian's link handling.
@@ -200,6 +234,31 @@ export class WayfarerView extends ItemView {
       toggle.textContent = open ? "‹" : "›";
       toggle.setAttribute("aria-label", open ? t("list_hide") : t("list_show"));
     }
+  }
+
+  private updateChromeClearance(): void {
+    if (!this.isNarrow()) return;
+    const root = this.contentEl.getBoundingClientRect();
+    const visible = (el: Element) => {
+      const style = getComputedStyle(el);
+      const rect = el.getBoundingClientRect();
+      return style.display !== "none" && style.visibility !== "hidden" && Number(style.opacity) > 0 && rect.width > 0 && rect.height > 0;
+    };
+    const header = this.contentEl.parentElement?.querySelector(".view-header");
+    const footers = [...document.querySelectorAll(".mobile-navbar, .mobile-toolbar")].filter(visible);
+    const vv = window.visualViewport;
+    const viewport = { top: vv?.offsetTop ?? 0, left: vv?.offsetLeft ?? 0, bottom: (vv?.offsetTop ?? 0) + (vv?.height ?? window.innerHeight), right: (vv?.offsetLeft ?? 0) + (vv?.width ?? window.innerWidth) };
+    const safeBottom = parseFloat(getComputedStyle(document.body).getPropertyValue("--safe-area-inset-bottom")) || 0;
+    const clearance = mapClearance(root, header && visible(header) ? [header.getBoundingClientRect()] : [], footers.map((el) => el.getBoundingClientRect()), viewport, safeBottom);
+    const set = (key: string, value: number) => {
+      const px = `${Math.ceil(value)}px`;
+      if (this.contentEl.style.getPropertyValue(key) !== px) this.contentEl.style.setProperty(key, px);
+    };
+    set("--wf-controls-top", clearance.top + 8);
+    set("--wf-controls-bottom", Math.max(24, clearance.bottom + 10));
+    set("--wf-legend-bottom", clearance.top + 8 + this.legendEl.offsetHeight);
+    set("--wf-journey-max-h", Math.max(80, root.height - clearance.top - this.legendEl.offsetHeight - Math.max(24, clearance.bottom + 10) - 28));
+    set("--wf-popup-max-h", Math.max(80, this.mapEl.clientHeight - this.topInset() - this.bottomInset() - 50));
   }
 
   applyTiles(): void {
@@ -409,6 +468,7 @@ export class WayfarerView extends ItemView {
       marker.bindTooltip(() => tipEl(stop.time ? `${stop.time} ${stop.name}` : stop.name), { direction: "top", offset: [0, -14], className: "wf-tooltip", permanent: focus });
       marker.bindPopup(() => this.popupEl(day, stop), { className: "wf-popup", closeButton: false, maxWidth: 280, minWidth: 280 });
       marker.on("click", () => {
+        if (this.isNarrow()) this.journeyOpen = false;
         this.userMoved = true;
         this.setFocus(stop);
         void this.jumpTo(stop, false);
@@ -469,6 +529,10 @@ export class WayfarerView extends ItemView {
       if (url) t2.createEl("a", { cls: "wf-ext", text: `${text} ↗`, attr: { href: url, "aria-label": t("from_prev_dir") } });
       else t2.setText(text);
       body.insertBefore(t2, actions);
+      if (this.isNarrow()) {
+        const transport = actions.createEl("button", { cls: "wf-inline-action", text: t("change_transport") });
+        transport.onclick = () => this.pickTransport(transport, leg);
+      }
     }
     if (stop.meta?.website && /^https?:\/\//i.test(stop.meta.website)) actions.createEl("a", { cls: "wf-ext", text: t("website"), attr: { href: stop.meta.website } });
     const jump = actions.createEl("a", { text: t("to_line"), attr: { href: "#" } });
@@ -551,12 +615,14 @@ export class WayfarerView extends ItemView {
     select.onchange = () => this.chooseDay(it.days.find((d) => d.index === Number(select.value)) ?? null);
     const right = this.legendEl.createDiv({ cls: "wf-legend-right" });
     const map = right.createEl("button", { cls: "wf-chip wf-chip-icon wf-map-toggle", attr: { "aria-label": t("view_map") } });
-    setIcon(map, "map-pin");
+    map.setText(t("view_map"));
     map.onclick = () => { this.narrowOpen = false; this.applySplit(); };
     const list = right.createEl("button", { cls: "wf-chip wf-chip-icon wf-list-toggle", attr: { "aria-label": t("view_list") } });
-    setIcon(list, "list");
+    list.setText(t("view_list"));
     list.onclick = () => {
       this.narrowOpen = true;
+      this.journeyOpen = false;
+      this.drawJourney();
       // The phone uses one surface at a time; desktop keeps its original floating timeline.
       this.map?.closePopup();
       this.applySplit();
@@ -619,7 +685,12 @@ export class WayfarerView extends ItemView {
     setIcon(icon, "navigation");
     toggle.createSpan({ cls: "wf-journey-summary", text: this.journeyOpen ? t("journey") : finished ? t("journey_done") : current ? `${t("journey_current")} · ${current.name}` : t("journey") });
     setIcon(toggle.createSpan({ cls: "wf-journey-chevron" }), this.journeyOpen ? "chevron-down" : "chevron-up");
-    toggle.onclick = () => { this.journeyOpen = !this.journeyOpen; this.map?.closePopup(); this.drawJourney(); };
+    toggle.onclick = () => {
+      this.journeyOpen = !this.journeyOpen;
+      if (this.journeyOpen && this.isNarrow()) { this.narrowOpen = false; this.applySplit(); }
+      this.map?.closePopup();
+      this.drawJourney();
+    };
     if (!this.journeyOpen) return;
     const more = head.createEl("button", { cls: "wf-journey-more", attr: { "aria-label": t("journey_more") } });
     setIcon(more, "ellipsis");
@@ -761,14 +832,16 @@ export class WayfarerView extends ItemView {
   private drawLegRow(leg: Leg, color: string): void {
     const conn = this.stripEl.createDiv({ cls: `wf-leg${leg.lateBy > 0 ? " is-late" : ""}${leg.mode ? "" : " is-unknown"}` });
     conn.style.setProperty("--wf-color", color);
-    const mode = conn.createEl("button", { cls: "wf-leg-mode", text: leg.mode ? TRANSPORT_EMOJI[leg.mode] : "?" });
-    mode.setAttr("aria-label", t("via_hint"));
-    mode.onclick = (e) => {
-      e.stopPropagation();
-      this.pickTransport(mode, leg);
-    };
-    let text = leg.mode ? legText(leg) : `${t("pick_mode")} · ${legText(leg)}`;
-    if (leg.mode && !leg.routed && routable(leg.mode) && !this.plugin.settings.googleApiKey) text += ` · ${t("key_needed")}`;
+    const narrow = this.isNarrow();
+    if (!narrow) {
+      const mode = conn.createEl("button", { cls: "wf-leg-mode", text: leg.mode ? TRANSPORT_EMOJI[leg.mode] : "?" });
+      mode.setAttr("aria-label", t("via_hint"));
+      mode.onclick = (e) => { e.stopPropagation(); this.pickTransport(mode, leg); };
+    }
+    let text = narrow
+      ? `${leg.mode ? `${TRANSPORT_EMOJI[leg.mode]} ${t(`m_${leg.mode}`)}` : t("transport_unset")} · ${!leg.routed ? t("straight_distance") + " " : ""}${legText(leg)}`
+      : leg.mode ? legText(leg) : `${t("pick_mode")} · ${legText(leg)}`;
+    if (!narrow && leg.mode && !leg.routed && routable(leg.mode) && !this.plugin.settings.googleApiKey) text += ` · ${t("key_needed")}`;
     conn.createSpan({ cls: "wf-leg-text", text });
     if (leg.lateBy) conn.createSpan({ cls: "wf-leg-late", text: t("late_by", { n: leg.lateBy }) });
     conn.setAttr("aria-label", legTooltip(leg));
@@ -824,11 +897,11 @@ export class WayfarerView extends ItemView {
 
   /** Height of the floating chip bar over the top of the map. */
   private topInset(): number {
-    return this.isNarrow() ? this.legendEl.offsetHeight + 20 : 0;
+    return this.isNarrow() ? Math.max(0, this.legendEl.getBoundingClientRect().bottom - this.mapEl.getBoundingClientRect().top) : 0;
   }
 
   private bottomInset(): number {
-    return this.journeyEl.offsetHeight + 30;
+    return Math.max(0, this.mapEl.getBoundingClientRect().bottom - this.journeyEl.getBoundingClientRect().top);
   }
 
   private flyToStop(stop: Stop): void {

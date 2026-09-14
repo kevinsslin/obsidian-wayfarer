@@ -7,6 +7,7 @@ export type Locale = "en" | "zh-TW";
 
 const TABLE = {
   en: {
+    transport_unset: "Transport unset", straight_distance: "Straight line", change_transport: "Change transport",
     journey_previous: "← Previous", journey_nav_short: "Navigate ↗",
     journey: "Current trip", journey_manual: "Manual progress · this device", journey_start: "Start here",
     journey_next: "Next stop", journey_finish: "Finish trip", journey_done: "Trip complete",
@@ -26,6 +27,7 @@ const TABLE = {
     kml_written: "Wrote {f}. In Google My Maps: Create a new map → Import → pick this file. Re-export replaces it; delete the old layer there.",
   },
   "zh-TW": {
+    transport_unset: "交通方式未設定", straight_distance: "直線距離", change_transport: "更改交通方式",
     journey_previous: "← 上一站", journey_nav_short: "導航 ↗",
     journey: "目前行程", journey_manual: "手動進度 · 僅此裝置", journey_start: "從這站開始",
     journey_next: "下一站", journey_finish: "完成行程", journey_done: "行程已完成",
