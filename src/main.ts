@@ -102,6 +102,8 @@ export default class WayfarerPlugin extends Plugin {
 
     this.registerEvent(this.app.workspace.on("editor-paste", (evt, editor) => this.onPaste(evt, editor)));
     this.registerEvent(this.app.workspace.on("active-leaf-change", () => this.refresh()));
+    // A different note opened in the same pane changes no leaf, only the file.
+    this.registerEvent(this.app.workspace.on("file-open", () => this.refresh()));
     this.registerEvent(this.app.workspace.on("editor-change", debounce((editor: Editor, info: MarkdownFileInfo) => this.onEdit(editor, info), 250, true)));
     this.registerEvent(this.app.metadataCache.on("changed", (file) => { if (file.path === this.current?.file.path) this.refresh(); }));
     this.registerDomEvent(document, "selectionchange", () => this.trackCursor());

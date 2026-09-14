@@ -2,135 +2,82 @@
 
 Trip planning inside Obsidian. The note is the plan; a pane beside it is the map.
 
-- **Paste a Google Maps link** (including `maps.app.goo.gl` share links) and it becomes `[Name](geo:lat,lng)`.
-- **Headings are days.** Every stop under `## 2026-09-17 週四 …` is that day's stop: same colour, numbered in order, joined by a line with an arrow.
-- **The map follows your cursor.** Put the cursor on a stop and the map flies to it; move into another day and the map reframes that day, drawn at full strength with the rest dimmed. Drag the map and it stays put until you move to another line. The 📍 chip turns following off.
-- **Every stop has a face.** Pins carry a category emoji (⛩️ 🍜 🏨 🚉 🏞️ …) from the place type or name, or the emoji you typed before the link. A `07:53` at the start of the line becomes the stop's time. Indented lines under a stop are its notes and show on the card and in the popup, verbatim.
-- **A timeline beside the map.** The left column lists the active day's stops top to bottom (thumbnail, number, time, name, your remark), with an arrow between each pair carrying the leg. Click a card and the map flies there, the popup opens, and the editor cursor lands on that line. Drag the divider to resize the column, or fold it away with the handle on the divider.
-- **You choose how you get there.** Click the `?` on an arrow to pick walk, bike, car, taxi, bus, train, metro, tram, boat or flight, or type a transport emoji (🚌 🚶 🚆 🚇 ✈️) before the link. Picking one writes that emoji before the link (replacing the one already there), so the text always says what the map says; nothing else on the line is touched and nothing is guessed.
-- **Routes come from Google, or not at all.** With your Google key, a leg whose mode you chose is routed by Google Routes: real time and distance, the line drawn along the road or rail, transit line names, and the mode's emoji at the leg's midpoint. Without a key a leg is a dashed straight line with its distance only. Flights and boats are never routed: they stay straight lines with the distance. A routed leg that cannot fit between the two written times turns red with how many minutes late you would be.
-- **Cards, not tooltips.** Click a pin for a card with the photo, rating, hours, your notes, address, and links: open in Google Maps, directions from the previous stop in the mode you chose, website, jump to the line.
-- **Opening hours checked against the time you wrote.** When a stop has a time and Google hours, the card says "closed that day", "opens 10:00" or "closed at 17:00" (當天休, 10:00 才開, 17:00 已關) for the weekday of that heading.
-- **Reorder by dragging.** Drag a card in the timeline onto another; the stop's lines (including its notes) move in the note and everything recomputes.
-- **Photos only when they are real.** An image you put on the stop's line or under it (vault file or URL) is shown first; with a Google key, Google's own place photo. Nothing is searched for.
-- **Ratings and opening hours** ride along as a hidden `%%wf:{…}%%` comment and show as a small chip after the link, in both Live Preview and Reading view.
+![The note on the left, the map and timeline on the right](docs/screenshots/hero.jpg)
 
-The stop format is the same inline geolink that [Map View](https://github.com/esm7/obsidian-map-view) reads, so its display rules, queries and Bases view work on the same notes.
+Paste a Google Maps link and it becomes a stop. Write one heading per day and the map colours, numbers and connects that day's stops. Put the cursor on a stop and the map flies there. Pick how you get from one stop to the next and Google Routes draws the way with real times. Everything the plugin learns is written back into the note, so the file stays the single source of truth and works on any machine, with or without an API key.
+
+## What you get
+
+- **Stops are links.** `[Name](geo:lat,lng)`, the same inline format the [Map View](https://github.com/esm7/obsidian-map-view) plugin reads. You never type it: paste a Google Maps link (short `maps.app.goo.gl` links included) and it converts itself.
+- **Headings are days.** `## 2026-09-17 Thu Up to Senjogahara` starts a day. A range like `## 2026-09-19 ~ 2026-09-26 Tokyo` keeps a stretch you have not planned yet as one block. Undated sections (research, to-dos, candidates) stay in the same note and off the map.
+- **A timeline beside the map.** The active day's stops top to bottom with photo, time, name and your remark, an arrow between each pair carrying the leg. Click a card to fly there; drag a card to reorder the note.
+- **You choose the transport.** Type a transport emoji before the link (🚶 🚲 🚗 🚕 🚌 🚆 🚇 🚊 ⛴️ ✈️) or pick it on the arrow. The pick writes the emoji into the text, so the note and the map never disagree. Nothing is guessed.
+- **Routes from Google, once.** With your key, a leg with a chosen mode is routed by Google Routes: time, distance, transit line names, the line drawn along the road. The result is saved on the stop, so nobody asks twice and companions without a key see the same route.
+- **Cards, not tooltips.** Click a pin for the photo, rating, today's opening hours, your notes, address, and links to Google Maps, directions and the line in the note.
+- **Checks against what you wrote.** A time at the start of the line is the stop's time. A routed leg that cannot fit between two written times turns red. A stop with Google hours says "closed that day" or "opens 10:00" for that weekday.
+- **Export to Google My Maps.** One KML per note, one layer per day, for the Google Maps app on the road.
+
+![The timeline beside the map, and a stop card with photo, rating, notes, address and links](docs/screenshots/popup.jpg)
 
 ## Writing a plan
 
-You never type the link syntax by hand. Run **Insert day headings for a trip**, pick the first day and the length, and you get one heading per day. Then paste Google Maps links under each heading; each one turns into a stop. The result looks like this:
-
 ```markdown
 ---
-locations:
+timezone: Asia/Tokyo
 ---
-## 2026-09-16 週三 日光市區
-- [東武日光站](geo:36.7509,139.6187)
-- 🏨 [日光ステーションホテル](geo:36.7512,139.6201)
+## 2026-09-16 Wed Arrive in Nikko
+- 15:40 🚆 [Tobu-Nikko Station](geo:36.7476,139.6189) Limited Express from Asakusa
+- ⛩️ [Nikko Toshogu](geo:36.7580,139.5990) last entry 16:30
+    Bring 1,600 yen cash for the ticket
 
-## 2026-09-17 週四 上山
-1. 07:53 🚌 [湯滝](geo:36.7938,139.4316)
-2. 🚶 [赤沼](geo:36.7754,139.4432) 走木道
-    木道有時封閉，出發前看官網
+## 2026-09-17 Thu Up to Senjogahara
+1. 07:53 🚌 [Yudaki Falls](geo:36.7938,139.4316) buy the two-day bus pass
+2. 🚶 [Akanuma](geo:36.7754,139.4432) boardwalk across the marsh
 3. https://maps.app.goo.gl/...        <- paste, it converts itself
+
+## Ideas for later
+- [ ] Ryuzu Falls if there is time
 ```
 
-**One `##` heading per day, starting with the full date:** `## 2026-09-17 週四 上山`. After the date write whatever you like. The date is what makes the weekday, opening-hours and departure-time checks possible; in a note with no dates at all every heading is a day, with nothing checked. The pane shows the date as `9/17`. A stretch you have not planned day by day yet, or want to keep as one block, gets a range heading: `## 2026-09-19 ~ 2026-09-26 東京` (also `～`, `-`, `to` or `到`). It is one chip and one section, shown as `9/19~9/26`; since the day is not certain, nothing in it is checked against a weekday. Everything else about the trip lives in the same note: once there is at least one dated heading, undated `##` sections (to-do checklists, research, candidate places, alternatives) are plain notes and their links stay off the map, so the map shows only what is actually in the itinerary. Text before the first heading is the same kind of notes. In a note with no dates at all, stops before the first heading form their own group. Headings without stops are skipped; the heading level is a setting (default `##`).
+Run **Insert day headings for a trip** to get the headings, then paste links under each. The full date on the heading is what makes weekday, opening-hours and departure checks possible. Indented lines under a stop are its notes. The `timezone` key makes written times local to the trip when you plan from elsewhere. The complete format is in [FORMAT.md](skills/wayfarer-plan-trip/FORMAT.md).
 
-Written times are read as local time at the destination. Transit departures are sent to Google as an instant, so if you plan from another time zone add the trip's zone to the frontmatter: `timezone: Asia/Tokyo`. Without it the computer's zone is used.
+![Rating and hours chips after each link in Reading view](docs/screenshots/reading.jpg)
 
-## Sharing a plan
+## Google API key
 
-Send the `.md` file. Anyone with Obsidian and Wayfarer sees the same pins, order, times, notes, chosen transport and the routed times and distances, because all of it is in the file: when Google answers a route, its duration, distance and line names are saved on the destination stop's `%%wf:{…}%%` (tagged with the previous stop's coordinates, so a reordered stop drops the stale entry and refetches). The route's shape is saved too, so companions without a key see the numbers and the road; with a key they also get Google photos. Without the plugin, the note is a plain, readable itinerary: the `%%wf:{…}%%` comments are hidden by Obsidian in Reading view.
+Optional. Without a key you get pins from the link's coordinates and straight-line distances. With a key you also get place details, photos and routed legs. The key is yours, stored in this vault's `.obsidian/plugins/wayfarer/data.json` and never written into a note; requests go only to Google's Places and Routes endpoints.
 
-## Taking it to Google Maps
+1. In [Google Cloud Console](https://console.cloud.google.com/) create a project and enable billing (Google requires a card even for the free tier; set a budget alert at $1).
+2. Enable **Places API (New)** and **Routes API**.
+3. Create an API key and restrict it to those two APIs.
+4. Paste it in **Settings → Wayfarer → Google API key** and press **Test key**.
 
-Run **Export to Google My Maps (KML)**. It writes `<note title>.kml` next to the note (`Japan 2026.kml` for a note called `Japan 2026`), one folder per day, one placemark per stop named `1. 07:53 🏞️ 湯滝` with your notes, hours, address and a Google Maps link in its description, pins in the day's colour. Then in [Google My Maps](https://mymaps.google.com): *Create a new map → Import → pick the file*. Each day becomes a layer you can switch on and off; the map appears in the Google Maps app under *Saved → Maps* and can be shared with companions.
-
-There is no API for writing into a Google account's saved places, so this is one-way and there is no sync: the note is the plan, the My Maps copy is a snapshot. After changing the plan, export again and replace the old map (delete its layers, import the new file). The file is regenerated in full every time, so two exports of the same note are identical.
-
-## Google Maps links
-
-Wayfarer is built around Google Maps: you find the place there, tap *Share*, and paste the link. The link is the source of truth. Without a key the plugin reads the pin straight out of it: the exact `!3d…!4d…` coordinate when present, else the `@lat,lng` viewport centre, `?q=lat,lng`, or `/maps/search/lat,lng`. The place name comes from the `/maps/place/<name>/` segment. A link that carries only a search text and no coordinates is refused: share the place instead. The plugin never geocodes names through a third party.
-
-Short links (`maps.app.goo.gl`, `goo.gl/maps`, `g.co`) are expanded on desktop by following the redirect with a non-browser User-Agent, because Google serves browsers an interstitial page instead of a `Location` header. On mobile, paste the full link.
-
-With a key, Google adds the canonical name, rating, hours, address, website and photo: by place id when the link has one, otherwise by looking the name up near the link's pin. A result that lands elsewhere (more than 300 m from an exact pin, 3 km from a viewport centre) is a different place and is dropped, and an exact pin is never moved. A same-named branch elsewhere never replaces the place you shared.
-
-## Getting a Google API key
-
-Wayfarer uses your own key, so the free monthly allowance is yours and nothing goes through a third party. A trip's worth of lookups stays inside the free tier. As of 2025 Google gives, per month at no charge, 1,000 Places calls at the Enterprise tier (rating, opening hours and website put a call there, and Wayfarer asks for them), 10,000 Place Photo loads and 10,000 Routes calls.
-
-1. Open [Google Cloud Console](https://console.cloud.google.com/) and sign in. Create a project (any name, e.g. "Wayfarer").
-2. Enable billing on the project. Google requires a card on file even for the free tier; you can also set a budget alert at $1 so you are warned before anything is charged.
-3. Go to **APIs & Services → Library** and enable two APIs: **Places API (New)** and **Routes API**.
-4. Go to **APIs & Services → Credentials → Create credentials → API key**. Copy the key (`AIza…`).
-5. Click the key to edit it, and under **API restrictions** choose *Restrict key* and tick only Places API (New) and Routes API. Save. This way the key is useless for anything else if it ever leaks.
-6. In Obsidian: **Settings → Wayfarer → Google API key**, paste it. Also set *Language for Google results* (default `zh-TW`) to the language you want place names and hours in.
-
-Then press **Test key** next to the field. It makes one Places call and one Routes call and tells you the result. If Google refuses, the notice carries Google's own reason; the usual one is "Places API (New) has not been used in project … or it is disabled", which means step 3 was skipped for that API. The same notice appears once per session if a route request is refused while the map is open, so a key that does nothing is never silent.
-
-**How many calls a trip costs.** Wayfarer is built to call Google as rarely as it can, and everything it learns is written into the note so nobody asks twice:
-
-- Converting a pasted link is one Places call per stop, once. Rating, hours, address and photo reference are saved in the `%%wf%%` comment on the line.
-- A routed leg is one Routes call per leg, once. Duration, distance and line names are saved on the destination stop; opening the note again, on any machine, reads them from the note and asks nothing. Only a leg with no saved result (new stop, reordered, transport changed) is asked.
-- A Google photo is downloaded once per session per stop, the first time a card for it is drawn, and reused by every card and popup after that. Each download is one Place Photo call.
-- Opening the map, clicking around, switching days: zero calls.
-
-A 60-stop trip therefore costs about 60 Places calls once (6 percent of the monthly Enterprise allowance), one Routes call per leg once, and one photo load per stop per session. A refused or failed request pauses routing for a while instead of retrying on every redraw; a leg Google has no route for is not asked again in the session.
-
-The key is stored in this vault's `.obsidian/plugins/wayfarer/data.json`. It is never written into a note. If you sync or share the whole vault, everyone with the vault gets the key, so restrict it as in step 5.
-
-## Commands
-
-- **Open itinerary map** (also the ribbon icon)
-- **Insert day headings for a trip**
-- **Convert Google Maps link on this line to a stop**
-- **Convert every Google Maps link in this note**
-- **Export to Google My Maps (KML)**
-- **Fetch Google details for stops without them**: for stops written as coordinates (by hand or by an assistant), asks Places once per stop for the place at that pin and saves rating, hours, address, website and photo. The pin never moves; a result more than 300 m away is not taken.
-
-## Settings
-
-Language of the map pane (follows Obsidian by default; English or 繁體中文; settings and notices are in English), paste conversion, category emoji on converted places, cursor follow, auto-open, Google API key and result language, day heading level, route lines, tile URL and attribution (OpenStreetMap by default).
+Wayfarer calls Google as rarely as it can: one Places call per stop when it is converted (or when you run **Fetch Google details for stops without them**), one Routes call per leg the first time it is routed, one photo download per stop per session. Results are saved in the note. A 60-stop trip costs about 60 Places calls once and one Routes call per leg once. Google's free monthly allowance covers 1,000 Places calls at the tier these fields use, 10,000 photo loads and 10,000 Routes calls.
 
 ## Installation
 
-Until the plugin is in the community list, install it from a release:
+From the community plugin browser once listed, or manually: download `main.js`, `manifest.json` and `styles.css` from the [latest release](https://github.com/kevinsslin/obsidian-wayfarer/releases/latest) into `<vault>/.obsidian/plugins/wayfarer/` and enable it under **Settings → Community plugins**. [BRAT](https://github.com/TfTHacker/obsidian42-brat) with `kevinsslin/obsidian-wayfarer` also works.
 
-1. Download `main.js`, `manifest.json` and `styles.css` from the [latest release](https://github.com/kevinsslin/obsidian-wayfarer/releases/latest).
-2. Put them in `<your vault>/.obsidian/plugins/wayfarer/`.
-3. In Obsidian, **Settings → Community plugins**, reload, and enable Wayfarer.
+Desktop only for now: short-link expansion follows the redirect with Node's https, which Obsidian does not offer on mobile.
 
-Or add `kevinsslin/obsidian-wayfarer` in [BRAT](https://github.com/TfTHacker/obsidian42-brat), which does the same and keeps it updated.
+## Commands
+
+**Open itinerary map** · **Insert day headings for a trip** · **Convert Google Maps link on this line to a stop** · **Convert every Google Maps link in this note** · **Fetch Google details for stops without them** · **Export to Google My Maps (KML)**
 
 ## Planning with an AI assistant
 
-`skills/wayfarer-plan-trip/` is a skill for Claude Code, Codex and similar agents: how to research, what to check (closed weekdays, real coordinates), and exactly how to write the note so the plugin reads it. Install by copying the folder:
-
-```bash
-cp -r skills/wayfarer-plan-trip ~/.claude/skills/
-```
-
-Then ask the assistant to plan a trip into a note in your vault. The same folder documents the note format for people in `FORMAT.md`.
+`skills/wayfarer-plan-trip/` is a skill for Claude Code, Codex and similar agents: how to research a trip and exactly how to write the note so the plugin reads it. Copy the folder into your agent's skills directory (for Claude Code, `~/.claude/skills/`).
 
 ## Development
 
 ```bash
 pnpm install
-pnpm check           # lint, typecheck, unit tests, production build, load smoke
-pnpm dev             # esbuild watch
+pnpm check   # lint, typecheck, tests, build, load smoke
+pnpm dev     # esbuild watch
 ```
 
-To release: `pnpm bump 0.1.1` (writes package.json, manifest.json, versions.json), commit, `git tag 0.1.1`, push the tag. The release workflow builds and attaches `main.js`, `manifest.json` and `styles.css`.
+`src/core` has no Obsidian imports and is unit tested. To release: `pnpm bump 0.1.1`, commit, `git tag 0.1.1`, push the tag; the workflow builds and attaches the three files.
 
-`src/core` has no Obsidian imports and is unit tested (URL parsing, note parsing, resolver). `scripts/expand-check.mjs` hits the network to confirm the short-link strategy still works. `scripts/cdp.mjs` drives a running Obsidian started with `--remote-debugging-port=9222` for end-to-end checks; `test-vault/` is the fixture vault, with the plugin symlinked into `.obsidian/plugins/`.
+## Credits
 
-## Why
-
-Inspired by Ink and Switch's [Embark](https://www.inkandswitch.com/embark/), which is not public, and by [Waypoint](https://github.com/jakelazaroff/waypoint). Both put places in the text and a map beside it. This does the same inside Obsidian, reusing Map View's data format instead of inventing one.
-
-## License
-
-MIT
+Inspired by Ink and Switch's [Embark](https://www.inkandswitch.com/embark/) and by [Waypoint](https://github.com/jakelazaroff/waypoint). Map rendering by [Leaflet](https://leafletjs.com/), tiles from [OpenStreetMap](https://www.openstreetmap.org/copyright) by default. MIT license.
