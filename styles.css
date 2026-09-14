@@ -1649,6 +1649,18 @@ svg.leaflet-image-layer.leaflet-interactive path {
 }
 .wayfarer-view.is-narrow .wf-journey.is-expanded { width: calc(100% - 20px); }
 
+.wayfarer-view.is-narrow .wf-journey-actions {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+}
+
+.wayfarer-view.is-narrow .wf-journey-actions button {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .wayfarer-view.is-narrow .wf-journey-actions button,
 .wayfarer-view.is-narrow .wf-journey-toggle,
 .wayfarer-view.is-narrow .wf-journey-more,

@@ -47,7 +47,7 @@ Not planned day by day yet. Staying in the city over the long weekend.
 | `## 2026-09-19 ~ 2026-09-26 Tokyo` | A range: several days kept as one block, for a stretch not yet planned day by day. Two full dates joined by `~`, `～`, `-`, `to` or `到`. One chip (`9/19~9/26`), no weekday checks. Split it into day headings once the days are decided. |
 | `[Name](geo:lat,lng)` | A stop. Same format as the Map View plugin. |
 | `07:53` at line start | The stop's time, local time at that place. |
-| Transport emoji before the link | How you get there: 🚶 walk, 🚲 bike, 🚗 car, 🚕 taxi, 🚌 bus, 🚆 🚄 🚃 train, 🚇 metro, 🚊 tram, ⛴️ boat, ✈️ flight. Words are not read. Picking a transport on the arrow in the map pane writes this emoji before the link (replacing the one there). It is the only place the transport lives. |
+| Transport emoji before the link | How you get there: 🚶 walk, 🚲 bike, 🚗 car, 🚕 taxi, 🚌 bus, 🚆 🚄 🚃 train, 🚇 metro, 🚊 tram, ⛴️ boat, ✈️ flight. Words are not read. Picking a transport on a desktop timeline arrow or via **Change transport** in a stop’s details writes this emoji before the link (replacing the one there). It is the only place the transport lives. |
 | Indented lines under a stop | The stop's notes, shown verbatim on its card and popup. No format inside them is interpreted: a `geo:` link there is text, not another stop. |
 | `- [ ] 07:53 [Name](geo:…)` | A task line is a stop like any other; the box is not shown in the note text. |
 | `%% … %%` | An Obsidian comment. Links inside it are not stops. |

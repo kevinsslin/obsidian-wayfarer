@@ -1,23 +1,27 @@
 # Wayfarer
 
-An Obsidian plugin for trip planning. The note is the plan; a pane beside it is the map.
+Plan in Markdown. Follow your trip on a map. An Obsidian plugin with an optional AI planning skill and a mobile companion view.
 
-![The note on the left, the map and timeline on the right](docs/screenshots/hero.jpg)
+[Install from the Obsidian directory](https://community.obsidian.md/plugins/wayfarer) · [Latest release](https://github.com/kevinsslin/wayfarer/releases/latest) · [Try the sample note](test-vault/Nikko%20demo.md)
+
+![The sample note on the left, the map and timeline on the right](docs/screenshots/mobile-en/desktop.png)
 
 ## Why
 
 A trip plan is something you write together: with a friend, with the person you travel with, and now with an AI assistant. The tools for that are either documents (easy to write, no map) or map apps (a map, but the plan is locked in someone's account, and nobody wants to co-edit a Google My Map).
 
-Wayfarer keeps the plan as a plain Markdown note in your vault and treats the map as a view of that note. Anything that can write Markdown can plan the trip: you, a friend, Claude Code or Codex through the skill in this repo. Everything the plugin learns (place details, routes, photos) is written back into the note as hidden metadata, so the file stays the single source of truth and nothing lives only in a database. Sync the vault the way you already do (Obsidian Sync, iCloud, git) and everyone with the note has the whole plan, including the routed legs, with nothing to deploy and no account to share. On the road you open the same note on your phone, with the map, and one command exports the trip to Google My Maps for the Google Maps app.
+Wayfarer keeps the plan as a plain Markdown note in your vault and treats the map as a view of that note. You, a friend, Claude Code or Codex can edit the same file. The bundled skill helps an AI assistant research a trip and write the itinerary, constraints, bookings and alternatives together.
+
+Saved place details and routed legs travel with the note as hidden metadata. Sync it using your existing vault workflow, then open it on your phone to see the current stop, move to the previous or next stop, or navigate with Google Maps. Companions need Obsidian and Wayfarer to use the same map view; no Wayfarer account or hosted website is required. Map tiles and Google photos still need network access, and photo references in the note are not offline images. To share outside Obsidian, export a KML file and import it manually into Google My Maps.
 
 ## What it does
 
-- **Stops are links.** `[Name](geo:lat,lng)`, the same inline format the [Map View](https://github.com/esm7/obsidian-map-view) plugin reads. You rarely type it: paste a Google Maps link (short `maps.app.goo.gl` links included) and it converts itself.
+- **Stops are links.** `[Name](geo:lat,lng)`, the same inline format the [Map View](https://github.com/esm7/obsidian-map-view) plugin reads. You rarely type it: paste a full Google Maps place link and it converts to a stop. Short `maps.app.goo.gl` links can be expanded on desktop.
 - **Headings are days.** `## 2026-09-17 Thu Up to Senjogahara` starts a day. A range like `## 2026-09-19 ~ 2026-09-26 Tokyo` keeps a stretch you have not planned yet as one block. Undated sections (research, to-dos, candidates) stay in the same note and off the map.
 - **The map follows the note.** Put the cursor on a stop and the map flies there. Pins are coloured and numbered per day, with a line between consecutive stops.
 - **A timeline beside the map.** The day's stops top to bottom with photo, time, name and your remark, and the leg between each pair. Click a card to fly there; drag a card to reorder the note.
-- **You choose the transport.** A transport emoji before the link (🚶 🚲 🚗 🚕 🚌 🚆 🚇 🚊 ⛴️ ✈️), typed or picked on the arrow. The pick writes the emoji into the text, so note and map never disagree. Nothing is guessed.
-- **Routes from Google, once.** With your key, a leg with a chosen mode is routed by Google Routes: time, distance, transit line names, the line drawn along the road. The result is saved on the stop, so companions without a key see the same route and nobody asks Google twice.
+- **You choose the transport.** A transport emoji before the link (🚶 🚲 🚗 🚕 🚌 🚆 🚇 🚊 ⛴️ ✈️), typed or picked on a desktop timeline arrow or in a stop’s **Change transport** menu. The pick writes the emoji into the text, so note and map never disagree. Nothing is guessed.
+- **Saved Google routes.** With your key and a supported transport mode, Google Routes supplies time, distance, transit line names and route geometry. Saved routes can be read by companions without a key. Changing stops or transport can trigger new requests; flights and boats use straight-line connections.
 - **Cards, not tooltips.** Click a pin for the photo, rating, that day's opening hours, your notes, address, and links to Google Maps, directions and the line in the note.
 - **Checks against what you wrote.** A time at the start of the line is the stop's time, local to that place. A routed leg that cannot fit between two written times turns red. A stop with Google hours says "closed that day" or "opens 10:00" for that weekday.
 - **Export to Google My Maps.** One KML per note, one layer per day.
@@ -43,7 +47,7 @@ Wayfarer keeps the plan as a plain Markdown note in your vault and treats the ma
 
 Run **Insert day headings for a trip** to get the headings, then paste links under each. The full date on the heading is what makes weekday, opening-hours and departure checks possible. Indented lines under a stop are its notes. No frontmatter is needed. The complete format is in [FORMAT.md](skills/wayfarer-plan-trip/FORMAT.md).
 
-<p align="center"><img src="docs/screenshots/reading.jpg" alt="Rating and hours chips after each link in Reading view" width="58%"> <img src="docs/screenshots/phone.jpg" alt="The same trip on a phone" width="38%"></p>
+![Rating and hours chips after each link in Reading view](docs/screenshots/reading.jpg)
 
 ## Following the trip
 
@@ -53,9 +57,9 @@ Open **Current trip** at the bottom, then **Start here** to begin at the selecte
 
 Progress is saved per note path on this device, separately from the Markdown plan. It is not GPS tracking and does not sync between devices. Renaming a note requires selecting the current stop again. The **…** menu resets progress.
 
-<p align="center"><img src="docs/screenshots/mobile-layout/iphone-floating-map.png" alt="Compact map with the current trip card collapsed, with reconstructed mobile host chrome" width="30%"> <img src="docs/screenshots/mobile-layout/iphone-floating-progress.png" alt="Current and next stop with separate navigation and advance buttons" width="30%"> <img src="docs/screenshots/mobile-layout/iphone-floating-list.png" alt="A dedicated reading list on a phone" width="30%"></p>
+<p align="center"><img src="docs/screenshots/mobile-en/iphone-floating-map.png" alt="Compact map with the current trip card collapsed, with reconstructed mobile host chrome" width="30%"> <img src="docs/screenshots/mobile-en/iphone-floating-progress.png" alt="Current and next stop with separate navigation and advance buttons" width="30%"> <img src="docs/screenshots/mobile-en/iphone-floating-list.png" alt="A dedicated reading list on a phone" width="30%"></p>
 
-These captures combine the real plugin renderer with reconstructed mobile host chrome using Obsidian’s CSS; they are not iOS/Android device screenshots. [Host-layout verification](docs/verification/0.1.7.md). [Desktop capture](docs/screenshots/journey/desktop.png) · [UX research and remaining proposals](docs/research/mobile-obsidian-best-practices.md).
+These captures combine the real plugin renderer with reconstructed mobile host chrome using Obsidian’s CSS; they are not iOS/Android device screenshots. [Screenshot verification](docs/verification/public-screenshots.md). [Desktop capture](docs/screenshots/mobile-en/desktop.png) · [UX research and remaining proposals](docs/research/mobile-obsidian-best-practices.md).
 
 ## Planning with an AI assistant
 
@@ -69,7 +73,18 @@ npx skills add kevinsslin/wayfarer
 
 That works for Claude Code, Codex, Cursor and the other agents the `skills` CLI supports and asks which to install to. Claude Code users can instead add the repo as a plugin marketplace: `/plugin marketplace add kevinsslin/wayfarer` then `/plugin install wayfarer@wayfarer`. Or copy `skills/wayfarer-plan-trip/` by hand into your agent's skills folder (`~/.claude/skills/` for Claude Code, `~/.agents/skills/` for Codex).
 
-Then open the vault in the agent and ask, for example: "Plan four days in Kyoto and Nara from 3 to 6 November for two, slow pace, one temple a day at most, we land at Kansai at 15:00." The agent writes `Kyoto 2026.md`; you open it beside the map, run **Convert every map link in this note** for any links it left, **Fetch Google details for stops without them** for hours and photos, pick transport on the arrows, and ask the agent for changes. It edits the same note.
+Then open the vault in the agent and ask, for example: "Plan four days in Kyoto and Nara from 3 to 6 November for two, slow pace, one temple a day at most, we land at Kansai at 15:00." The agent writes `Kyoto 2026.md`; you open it beside the map, run **Convert every map link in this note** for any links it left, **Fetch Google details for stops without them** for hours and photos if you have a Google API key, choose transport, and ask the agent for changes. It edits the same note.
+
+## Languages
+
+| Part | Default and support |
+|---|---|
+| Map and trip controls | Follow Obsidian. English and Traditional Chinese are available; Chinese locales use Traditional Chinese and other unsupported locales fall back to English. Choose explicitly in **Settings → Wayfarer → Language**. |
+| Settings, commands and some notices | Currently English; localization is not complete across the plugin. |
+| Google place names and opening hours | Default to `zh-TW`, independently of the interface. Change **Language for Google results** to `en`, `ja`, or another Google-supported code for future requests. Existing saved details are not automatically translated. Hours checks recognize a limited set of formats, so displaying another language does not guarantee its hours can be interpreted. |
+| AI-written notes | The skill follows your requested language, preserves the language of existing notes, and uses English when a new note has no apparent language preference. Dates, coordinates and metadata keep the same format. |
+
+The skill instructions and this README are written in English. Language support for AI output comes from your chosen assistant, not a built-in translation engine.
 
 ## Google API key
 
@@ -80,13 +95,15 @@ Optional. Without a key you get pins from the link's coordinates and straight-li
 3. Create an API key and restrict it to those two APIs.
 4. Paste it in **Settings → Wayfarer → Google API key** and press **Test key**.
 
-Wayfarer calls Google as rarely as it can: one Places call per stop when it is converted (or when you run **Fetch Google details for stops without them**), one Routes call per leg the first time it is routed, one photo download per stop per session. Results are saved in the note. Google's free monthly allowance covers 1,000 Places calls at the tier these fields use, 10,000 photo loads and 10,000 Routes calls; a 60-stop trip uses a fraction of that, once.
+Wayfarer reuses saved details and routes to reduce requests. Changing stops or transport, fetching missing details and loading photos can make new requests. Google requires billing for these APIs; consult [current Google Maps Platform pricing](https://developers.google.com/maps/billing-and-pricing/pricing) for allowances and rates. Budget alerts notify you of spending; they do not cap it.
 
 ## Installation
 
-From the community plugin browser once listed, or manually: download `main.js`, `manifest.json` and `styles.css` from the [latest release](https://github.com/kevinsslin/wayfarer/releases/latest) into `<vault>/.obsidian/plugins/wayfarer/` and enable it under **Settings → Community plugins**. [BRAT](https://github.com/TfTHacker/obsidian42-brat) with `kevinsslin/wayfarer` also works.
+In Obsidian, open **Settings → Community plugins → Browse**, search for **Wayfarer**, then install and enable it. You can also open the [directory listing](https://community.obsidian.md/plugins/wayfarer).
 
-Works on desktop and mobile. On a phone the map opens as its own tab and the timeline folds away until you tap for it. The one desktop-only feature is expanding `maps.app.goo.gl` short links, which needs Node's https; on a phone, paste the full link or let the conversion happen on the computer. Everything already in the note (stops, routes, details) shows on every device.
+For manual installation, download `main.js`, `manifest.json` and `styles.css` from the [latest release](https://github.com/kevinsslin/wayfarer/releases/latest) into `<vault>/.obsidian/plugins/wayfarer/` and enable it under **Settings → Community plugins**. [BRAT](https://github.com/TfTHacker/obsidian42-brat) with `kevinsslin/wayfarer` also works.
+
+Works on desktop and mobile. On a phone the map opens as its own tab and the timeline folds away until you tap for it. The one desktop-only feature is expanding `maps.app.goo.gl` short links, which needs Node's https; on a phone, paste the full link or let the conversion happen on the computer. Saved stops, routes and details can be read on desktop and mobile. Current-trip progress remains local to each device.
 
 ## Commands
 

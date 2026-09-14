@@ -5,6 +5,8 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const output = resolve(process.argv[2] ?? "/tmp/wayfarer-journey-qa");
+const locale = process.argv[3] ?? "zh-TW";
+if (!["en", "zh-TW"].includes(locale)) throw new Error("Locale must be en or zh-TW");
 mkdirSync(output, { recursive: true });
 const targets = await (await fetch("http://localhost:9222/json")).json();
 let ws, rpc;
@@ -40,7 +42,7 @@ const screenshot = async (name) => {
   writeFileSync(resolve(output, name), Buffer.from(r.data, "base64"));
 };
 const assert = (value, label) => { if (!value) throw new Error(label); };
-const receipts = [];
+const receipts = [{ locale, capture: "Real plugin renderer with emulated phone panes and reconstructed Obsidian host chrome; not device screenshots" }];
 try {
   await rpc("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "reduce" }] });
   await evaluate(`(async () => {
@@ -53,7 +55,7 @@ try {
     window.wfQA = { v, language: p.settings.uiLanguage, theme: document.body.className,
       storage: app.loadLocalStorage("wayfarer:progress:" + v.file.path), key: "wayfarer:progress:" + v.file.path,
       open: window.open, current: v.progress, listOpen: p.settings.listOpen };
-    p.settings.uiLanguage = "zh-TW"; p.applyLocale();
+    p.settings.uiLanguage = ${JSON.stringify(locale)}; p.applyLocale();
     p.settings.listOpen = true;
     v.progress = {current:null, finished:false};
     v.chooseDay(v.itinerary.days[0]);
@@ -93,7 +95,7 @@ try {
     await app.plugins.plugins.wayfarer.openMap();
     q.v=app.workspace.getLeavesOfType("wayfarer")[0].view;
     const p=app.plugins.plugins.wayfarer;
-    p.settings.uiLanguage="zh-TW";p.settings.listOpen=true;p.applyLocale();
+    p.settings.uiLanguage=${JSON.stringify(locale)};p.settings.listOpen=true;p.applyLocale();
     const same=saved===JSON.stringify(q.v.progress);
     q.v.journeyOpen=true;q.v.returnToCurrent();
     return same;

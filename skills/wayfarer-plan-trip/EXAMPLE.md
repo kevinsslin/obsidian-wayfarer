@@ -34,7 +34,7 @@ A short trip written the way this skill asks for: the itinerary the plugin reads
 ## Bookings
 
 Confirmed
-- Revaty Kegon 47, Asakusa 13:00 to Tobu-Nikko 14:50, 9/16, two reserved seats, 5,760 yen.
+- Revaty Kegon 47, Asakusa 13:50 to Tobu-Nikko 15:40, 9/16, two reserved seats, 5,760 yen.
 - Nikko Station Hotel Classic, 9/16, one twin, breakfast included, 18,000 yen.
 
 To book
