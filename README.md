@@ -65,7 +65,7 @@ These captures combine the real plugin renderer with reconstructed mobile host c
 
 ## Planning with an AI assistant
 
-The repo ships a skill that teaches an agent to plan a trip the way this plugin expects: intake, research (hours, closed days, transport, coordinates), day structure, the note itself, and the planning notes behind it (constraints, bookings, the reasoning for each stretch with a backup, open questions). With it, Claude Code, Codex or any agent that reads skills produces a complete plan you then review on the map.
+The repo ships a skill that teaches an agent to plan a trip the way this plugin expects: intake, research (hours, closed days, transport, coordinates), day structure, the note itself, and a to-do list at the top of it holding every bed, seat and ticket still unbooked. With it, Claude Code, Codex or any agent that reads skills produces a complete plan you then review on the map.
 
 Install it once, from a terminal:
 

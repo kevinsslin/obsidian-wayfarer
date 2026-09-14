@@ -5,6 +5,12 @@
 
 Before the trip: from Haneda take the Keikyu line straight to Asakusa.
 
+## To do
+
+- [ ] Ryokan at Yumoto, 9/17. The only night with no bed
+- [ ] Sumo September tournament tickets, if you want to go
+- [ ] Switch 9/22 to Karuizawa? Decide on the 9/14 forecast
+
 ## 2026-09-16 Wed Nikko town
 
 Limited Express Revaty Kegon 47 at 19:19.
@@ -33,17 +39,12 @@ Not planned day by day yet. Staying in the city over the long weekend.
 - afternoon [Haneda](geo:35.5494,139.7798) flight to [Fukuoka Airport](geo:33.5859,130.4507)
 - 🍢 [Nakasu food stalls](geo:33.5930,130.4062) lively only after ten ![[nakasu.jpg]]
 - Coordinates not looked up yet, so the full link: https://www.google.com/maps/place/Senkoji+Temple/@34.4090,133.2050,17z
-
-## Open questions
-
-- [ ] Switch 9/22 to Karuizawa? Decide on the 9/14 forecast
-- [ ] Sumo September tournament tickets
 ```
 
 | Element | How the plugin reads it |
 |---|---|
 | `## 2026-09-17 Thu Theme` | A day. One heading per day, the full `YYYY-MM-DD` first, then anything. Only a full date counts as a date; a heading without one is a day with no weekday or hours checks. Level is a setting (default `##`). |
-| `## Open questions` or any heading without a date | Once the note has dated headings, an undated section is notes: to-do checklists, research, candidate places, the reasoning behind the plan. Links in it stay in the text but do not appear on the map. Text before the first heading is treated the same way. Keep everything about the trip in the one note. |
+| `## To do` or any heading without a date | Once the note has dated headings, an undated section is not a day: its links stay in the text and do not appear on the map, wherever it sits in the note. Text before the first heading is treated the same way. The to-do checklist goes at the top, above the days, because that is what gets read first. |
 | `## 2026-09-19 ~ 2026-09-26 Tokyo` | A range: several days kept as one block, for a stretch not yet planned day by day. Two full dates joined by `~`, `～`, `-`, `to` or `到`. One chip (`9/19~9/26`), no weekday checks. Split it into day headings once the days are decided. |
 | `[Name](geo:lat,lng)` | A stop. Same format as the Map View plugin. |
 | `07:53` at line start | The stop's time, local time at that place. |
