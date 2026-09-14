@@ -2,9 +2,17 @@
   "name": "wayfarer",
   "description": "Plan a trip as an Obsidian note that the Wayfarer plugin renders as a map: research, day structure, stops with coordinates, planning notes.",
   "version": "0.1.4",
-  "author": { "name": "Kevin Lin", "url": "https://github.com/kevinsslin" },
+  "author": {
+    "name": "Kevin Lin",
+    "url": "https://github.com/kevinsslin"
+  },
   "homepage": "https://github.com/kevinsslin/wayfarer",
   "repository": "https://github.com/kevinsslin/wayfarer",
   "license": "MIT",
-  "keywords": ["travel", "itinerary", "obsidian", "maps"]
+  "keywords": [
+    "travel",
+    "itinerary",
+    "obsidian",
+    "maps"
+  ]
 }
