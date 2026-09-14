@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.1.3] - 2026-09-14
+
+- Runs on mobile. The map opens as its own tab on a phone, and on any pane narrower than a phone landscape the timeline is an overlay, closed until asked for, that does not touch the saved desktop layout. Short-link expansion stays desktop only (it needs Node's https); the message says so and suggests pasting the full link.
+
 ## [0.1.2] - 2026-09-14
 
 - No frontmatter needed. A written time is local time at that place: transit departures use the place's UTC offset from Google details (saved as `utc` in the stop's metadata), or a guess from the longitude, so a trip across countries needs no `timezone:` key and the new-trip skeleton no longer adds a `locations:` key. Repository renamed to `kevinsslin/wayfarer`.

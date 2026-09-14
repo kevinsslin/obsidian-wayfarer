@@ -6,5 +6,5 @@
 	"description": "Trip planning beside a map: paste Google Maps links, headings become days, the map follows your cursor.",
 	"author": "Kevin Lin",
 	"authorUrl": "https://github.com/kevinsslin",
-	"isDesktopOnly": true
+	"isDesktopOnly": false
 }

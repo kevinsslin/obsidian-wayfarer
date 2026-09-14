@@ -36,6 +36,7 @@ export class WayfarerView extends ItemView {
   private legendEl!: HTMLElement;
   private mapEl!: HTMLElement;
   private stripEl!: HTMLElement;
+  private narrowOpen = false;
   private emptyEl!: HTMLElement;
   private file: TFile | null = null;
   private itinerary: Itinerary | null = null;
@@ -82,8 +83,11 @@ export class WayfarerView extends ItemView {
     toggle.onpointerdown = (e) => e.stopPropagation();
     toggle.onclick = (e) => {
       e.stopPropagation();
-      this.plugin.settings.listOpen = !this.plugin.settings.listOpen;
-      void this.plugin.saveSettings();
+      if (this.isNarrow()) this.narrowOpen = !this.narrowOpen;
+      else {
+        this.plugin.settings.listOpen = !this.plugin.settings.listOpen;
+        void this.plugin.saveSettings();
+      }
       this.applySplit();
       this.map?.invalidateSize();
     };
@@ -128,7 +132,7 @@ export class WayfarerView extends ItemView {
     // The popup card is capped at the map's height (see styles), so a long note scrolls inside the card and the photo stays in view.
     const sizeVar = () => this.mapEl.style.setProperty("--wf-map-h", `${this.mapEl.clientHeight}px`);
     sizeVar();
-    const ro = new ResizeObserver(() => { sizeVar(); this.map?.invalidateSize(); });
+    const ro = new ResizeObserver(() => { sizeVar(); this.applySplit(); this.map?.invalidateSize(); });
     ro.observe(this.mapEl);
     this.register(() => ro.disconnect());
 
@@ -153,9 +157,23 @@ export class WayfarerView extends ItemView {
     this.map = null;
   }
 
+  /**
+   * A phone-width pane cannot show the timeline beside the map, so there it
+   * is an overlay, closed until asked for, and its state is not saved: the
+   * saved layout belongs to the desktop pane.
+   */
+  private isNarrow(): boolean {
+    return this.contentEl.clientWidth > 0 && this.contentEl.clientWidth < 560;
+  }
+  private listOpen(): boolean {
+    return this.isNarrow() ? this.narrowOpen : this.plugin.settings.listOpen;
+  }
+
   private applySplit(): void {
-    const open = this.plugin.settings.listOpen;
-    this.contentEl.querySelector<HTMLElement>(".wf-body")?.style.setProperty("--wf-list-width", `${this.plugin.settings.listWidth}px`);
+    const open = this.listOpen();
+    const body = this.contentEl.querySelector<HTMLElement>(".wf-body");
+    const width = this.isNarrow() ? Math.min(this.plugin.settings.listWidth, this.contentEl.clientWidth - 64) : this.plugin.settings.listWidth;
+    body?.style.setProperty("--wf-list-width", `${width}px`);
     this.stripEl.toggleClass("is-hidden", !open);
     const divider = this.contentEl.querySelector(".wf-divider");
     divider?.toggleClass("is-closed", !open);
@@ -622,7 +640,7 @@ export class WayfarerView extends ItemView {
 
   /** Width of the map hidden under the floating timeline, so the camera centres on what is actually visible. */
   private leftInset(): number {
-    return this.plugin.settings.listOpen ? this.plugin.settings.listWidth + 20 : 0;
+    return this.listOpen() && !this.isNarrow() ? this.plugin.settings.listWidth + 20 : 0;
   }
 
   /** The map centre that puts `target` in the middle of the uncovered part of the map at `zoom`. */

@@ -158,7 +158,8 @@ export default class WayfarerPlugin extends Plugin {
       await this.app.workspace.revealLeaf(existing);
       return;
     }
-    const leaf = this.app.workspace.getRightLeaf(false);
+    // A phone has no room beside the note: the map is its own tab there.
+    const leaf = Platform.isMobile ? this.app.workspace.getLeaf("tab") : this.app.workspace.getRightLeaf(false);
     if (!leaf) return;
     await leaf.setViewState({ type: VIEW_TYPE_WAYFARER, active: true });
     await this.app.workspace.revealLeaf(leaf);

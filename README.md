@@ -8,7 +8,7 @@ An Obsidian plugin for trip planning. The note is the plan; a pane beside it is 
 
 A trip plan is something you write together: with a friend, with the person you travel with, and now with an AI assistant. The tools for that are either documents (easy to write, no map) or map apps (a map, but the plan is locked in someone's account, and nobody wants to co-edit a Google My Map).
 
-Wayfarer keeps the plan as a plain Markdown note in your vault and treats the map as a view of that note. Anything that can write Markdown can plan the trip: you, a friend, Claude Code or Codex through the skill in this repo. Everything the plugin learns (place details, routes, photos) is written back into the note as hidden metadata, so the file stays the single source of truth and nothing lives only in a database. Sync the vault the way you already do (Obsidian Sync, iCloud, git) and everyone with the note has the whole plan, including the routed legs, with nothing to deploy and no account to share. On the road the note is a normal Obsidian note on your phone, and one command exports the trip to Google My Maps for the Google Maps app.
+Wayfarer keeps the plan as a plain Markdown note in your vault and treats the map as a view of that note. Anything that can write Markdown can plan the trip: you, a friend, Claude Code or Codex through the skill in this repo. Everything the plugin learns (place details, routes, photos) is written back into the note as hidden metadata, so the file stays the single source of truth and nothing lives only in a database. Sync the vault the way you already do (Obsidian Sync, iCloud, git) and everyone with the note has the whole plan, including the routed legs, with nothing to deploy and no account to share. On the road you open the same note on your phone, with the map, and one command exports the trip to Google My Maps for the Google Maps app.
 
 ## What it does
 
@@ -43,7 +43,7 @@ Wayfarer keeps the plan as a plain Markdown note in your vault and treats the ma
 
 Run **Insert day headings for a trip** to get the headings, then paste links under each. The full date on the heading is what makes weekday, opening-hours and departure checks possible. Indented lines under a stop are its notes. No frontmatter is needed. The complete format is in [FORMAT.md](skills/wayfarer-plan-trip/FORMAT.md).
 
-![Rating and hours chips after each link in Reading view](docs/screenshots/reading.jpg)
+<p align="center"><img src="docs/screenshots/reading.jpg" alt="Rating and hours chips after each link in Reading view" width="58%"> <img src="docs/screenshots/phone.jpg" alt="The same trip on a phone" width="38%"></p>
 
 ## Planning with an AI assistant
 
@@ -64,7 +64,7 @@ Wayfarer calls Google as rarely as it can: one Places call per stop when it is c
 
 From the community plugin browser once listed, or manually: download `main.js`, `manifest.json` and `styles.css` from the [latest release](https://github.com/kevinsslin/wayfarer/releases/latest) into `<vault>/.obsidian/plugins/wayfarer/` and enable it under **Settings → Community plugins**. [BRAT](https://github.com/TfTHacker/obsidian42-brat) with `kevinsslin/wayfarer` also works.
 
-The map pane is desktop only for now: short-link expansion follows the redirect with Node's https, which Obsidian does not offer on mobile. The note itself opens anywhere Obsidian does.
+Works on desktop and mobile. On a phone the map opens as its own tab and the timeline folds away until you tap for it. The one desktop-only feature is expanding `maps.app.goo.gl` short links, which needs Node's https; on a phone, paste the full link or let the conversion happen on the computer. Everything already in the note (stops, routes, details) shows on every device.
 
 ## Commands
 
@@ -78,7 +78,7 @@ pnpm check   # lint, typecheck, tests, build, load smoke
 pnpm dev     # esbuild watch
 ```
 
-`src/core` has no Obsidian imports and is unit tested. To release: `pnpm bump 0.1.2`, commit, `git tag 0.1.2`, push the tag; the workflow builds and attaches the three files.
+`src/core` has no Obsidian imports and is unit tested. To release: `pnpm bump 0.1.3`, commit, `git tag 0.1.3`, push the tag; the workflow builds and attaches the three files.
 
 ## Credits
 
