@@ -31,7 +31,7 @@ The user keeps trips as Markdown notes. The Wayfarer plugin reads a note and sho
 
 - Do not write ` · 🚶 34 分 · 2.5 km` trailers by hand; the user generates them with a command once the routes are in.
 - Do not write `%%wf:{…}%%` comments; the plugin writes those itself when it has place details.
-- Do not add frontmatter beyond `locations:` (empty), which the Map View plugin uses.
+- Do not add frontmatter. The plugin needs none; a written time is local time at that place.
 - Do not use em dashes or en dashes anywhere. Use commas, full stops, or parentheses.
 - Do not pad days with filler stops. Four to six stops a day is a full day for most people; leave room.
 - Do not move or delete stops the user placed without saying so.
@@ -42,7 +42,6 @@ Read the whole note first. Keep the user's headings, order and wording. Add stop
 
 ## Checklist before handing back
 
-- Put `timezone: Asia/Tokyo` (the destination's IANA zone) in the frontmatter so written times are read as local time there.
 - Every day heading starts with a full date (`2026-09-17`). Research, alternatives, to-do checklists and candidate places go in undated `##` sections of the same note; they are not on the map, so keep them there rather than in a second note. A stretch the user has not planned day by day stays one range heading (`2026-09-19 ~ 2026-09-26 東京`); do not invent a per-day schedule to fill it.
 - Every stop has real coordinates or a full Google Maps URL.
 - Times are in 24-hour `HH:MM`.

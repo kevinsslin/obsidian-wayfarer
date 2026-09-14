@@ -21,6 +21,8 @@ export interface PlaceMeta {
   type?: string;
   /** Google photo resource name (`places/…/photos/…`), fetched with the user's key at render time. */
   photo?: string;
+  /** The place's UTC offset in minutes from Google, so a written time here means local time. */
+  utc?: number;
   /** How the user gets here, chosen in the timeline or written as an emoji before the link. */
   via?: Transport;
   /**
@@ -99,8 +101,6 @@ export interface Itinerary {
   days: Day[];
   /** Every stop in document order. */
   stops: Stop[];
-  /** IANA zone from the frontmatter `timezone:` key, so written times mean local time at the destination. */
-  timezone?: string;
 }
 
 export interface ParseOptions {
@@ -132,7 +132,6 @@ export function parseItinerary(markdown: string, opts: ParseOptions = {}): Itine
   let fence = "";
   let inComment = false;
   let inFrontmatter = lines[0] === "---";
-  let timezone: string | undefined;
   // Indent of the last stop line; deeper lines right under it are its notes, whatever they contain.
   let noteBase: number | null = null;
 
@@ -140,10 +139,6 @@ export function parseItinerary(markdown: string, opts: ParseOptions = {}): Itine
     const raw = lines[i];
     if (inFrontmatter) {
       if (i > 0 && raw.trim() === "---") inFrontmatter = false;
-      else {
-        const tz = /^timezone:\s*["']?([A-Za-z_]+\/[A-Za-z_+\-0-9]+(?:\/[A-Za-z_]+)?|UTC)["']?\s*$/.exec(raw);
-        if (tz) timezone = tz[1];
-      }
       continue;
     }
     const f = FENCE.exec(raw)?.[1];
@@ -228,7 +223,7 @@ export function parseItinerary(markdown: string, opts: ParseOptions = {}): Itine
     d.index = i;
     d.stops.forEach((s) => (s.dayIndex = i));
   });
-  return { days: withStops, stops: withStops.flatMap((d) => d.stops), timezone };
+  return { days: withStops, stops: withStops.flatMap((d) => d.stops) };
 }
 
 /** Blanks every `%%wf:{}%%` comment in `s`, keeping offsets, so emoji inside saved data are not read as the user's. */
@@ -512,6 +507,7 @@ export function parseMeta(json: string): PlaceMeta | undefined {
   const r = raw as Record<string, unknown>;
   const out: PlaceMeta = {};
   if (typeof r.rating === "number" && Number.isFinite(r.rating)) out.rating = r.rating;
+  if (typeof r.utc === "number" && Number.isInteger(r.utc)) out.utc = r.utc;
   if (Array.isArray(r.hours) && r.hours.every((h) => typeof h === "string")) out.hours = r.hours as string[];
   for (const k of ["address", "website", "placeId", "type", "photo"] as const) {
     if (typeof r[k] === "string") (out as Record<string, unknown>)[k] = r[k];
@@ -539,6 +535,7 @@ function compactMeta(meta: PlaceMeta): PlaceMeta {
   if (meta.placeId) out.placeId = meta.placeId;
   if (meta.type) out.type = meta.type;
   if (meta.photo) out.photo = meta.photo;
+  if (meta.utc !== undefined) out.utc = meta.utc;
   if (meta.via) out.via = meta.via;
   if (meta.leg) out.leg = meta.leg;
   return out;

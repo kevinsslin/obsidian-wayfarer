@@ -267,9 +267,9 @@ describe("what is not a stop", () => {
     expect(it.stops.map((s) => s.name)).toEqual(["A", "C"]);
     expect(it.stops[0].notes).toEqual(["備案 [B](geo:3,4)"]);
   });
-  it("reads the trip timezone from the frontmatter", () => {
-    expect(parseItinerary("---\ntimezone: Asia/Tokyo\n---\n## 2026-09-16\n- [A](geo:1,2)").timezone).toBe("Asia/Tokyo");
-    expect(parseItinerary("## 2026-09-16\n- [A](geo:1,2)").timezone).toBeUndefined();
+  it("keeps the place's UTC offset when it is a whole number of minutes", () => {
+    expect(parseMeta('{"utc":540}')).toEqual({ utc: 540 });
+    expect(parseMeta('{"utc":"540"}')).toEqual({});
   });
 });
 

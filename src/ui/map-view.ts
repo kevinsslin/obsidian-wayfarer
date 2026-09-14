@@ -258,7 +258,7 @@ export class WayfarerView extends ItemView {
     let p = this.plans.get(day);
     if (!p) {
       const date = dateForDay(day);
-      p = { legs: this.plugin.router.legsFor(day, date, this.file?.path ?? "", this.itinerary?.timezone), date };
+      p = { legs: this.plugin.router.legsFor(day, date, this.file?.path ?? ""), date };
       this.plans.set(day, p);
     }
     return p;
@@ -763,7 +763,7 @@ function signatureOf(it: Itinerary | null): string {
   if (!it) return "";
   let d = digests.get(it);
   if (d === undefined) {
-    d = JSON.stringify([it.timezone, it.days.map((d) => [d.headingLine, d.title, d.stops.map((s) => [s.line, s.from, s.name, s.lat, s.lng, s.transport, s.time, s.emoji, s.image, s.note, s.notes, s.meta])])]);
+    d = JSON.stringify([it.days.map((d) => [d.headingLine, d.title, d.stops.map((s) => [s.line, s.from, s.name, s.lat, s.lng, s.transport, s.time, s.emoji, s.image, s.note, s.notes, s.meta])])]);
     digests.set(it, d);
   }
   return d;

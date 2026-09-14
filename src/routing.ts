@@ -4,7 +4,6 @@ import { bareLeg, finishLeg, legKey, legMetaFor, type Leg } from "./core/legs";
 import type { LegMeta } from "./core/itinerary";
 import { GoogleApiError, googleRoute } from "./net";
 import type { WayfarerSettings } from "./settings";
-import { zonedTime } from "./core/schedule";
 
 /**
  * Turns a day's stops into legs. Answers synchronously with what is known
@@ -34,7 +33,7 @@ export class LegRouter {
   ) {}
 
   /** `file` is the note the day came from, so a result that arrives after the user moved on is not written elsewhere. */
-  legsFor(day: Day, dayDate: Date | null, file = "", timezone?: string): Leg[] {
+  legsFor(day: Day, dayDate: Date | null, file = ""): Leg[] {
     const legs: Leg[] = [];
     const missing: Array<{ from: Stop; to: Stop; mode: Transport; key: string; departure?: Date; file: string }> = [];
     for (let i = 1; i < day.stops.length; i++) {
@@ -59,7 +58,7 @@ export class LegRouter {
         }
       } else {
         legs.push(leg);
-        if (hit === undefined && !this.inflight.has(key)) missing.push({ from, to, mode: leg.mode, key, departure: departureFor(dayDate, from, timezone), file });
+        if (hit === undefined && !this.inflight.has(key)) missing.push({ from, to, mode: leg.mode, key, departure: departureFor(dayDate, from, to), file });
       }
     }
     if (missing.length && !this.paused()) void this.fetch(missing);
@@ -127,19 +126,15 @@ function googleMode(mode: Transport): "TRANSIT" | "WALK" | "DRIVE" | "BICYCLE" {
 
 /**
  * Departure for a transit query: the day's date with the stop's written time,
- * else undefined. Written times are local to the trip, so with a `timezone`
- * the instant is built in that zone rather than the computer's.
+ * else undefined. A written time is local to the place, so the instant is
+ * built with the place's UTC offset (from Google details on either end of the
+ * leg, else a guess from the longitude), never the computer's zone.
  */
-export function departureFor(dayDate: Date | null, from: Stop, timezone?: string): Date | undefined {
+export function departureFor(dayDate: Date | null, from: Stop, to?: Stop): Date | undefined {
   if (!dayDate || !from.time) return undefined;
   const [h, m] = from.time.split(":").map(Number);
-  if (timezone) {
-    const at = zonedTime(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate(), h, m, timezone);
-    if (at) return at;
-  }
-  const d = new Date(dayDate);
-  d.setHours(h, m, 0, 0);
-  return d;
+  const offset = from.meta?.utc ?? to?.meta?.utc ?? Math.round(from.lng / 15) * 60;
+  return new Date(Date.UTC(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate(), h, m) - offset * 60_000);
 }
 
 /**

@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { setLocale } from "./i18n";
 beforeAll(() => setLocale("zh-TW"));
-import { checkHours, fmtMin, parseDayHours, zonedTime } from "./schedule";
+import { checkHours, fmtMin, parseDayHours } from "./schedule";
 
 describe("hours", () => {
   it("parses english and chinese lines", () => {
@@ -23,16 +23,6 @@ describe("hours", () => {
   });
   it("formats minutes", () => {
     expect(fmtMin(605)).toBe("10:05");
-  });
-});
-
-describe("zonedTime", () => {
-  it("builds the instant for a wall clock in the trip's zone", () => {
-    expect(zonedTime(2026, 8, 17, 9, 0, "Asia/Tokyo")?.toISOString()).toBe("2026-09-17T00:00:00.000Z");
-    expect(zonedTime(2026, 8, 17, 9, 0, "Asia/Taipei")?.toISOString()).toBe("2026-09-17T01:00:00.000Z");
-    expect(zonedTime(2026, 6, 1, 12, 0, "Europe/London")?.toISOString()).toBe("2026-07-01T11:00:00.000Z");
-    expect(zonedTime(2026, 0, 1, 12, 0, "Europe/London")?.toISOString()).toBe("2026-01-01T12:00:00.000Z");
-    expect(zonedTime(2026, 0, 1, 12, 0, "Mars/Olympus")).toBeNull();
   });
 });
 

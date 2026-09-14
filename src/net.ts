@@ -37,7 +37,7 @@ export async function expandShortUrl(url: string, maxHops = 5): Promise<string> 
   return current;
 }
 
-const PLACE_FIELDS = "id,displayName,location,formattedAddress,rating,regularOpeningHours,websiteUri,primaryType,photos";
+const PLACE_FIELDS = "id,displayName,location,formattedAddress,rating,regularOpeningHours,websiteUri,primaryType,photos,utcOffsetMinutes";
 
 interface PlaceJson {
   id?: string;
@@ -49,6 +49,7 @@ interface PlaceJson {
   websiteUri?: string;
   primaryType?: string;
   photos?: Array<{ name: string }>;
+  utcOffsetMinutes?: number;
 }
 
 /** URL for a Google photo resource. Built only for the DOM; the key never goes into a note. */
@@ -73,6 +74,7 @@ export function googlePlaces(apiKey: string, languageCode: string): NonNullable<
         placeId: p.id,
         type: p.primaryType,
         photo: p.photos?.[0]?.name,
+        utc: p.utcOffsetMinutes,
       },
     };
   };

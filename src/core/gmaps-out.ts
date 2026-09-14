@@ -26,7 +26,7 @@ export function directionsUrl(stops: Pick<Stop, "lat" | "lng">[], mode: "transit
  * across New Year; the pane shows it as `9/16`.
  */
 export function tripSkeleton(start: Date, days: number, weekdayNames = ["週日", "週一", "週二", "週三", "週四", "週五", "週六"], level = 2): string {
-  const out: string[] = ["---", "locations:", "---", ""];
+  const out: string[] = [];
   const pad = (n: number) => String(n).padStart(2, "0");
   for (let i = 0; i < days; i++) {
     const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);

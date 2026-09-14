@@ -78,10 +78,8 @@ export default class WayfarerPlugin extends Plugin {
       editorCallback: (editor) =>
         new NewTripModal(this.app, (start, days) => {
           const skeleton = tripSkeleton(start, days, getLocale() === "en" ? ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] : undefined, this.settings.dayHeadingLevel);
-          // A blank note takes the frontmatter too; a note with content only gets the headings.
-          const text = editor.getValue().trim() ? skeleton.replace(/^---\nlocations:\n---\n\n/, "") : skeleton;
           // A heading has to start its own line.
-          editor.replaceSelection(editor.getCursor().ch > 0 ? "\n" + text : text);
+          editor.replaceSelection(editor.getCursor().ch > 0 ? "\n" + skeleton : skeleton);
         }).open(),
     });
     this.addCommand({
@@ -351,9 +349,9 @@ export default class WayfarerPlugin extends Plugin {
       try {
         const p = await places.searchText(stop.name, stop);
         if (!p?.meta || distanceM(p, stop) > 300) { missed++; continue; }
-        const { rating, hours, address, website, placeId, type, photo } = p.meta;
+        const { rating, hours, address, website, placeId, type, photo, utc } = p.meta;
         // Only when the same link is still on that line; the note may have changed while Google answered.
-        await this.rewriteLine(md, stop.line, (text) => (stopStillAt(text, stop) ? patchLineMeta(text, { rating, hours, address, website, placeId, type, photo }, stop) : text));
+        await this.rewriteLine(md, stop.line, (text) => (stopStillAt(text, stop) ? patchLineMeta(text, { rating, hours, address, website, placeId, type, photo, utc }, stop) : text));
         done++;
       } catch (e) {
         if (e instanceof GoogleApiError) { this.googleRefused(e); return; }

@@ -29,7 +29,7 @@ describe("tripSkeleton", () => {
     expect(s).toContain("## 2026-09-16 週三");
     expect(s).toContain("## 2026-09-17 週四");
     expect(s).toContain("## 2026-09-18 週五");
-    expect(s.startsWith("---\nlocations:\n---")).toBe(true);
+    expect(s.startsWith("## 2026")).toBe(true);
   });
   it("crosses a month boundary", () => {
     expect(tripSkeleton(new Date(2026, 8, 30), 2)).toContain("## 2026-10-01 週四");
