@@ -86,7 +86,7 @@ export class WayfarerSettingTab extends PluginSettingTab {
     const keyDesc = document.createDocumentFragment();
     keyDesc.append("Your own key. It unlocks exact pins with ratings, opening hours and photos, and routes between stops (walking, cycling, driving and transit with line names). Without it the plugin still reads pins from pasted links, and legs show their distance only. Stored in this vault's plugin data, never in a note. ");
     const how = document.createElement("a");
-    how.href = "https://github.com/kevinsslin/obsidian-wayfarer#getting-a-google-api-key";
+    how.href = "https://github.com/kevinsslin/wayfarer#google-api-key";
     how.textContent = "How to get one";
     keyDesc.append(how, ".");
     new Setting(containerEl)

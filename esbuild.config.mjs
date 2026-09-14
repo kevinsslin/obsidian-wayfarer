@@ -4,7 +4,7 @@ import { builtinModules } from "node:module";
 
 const banner = `/*
 Wayfarer: an Obsidian plugin for trip planning on a map.
-This is a generated bundle. Source and license: https://github.com/kevinsslin/obsidian-wayfarer
+This is a generated bundle. Source and license: https://github.com/kevinsslin/wayfarer
 */`;
 
 const production = process.argv[2] === "production";

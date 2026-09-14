@@ -1,6 +1,6 @@
 # Wayfarer
 
-Trip planning inside Obsidian. The note is the plan; a pane beside it is the map.
+An Obsidian plugin for trip planning. The note is the plan; a pane beside it is the map.
 
 ![The note on the left, the map and timeline on the right](docs/screenshots/hero.jpg)
 
@@ -56,7 +56,7 @@ Wayfarer calls Google as rarely as it can: one Places call per stop when it is c
 
 ## Installation
 
-From the community plugin browser once listed, or manually: download `main.js`, `manifest.json` and `styles.css` from the [latest release](https://github.com/kevinsslin/obsidian-wayfarer/releases/latest) into `<vault>/.obsidian/plugins/wayfarer/` and enable it under **Settings → Community plugins**. [BRAT](https://github.com/TfTHacker/obsidian42-brat) with `kevinsslin/obsidian-wayfarer` also works.
+From the community plugin browser once listed, or manually: download `main.js`, `manifest.json` and `styles.css` from the [latest release](https://github.com/kevinsslin/wayfarer/releases/latest) into `<vault>/.obsidian/plugins/wayfarer/` and enable it under **Settings → Community plugins**. [BRAT](https://github.com/TfTHacker/obsidian42-brat) with `kevinsslin/wayfarer` also works.
 
 Desktop only for now: short-link expansion follows the redirect with Node's https, which Obsidian does not offer on mobile.
 

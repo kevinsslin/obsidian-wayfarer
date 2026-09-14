@@ -6,7 +6,7 @@
 // Usage: node scripts/expand-check.mjs [short-url]
 import https from "node:https";
 
-const UA = "ObsidianWayfarer/0.1 (+https://github.com/kevinsslin/obsidian-wayfarer)";
+const UA = "ObsidianWayfarer/0.1 (+https://github.com/kevinsslin/wayfarer)";
 const url = process.argv[2] ?? "https://maps.app.goo.gl/TvPZdQo9HRmnfb4d8";
 
 async function expand(start, maxHops = 5) {
