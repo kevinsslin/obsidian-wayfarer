@@ -4,18 +4,29 @@
   "description": "Trip planning in Obsidian: paste Google Maps links, write days as headings, see the plan on a map beside the note.",
   "type": "module",
   "license": "MIT",
+  "packageManager": "pnpm@9.12.3",
   "author": "Kevin Lin",
-  "repository": { "type": "git", "url": "git+https://github.com/kevinsslin/obsidian-wayfarer.git" },
-  "keywords": ["obsidian", "obsidian-plugin", "travel", "itinerary", "map", "leaflet"],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kevinsslin/obsidian-wayfarer.git"
+  },
+  "keywords": [
+    "obsidian",
+    "obsidian-plugin",
+    "travel",
+    "itinerary",
+    "map",
+    "leaflet"
+  ],
   "scripts": {
     "dev": "node esbuild.config.mjs",
-    "build": "npm run typecheck && node esbuild.config.mjs production",
+    "build": "pnpm typecheck && node esbuild.config.mjs production",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
     "smoke": "node scripts/load-smoke.mjs",
-    "check": "npm run lint && npm run typecheck && npm run test && npm run build && npm run smoke",
-    "version": "node version-bump.mjs && git add manifest.json versions.json"
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm smoke",
+    "bump": "node version-bump.mjs"
   },
   "dependencies": {
     "leaflet": "^1.9.4"

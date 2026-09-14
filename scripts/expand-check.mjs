@@ -1,7 +1,7 @@
 // Live check of the short-link expansion strategy used in src/net.ts:
 // walk redirects with a non-browser User-Agent, since maps.app.goo.gl serves a
 // 200 interstitial to browser UAs and only gives Location to other clients.
-// Also exercises Nominatim once. Network required; not part of `npm run check`.
+// Also exercises Nominatim once. Network required; not part of `pnpm check`.
 //
 // Usage: node scripts/expand-check.mjs [short-url]
 import https from "node:https";

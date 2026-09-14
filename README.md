@@ -118,10 +118,12 @@ Then ask the assistant to plan a trip into a note in your vault. The same folder
 ## Development
 
 ```bash
-npm install
-npm run check        # lint, typecheck, unit tests, production build, load smoke
-npm run dev          # esbuild watch
+pnpm install
+pnpm check           # lint, typecheck, unit tests, production build, load smoke
+pnpm dev             # esbuild watch
 ```
+
+To release: `pnpm bump 0.1.1` (writes package.json, manifest.json, versions.json), commit, `git tag 0.1.1`, push the tag. The release workflow builds and attaches `main.js`, `manifest.json` and `styles.css`.
 
 `src/core` has no Obsidian imports and is unit tested (URL parsing, note parsing, resolver). `scripts/expand-check.mjs` hits the network to confirm the short-link strategy still works. `scripts/cdp.mjs` drives a running Obsidian started with `--remote-debugging-port=9222` for end-to-end checks; `test-vault/` is the fixture vault, with the plugin symlinked into `.obsidian/plugins/`.
 
