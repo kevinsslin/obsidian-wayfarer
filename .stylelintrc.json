@@ -1,0 +1,6 @@
+{
+  "extends": "stylelint-config-obsidianmd",
+  "rules": {
+    "no-descending-specificity": null
+  }
+}

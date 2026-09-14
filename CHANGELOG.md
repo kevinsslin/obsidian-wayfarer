@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.1.5] - 2026-09-14
+
+- Clean CSS lint (stylelint with Obsidian's config, now part of `pnpm check`). The flagged lines were Leaflet's vendored stylesheet: its duplicate prefixed properties, `!important` tile rules, `text-indent` hack and IE-only rules are gone, with the tile and attribution rules scoped to the plugin's pane instead. The route arrowhead is a CSS border triangle rather than a `clip-path`, and the stop popup pins its width through Leaflet's options rather than an override. Tiles force `border-radius: 0` so themes that round every image no longer leave gaps between tiles. Release assets are now attested with GitHub artifact attestations (`gh attestation verify main.js --repo kevinsslin/wayfarer`). The settings tab declares its settings through `getSettingDefinitions()` so they appear in the settings search on Obsidian 1.13+, while still rendering the classic tab on 1.11.
+
 ## [0.1.4] - 2026-09-14
 
 - The trip-planning skill now covers the whole job (intake, research, day structure, the note, and the planning notes with constraints, bookings, per-stretch reasoning with a backup, and open questions), comes with a finished example note, and installs with `npx skills add kevinsslin/wayfarer` or as a Claude Code plugin marketplace (`.claude-plugin/`). Settings point to it. The plugin now passes Obsidian's plugin lint (eslint-plugin-obsidianmd): command and setting names in sentence case without brand words, Obsidian's element helpers instead of raw DOM calls, `getLanguage()` for the UI language, no inline styles from code, and the Node https guard written as `Platform.isDesktop`. Command names changed: "Convert the map link on this line to a stop", "Convert every map link in this note", "Export the trip as a map file".

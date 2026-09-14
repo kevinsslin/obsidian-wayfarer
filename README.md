@@ -84,11 +84,11 @@ Works on desktop and mobile. On a phone the map opens as its own tab and the tim
 
 ```bash
 pnpm install
-pnpm check   # lint, typecheck, tests, build, load smoke
+pnpm check   # eslint, stylelint, typecheck, tests, build, load smoke
 pnpm dev     # esbuild watch
 ```
 
-`src/core` has no Obsidian imports and is unit tested. To release: `pnpm bump 0.1.3`, commit, `git tag 0.1.3`, push the tag; the workflow builds and attaches the three files.
+`src/core` has no Obsidian imports and is unit tested. To release: `pnpm bump 0.1.3`, commit, `git tag 0.1.3`, push the tag; the workflow builds the three files, attests them (`gh attestation verify main.js --repo kevinsslin/wayfarer`) and attaches them to the release.
 
 ## Credits
 

@@ -1,5 +1,5 @@
 import { googlePlaces, googleRoute } from "./net";
-import { Notice, PluginSettingTab, Setting, type App } from "obsidian";
+import { Notice, PluginSettingTab, Setting, type App, type SettingDefinitionItem } from "obsidian";
 import type WayfarerPlugin from "./main";
 
 export interface WayfarerSettings {
@@ -46,9 +46,114 @@ export const DEFAULT_SETTINGS: WayfarerSettings = {
   autoOpen: true,
 };
 
+const KEY_DESC = "Your own key. It unlocks exact pins with ratings, opening hours and photos, and routes between stops (walking, cycling, driving and transit with line names). Without it the plugin still reads pins from pasted links, and legs show their distance only. Stored in this vault's plugin data, never in a note. ";
+const AGENT_DESC = "Teaches an AI coding agent to research a trip and write the note in the format this plugin reads, planning notes included. ";
+
+function keyDesc(): DocumentFragment {
+  return createFragment((f) => {
+    f.appendText(KEY_DESC);
+    f.createEl("a", { text: "How to get one", href: "https://github.com/kevinsslin/wayfarer#google-api-key" });
+    f.appendText(".");
+  });
+}
+
+function agentDesc(): DocumentFragment {
+  return createFragment((f) => {
+    f.appendText(AGENT_DESC);
+    f.createEl("a", { text: "Install the skill", href: "https://github.com/kevinsslin/wayfarer#planning-with-an-ai-assistant" });
+    f.appendText(".");
+  });
+}
+
 export class WayfarerSettingTab extends PluginSettingTab {
   constructor(app: App, private plugin: WayfarerPlugin) {
     super(app, plugin);
+  }
+
+  /**
+   * The same settings as `display()` below, declared for Obsidian 1.13+, where
+   * they feed the settings search. Rendering stays in `display()` because the
+   * plugin still runs on 1.11.
+   */
+  getSettingDefinitions(): SettingDefinitionItem[] {
+    const p = this.plugin;
+    return [
+      { name: "Language", control: { type: "dropdown", key: "uiLanguage", options: { auto: "Follow Obsidian", en: "English", "zh-TW": "繁體中文" } } },
+      { name: "Convert map links when pasted", desc: "A pasted link (including maps.app.goo.gl) becomes a place with a pin.", control: { type: "toggle", key: "convertOnPaste" } },
+      { name: "Add an emoji to converted places", desc: "⛩️ 🍜 🏨 🚉 based on what the place is. An emoji you typed before the link is kept.", control: { type: "toggle", key: "addEmoji" } },
+      { name: "Map follows the line you edit", control: { type: "toggle", key: "followCursor" } },
+      { name: "Open the map when a note has places", control: { type: "toggle", key: "autoOpen" } },
+      {
+        type: "group",
+        heading: "Google",
+        items: [
+          { name: "Google API key", desc: KEY_DESC, aliases: ["places", "routes", "photos"], render: (setting) => this.renderKey(setting, p.settings) },
+          { name: "Language for Google results", desc: "Language code for place names and opening hours, for example ja or en.", control: { type: "text", key: "languageCode" } },
+        ],
+      },
+      {
+        type: "group",
+        heading: "Plan with an AI agent",
+        items: [{ name: "Trip planning skill", desc: AGENT_DESC, aliases: ["skill", "claude", "codex"], render: (setting) => { setting.setDesc(agentDesc()); } }],
+      },
+      {
+        type: "group",
+        heading: "Advanced",
+        items: [
+          { name: "Heading level that starts a day", desc: "Default ## . If the note has none at this level, larger headings count.", control: { type: "dropdown", key: "dayHeadingLevel", options: { 1: "#", 2: "##", 3: "###", 4: "####" } } },
+          { name: "Draw lines between places", control: { type: "toggle", key: "drawRoutes" } },
+          { name: "Map tiles URL", control: { type: "text", key: "tileUrl" } },
+          { name: "Map tiles attribution", control: { type: "text", key: "tileAttribution" } },
+        ],
+      },
+    ];
+  }
+
+  getControlValue(key: string): unknown {
+    const v = this.plugin.settings[key as keyof WayfarerSettings];
+    return typeof v === "number" ? String(v) : v;
+  }
+
+  async setControlValue(key: string, value: unknown): Promise<void> {
+    const s = this.plugin.settings as unknown as Record<string, unknown>;
+    if (key === "dayHeadingLevel") s[key] = Number(value);
+    else if (key === "tileUrl") s[key] = String(value).trim() || DEFAULT_SETTINGS.tileUrl;
+    else if (key === "languageCode") s[key] = String(value).trim() || "en";
+    else s[key] = value;
+    await this.plugin.saveSettings();
+    if (key === "uiLanguage") this.plugin.applyLocale();
+    this.plugin.refresh();
+  }
+
+  /** The key field and its test button, shared by both renderers. */
+  private renderKey(setting: Setting, s: WayfarerSettings): void {
+    const save = () => void this.plugin.saveSettings();
+    setting
+      .addText((t) => {
+        t.inputEl.type = "password";
+        t.setPlaceholder("Paste your key").setValue(s.googleApiKey).onChange((v) => { s.googleApiKey = v.trim(); save(); });
+      })
+      .addButton((b) => {
+        b.setButtonText("Test key").onClick(async () => {
+          if (!s.googleApiKey) { new Notice("Wayfarer: paste a key first"); return; }
+          b.setDisabled(true);
+          const out: string[] = [];
+          try {
+            const p = await googlePlaces(s.googleApiKey, s.languageCode).searchText("Tokyo Station");
+            out.push(p ? `Places OK (${p.name})` : "Places: no result");
+          } catch (e) {
+            out.push(`Places refused: ${(e as Error).message}`);
+          }
+          try {
+            const r = await googleRoute(s.googleApiKey, s.languageCode, { lat: 35.6812, lng: 139.7671 }, { lat: 35.7101, lng: 139.8107 }, "WALK");
+            out.push(r ? `Routes OK (${Math.round(r.distanceM / 100) / 10} km)` : "Routes: no result");
+          } catch (e) {
+            out.push(`Routes refused: ${(e as Error).message}`);
+          }
+          b.setDisabled(false);
+          new Notice(`Wayfarer key test\n${out.join("\n")}`, 20000);
+        });
+      });
   }
 
   display(): void {
@@ -83,51 +188,14 @@ export class WayfarerSettingTab extends PluginSettingTab {
       .addToggle((t) => t.setValue(s.autoOpen).onChange((v) => { s.autoOpen = v; save(); }));
 
     new Setting(containerEl).setName("Google").setHeading();
-    const keyDesc = createFragment((f) => {
-      f.appendText("Your own key. It unlocks exact pins with ratings, opening hours and photos, and routes between stops (walking, cycling, driving and transit with line names). Without it the plugin still reads pins from pasted links, and legs show their distance only. Stored in this vault's plugin data, never in a note. ");
-      f.createEl("a", { text: "How to get one", href: "https://github.com/kevinsslin/wayfarer#google-api-key" });
-      f.appendText(".");
-    });
-    new Setting(containerEl)
-      .setName("Google API key")
-      .setDesc(keyDesc)
-      .addText((t) => {
-        t.inputEl.type = "password";
-        t.setPlaceholder("Paste your key").setValue(s.googleApiKey).onChange((v) => { s.googleApiKey = v.trim(); save(); });
-      })
-      .addButton((b) => {
-        b.setButtonText("Test key").onClick(async () => {
-          if (!s.googleApiKey) { new Notice("Wayfarer: paste a key first"); return; }
-          b.setDisabled(true);
-          const out: string[] = [];
-          try {
-            const p = await googlePlaces(s.googleApiKey, s.languageCode).searchText("Tokyo Station");
-            out.push(p ? `Places OK (${p.name})` : "Places: no result");
-          } catch (e) {
-            out.push(`Places refused: ${(e as Error).message}`);
-          }
-          try {
-            const r = await googleRoute(s.googleApiKey, s.languageCode, { lat: 35.6812, lng: 139.7671 }, { lat: 35.7101, lng: 139.8107 }, "WALK");
-            out.push(r ? `Routes OK (${Math.round(r.distanceM / 100) / 10} km)` : "Routes: no result");
-          } catch (e) {
-            out.push(`Routes refused: ${(e as Error).message}`);
-          }
-          b.setDisabled(false);
-          new Notice(`Wayfarer key test\n${out.join("\n")}`, 20000);
-        });
-      });
+    this.renderKey(new Setting(containerEl).setName("Google API key").setDesc(keyDesc()), s);
     new Setting(containerEl)
       .setName("Language for Google results")
       .setDesc("Language code for place names and opening hours, for example ja or en.")
       .addText((t) => t.setValue(s.languageCode).onChange((v) => { s.languageCode = v.trim() || "en"; save(); }));
 
     new Setting(containerEl).setName("Plan with an AI agent").setHeading();
-    const agentDesc = createFragment((f) => {
-      f.appendText("Teaches an AI coding agent to research a trip and write the note in the format this plugin reads, planning notes included. ");
-      f.createEl("a", { text: "Install the skill", href: "https://github.com/kevinsslin/wayfarer#planning-with-an-ai-assistant" });
-      f.appendText(".");
-    });
-    new Setting(containerEl).setName("Trip planning skill").setDesc(agentDesc);
+    new Setting(containerEl).setName("Trip planning skill").setDesc(agentDesc());
 
     new Setting(containerEl).setName("Advanced").setHeading();
     new Setting(containerEl)

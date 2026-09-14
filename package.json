@@ -23,9 +23,10 @@
     "build": "pnpm typecheck && node esbuild.config.mjs production",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
+    "lint:css": "stylelint styles.css",
     "test": "vitest run",
     "smoke": "node scripts/load-smoke.mjs",
-    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm smoke",
+    "check": "pnpm lint && pnpm lint:css && pnpm typecheck && pnpm test && pnpm build && pnpm smoke",
     "bump": "node version-bump.mjs"
   },
   "dependencies": {
@@ -41,6 +42,8 @@
     "eslint": "^9.15.0",
     "eslint-plugin-obsidianmd": "^0.4.2",
     "obsidian": "^1.13.1",
+    "stylelint": "^17.15.0",
+    "stylelint-config-obsidianmd": "^0.1.0",
     "tslib": "^2.8.1",
     "typescript": "^5.6.3",
     "typescript-eslint": "^8.16.0",

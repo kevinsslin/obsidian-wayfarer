@@ -377,7 +377,7 @@ export class WayfarerView extends ItemView {
       });
       const marker = L.marker([stop.lat, stop.lng], { icon, title: stop.name, zIndexOffset: focus ? 2000 : dim ? 0 : 1000 });
       marker.bindTooltip(() => tipEl(stop.time ? `${stop.time} ${stop.name}` : stop.name), { direction: "top", offset: [0, -14], className: "wf-tooltip", permanent: focus });
-      marker.bindPopup(() => this.popupEl(day, stop), { className: "wf-popup", closeButton: false, maxWidth: 320, minWidth: 260 });
+      marker.bindPopup(() => this.popupEl(day, stop), { className: "wf-popup", closeButton: false, maxWidth: 280, minWidth: 280 });
       marker.on("click", () => {
         this.userMoved = true;
         this.setFocus(stop);
