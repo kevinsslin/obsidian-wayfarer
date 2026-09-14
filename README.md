@@ -55,7 +55,7 @@ Run **Insert day headings for a trip** to get the headings, then paste links und
 
 On a phone, the date selector and **map / list icons** sit at the available top of the pane. The selected icon is highlighted; both have accessible names and generous tap targets. Controls leave room for Obsidian’s mobile header and bottom navigation. The desktop keeps its day chips and floating timeline.
 
-The compact navigator shows the selected place, **Previous**, **Navigate** and **Next stop**. Previous and Next browse the note's stop order, including across days. Navigate opens Google Maps directions to the place you are looking at, from your device's location. Tap the place name for details. Selecting another date, map pin or list item changes what you browse; there is no separate current-trip progress, start/finish action or saved completion state.
+The compact navigator shows the selected place, **Previous**, **Navigate** and **Next stop**. Previous and Next browse the note's stop order, including across days. Navigate opens Google Maps directions to the place you are looking at, from your device's location. Tap the place name for details. Selecting another date, map pin or list item changes what you browse; the last browsed stop is remembered locally for each note on this device, including after reopening the map. There is no separate start/finish action or completion checklist.
 
 The phone list is a dedicated reading surface with the navigator hidden. Select a stop to return to the map and its details. Transport legs show mode and duration or distance; a stop’s details include **Change transport**.
 
@@ -107,7 +107,7 @@ In Obsidian, open **Settings → Community plugins → Browse**, search for **Wa
 
 For manual installation, download `main.js`, `manifest.json` and `styles.css` from the [latest release](https://github.com/kevinsslin/wayfarer/releases/latest) into `<vault>/.obsidian/plugins/wayfarer/` and enable it under **Settings → Community plugins**. [BRAT](https://github.com/TfTHacker/obsidian42-brat) with `kevinsslin/wayfarer` also works.
 
-Works on desktop and mobile. On a phone the map opens as its own tab and the timeline folds away until you tap for it. The one desktop-only feature is expanding `maps.app.goo.gl` short links, which needs Node's https; on a phone, paste the full link or let the conversion happen on the computer. Saved stops, routes and details can be read on desktop and mobile. Stop selection is for browsing and is not saved as travel progress.
+Works on desktop and mobile. On a phone the map opens as its own tab and the timeline folds away until you tap for it. The one desktop-only feature is expanding `maps.app.goo.gl` short links, which needs Node's https; on a phone, paste the full link or let the conversion happen on the computer. Saved stops, routes and details can be read on desktop and mobile. The last browsed stop is cached locally per note and device; it is not synced as travel progress.
 
 ## Commands
 

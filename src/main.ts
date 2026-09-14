@@ -215,7 +215,7 @@ export default class WayfarerPlugin extends Plugin {
     if (!this.current) return;
     const md = this.activeMarkdown();
     const day = md?.file?.path === this.current.file.path ? dayAtLine(this.current.itinerary, md.editor.getCursor().line) : -1;
-    for (const v of this.views) v.render(this.current.file, this.current.itinerary, day);
+    for (const v of this.views) v.render(this.current.file, this.current.itinerary, day, md?.editor.getCursor().line ?? -1);
   }
 
   private onEdit(editor: Editor, info: MarkdownFileInfo): void {

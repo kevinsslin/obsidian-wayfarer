@@ -12,7 +12,7 @@ import { t } from "../core/i18n";
 import type WayfarerPlugin from "../main";
 import { attachPhoto } from "../photos";
 import { mapClearance } from "../core/map-layout";
-import { nextStop, previousStop } from "../core/journey";
+import { nextStop, previousStop, readProgress, resolveStop, stopRef } from "../core/journey";
 
 
 export const VIEW_TYPE_WAYFARER = "wayfarer";
@@ -273,7 +273,7 @@ export class WayfarerView extends ItemView {
   }
 
   /** Replaces the rendered itinerary. `cursorDay` picks the day to emphasise. */
-  render(file: TFile | null, itinerary: Itinerary | null, cursorDay: number): void {
+  render(file: TFile | null, itinerary: Itinerary | null, cursorDay: number, cursorLine = -1): void {
     if (!this.map) return;
     const fileChanged = file?.path !== this.file?.path;
     const prevItinerary = this.itinerary;
@@ -282,7 +282,11 @@ export class WayfarerView extends ItemView {
     this.itinerary = itinerary;
     if (fileChanged) {
       this.pinnedHeading = null;
-      this.focused = null;
+      this.lastCursorLine = cursorLine;
+      this.focused = file && itinerary
+        ? resolveStop(itinerary, readProgress(this.app.loadLocalStorage(`wayfarer:selection:${file.path}`)).current)
+        : null;
+      if (this.focused) this.pinnedHeading = itinerary?.days.find((d) => d.index === this.focused?.dayIndex)?.headingLine ?? null;
       this.userMoved = false;
     }
     const pinned = this.pinnedHeading === null ? undefined : itinerary?.days.find((d) => d.headingLine === this.pinnedHeading);
@@ -320,6 +324,7 @@ export class WayfarerView extends ItemView {
   onCursor(line: number, day: number): void {
     if (!this.itinerary || !this.map || this.isNarrow()) return;
     const lineChanged = line !== this.lastCursorLine;
+    if (!lineChanged) return;
     this.lastCursorLine = line;
     if (lineChanged) this.userMoved = false;
 
@@ -634,7 +639,7 @@ export class WayfarerView extends ItemView {
     };
   }
 
-  /** Browsing follows selection only; it does not save travel progress. */
+  /** The last browsed stop is local to this vault/device, independent of trip completion. */
   private selectedStop(): Stop | null {
     return this.focused ?? this.itinerary?.days.find((d) => d.index === this.activeDay)?.stops[0] ?? this.itinerary?.stops[0] ?? null;
   }
@@ -655,7 +660,13 @@ export class WayfarerView extends ItemView {
     this.journeyEl.removeClass("is-expanded");
     const it = this.itinerary;
     const stop = this.selectedStop();
-    if (!it || !stop || (this.isNarrow() && this.narrowOpen)) return;
+    if (!it || !stop) return;
+    if (this.file) {
+      const key = `wayfarer:selection:${this.file.path}`;
+      const selection = { current: stopRef(it, stop) };
+      if (JSON.stringify(this.app.loadLocalStorage(key)) !== JSON.stringify(selection)) this.app.saveLocalStorage(key, selection);
+    }
+    if (this.isNarrow() && this.narrowOpen) return;
     this.journeyEl.addClass("is-expanded");
     const content = this.journeyEl.createDiv({ cls: "wf-journey-content" });
     const info = content.createEl("button", { cls: "wf-journey-stop", text: `${stop.time ? stop.time + " · " : ""}${stop.name}`, attr: { "aria-label": `${t("journey_info")}: ${stop.name}` } });
