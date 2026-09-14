@@ -125,7 +125,10 @@ export class WayfarerView extends ItemView {
     this.map.on("zoomend", () => this.redrawArrows());
 
     // Leaflet measures its container once; the pane can be resized or hidden.
-    const ro = new ResizeObserver(() => this.map?.invalidateSize());
+    // The popup card is capped at the map's height (see styles), so a long note scrolls inside the card and the photo stays in view.
+    const sizeVar = () => this.mapEl.style.setProperty("--wf-map-h", `${this.mapEl.clientHeight}px`);
+    sizeVar();
+    const ro = new ResizeObserver(() => { sizeVar(); this.map?.invalidateSize(); });
     ro.observe(this.mapEl);
     this.register(() => ro.disconnect());
 
@@ -647,8 +650,16 @@ export class WayfarerView extends ItemView {
     const marker = this.markers.get(stop);
     if (!marker) return;
     const popup = marker.getPopup();
-    if (popup) L.setOptions(popup, { autoPanPaddingTopLeft: L.point(this.leftInset() + 12, 12), autoPanPaddingBottomRight: L.point(12, 12) });
-    marker.openPopup();
+    // Room for the chip bar on top and the timeline on the left, so the card is never under either.
+    if (popup) L.setOptions(popup, { autoPanPaddingTopLeft: L.point(this.leftInset() + 12, this.topInset() + 12), autoPanPaddingBottomRight: L.point(12, 12) });
+    // While the camera is still moving, the pan the popup asks for would be undone by the flight; open it on arrival.
+    if (this.flying && this.map) this.map.once("moveend", () => { if (this.markers.get(stop) === marker) marker.openPopup(); });
+    else marker.openPopup();
+  }
+
+  /** Height of the floating chip bar over the top of the map. */
+  private topInset(): number {
+    return this.legendEl.offsetHeight;
   }
 
   private flyToStop(stop: Stop): void {

@@ -974,8 +974,9 @@ svg.leaflet-image-layer.leaflet-interactive path {
 .wayfarer-view .wf-popup .leaflet-popup-content-wrapper { padding: 0; border-radius: 14px; overflow: hidden; background: var(--background-primary); color: var(--text-normal); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28); }
 .wayfarer-view .wf-popup .leaflet-popup-tip { background: var(--background-primary); box-shadow: none; }
 .wayfarer-view .wf-popup .leaflet-popup-content { margin: 0; width: auto !important; }
-.wayfarer-view .wf-card { width: 280px; font-family: var(--font-interface); font-size: var(--font-ui-small); line-height: 1.45; color: var(--text-normal); }
-.wayfarer-view .wf-card-imgwrap { position: relative; }
+.wayfarer-view .wf-card { width: 280px; font-family: var(--font-interface); font-size: var(--font-ui-small); line-height: 1.45; color: var(--text-normal); display: flex; flex-direction: column; max-height: calc(var(--wf-map-h, 600px) - 140px); }
+.wayfarer-view .wf-card-imgwrap { position: relative; flex: none; }
+.wayfarer-view .wf-card-body { overflow-y: auto; min-height: 0; overscroll-behavior: contain; }
 .wayfarer-view .wf-card-img { display: block; width: 100%; height: 140px; object-fit: cover; }
 .wayfarer-view .wf-card-credit {
   position: absolute; right: 6px; bottom: 4px; max-width: 90%;
