@@ -1,4 +1,12 @@
 import type { Stop } from "./itinerary";
+import type { Transport } from "./category";
+
+/** Omit origin so Maps uses the traveller's actual position. Opening this never advances progress. */
+export function navigateUrl(stop: Pick<Stop, "lat" | "lng">, mode?: Transport): string {
+  const params = new URLSearchParams({ api: "1", destination: `${stop.lat},${stop.lng}`, dir_action: "navigate" });
+  if (mode) params.set("travelmode", mode === "walk" ? "walking" : mode === "bike" ? "bicycling" : mode === "car" || mode === "taxi" ? "driving" : "transit");
+  return `https://www.google.com/maps/dir/?${params.toString()}`;
+}
 
 /** Google Maps search URL for one point. Opens the place picker on phone and web. */
 export function placeUrl(stop: Pick<Stop, "lat" | "lng">): string {

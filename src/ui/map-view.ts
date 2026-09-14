@@ -1,8 +1,8 @@
-import { ItemView, MarkdownView, TFile, type WorkspaceLeaf } from "obsidian";
+import { ItemView, MarkdownView, Menu, Platform, setIcon, TFile, type WorkspaceLeaf } from "obsidian";
 import * as L from "leaflet";
 import { CATEGORY_EMOJI, TRANSPORT_EMOJI, type Transport } from "../core/category";
 import { dayColor } from "../core/colors";
-import { directionsUrl, placeUrl } from "../core/gmaps-out";
+import { directionsUrl, navigateUrl, placeUrl } from "../core/gmaps-out";
 import { stopNotes, type Day, type Itinerary, type Stop } from "../core/itinerary";
 import { legText, type Leg } from "../core/legs";
 import { checkHours, describeHours, hoursForWeekday } from "../core/schedule";
@@ -11,6 +11,7 @@ import { dateForDay, routable } from "../routing";
 import { t } from "../core/i18n";
 import type WayfarerPlugin from "../main";
 import { attachPhoto } from "../photos";
+import { nextStop, previousStop, readProgress, resolveStop, stopRef, type Progress } from "../core/journey";
 
 
 export const VIEW_TYPE_WAYFARER = "wayfarer";
@@ -37,6 +38,9 @@ export class WayfarerView extends ItemView {
   private mapEl!: HTMLElement;
   private stripEl!: HTMLElement;
   private narrowOpen = false;
+  private journeyEl!: HTMLElement;
+  private journeyOpen = false;
+  private progress: Progress = { current: null, finished: false };
   private emptyEl!: HTMLElement;
   private file: TFile | null = null;
   private itinerary: Itinerary | null = null;
@@ -47,6 +51,7 @@ export class WayfarerView extends ItemView {
   private pinnedHeading: number | null = null;
   private focused: Stop | null = null;
   private fittedFor: string | null = null;
+  private cameraRevision = 0;
   /** Set while the user pans; cleared when the cursor moves to another line. */
   private userMoved = false;
   private flying = false;
@@ -70,11 +75,6 @@ export class WayfarerView extends ItemView {
     const root = this.contentEl;
     root.empty();
     root.addClass("wayfarer-view");
-    // A click anywhere outside an open transport popover closes it.
-    this.registerDomEvent(document, "mousedown", (e) => {
-      const pop = root.querySelector(".wf-popover");
-      if (pop && !pop.contains(e.target as Node)) pop.remove();
-    }, true);
     this.legendEl = root.createDiv({ cls: "wf-legend" });
     const body = root.createDiv({ cls: "wf-body" });
     this.stripEl = body.createDiv({ cls: "wf-strip" });
@@ -89,11 +89,14 @@ export class WayfarerView extends ItemView {
         void this.plugin.saveSettings();
       }
       this.applySplit();
+      this.stripEl.empty();
+      if (this.itinerary) this.drawStrip(this.itinerary);
       this.map?.invalidateSize();
     };
     this.mapEl = body.createDiv({ cls: "wf-map" });
     // Set inline so Leaflet sees it at construction even before styles.css has loaded; otherwise it forces position: relative.
     this.mapEl.setCssProps({ position: "absolute", inset: "0" });
+    this.journeyEl = body.createDiv({ cls: "wf-journey" });
     this.emptyEl = root.createDiv({ cls: "wf-empty" });
     this.emptyEl.setText(t("empty"));
     this.applySplit();
@@ -126,13 +129,19 @@ export class WayfarerView extends ItemView {
     this.map.on("zoomstart", () => { if (!this.flying) this.userMoved = true; });
     this.map.on("moveend zoomend", () => (this.flying = false));
     this.map.on("zoomend", () => this.redrawArrows());
+    this.map.on("popupopen", () => this.contentEl.addClass("has-popup"));
+    this.map.on("popupclose", () => this.contentEl.removeClass("has-popup"));
 
     // Leaflet measures its container once; the pane can be resized or hidden.
     // The popup card is capped at the map's height (see styles), so a long note scrolls inside the card and the photo stays in view.
-    const sizeVar = () => this.mapEl.style.setProperty("--wf-map-h", `${this.mapEl.clientHeight}px`);
+    const sizeVar = () => {
+      this.mapEl.style.setProperty("--wf-map-h", `${this.mapEl.clientHeight}px`);
+      this.contentEl.style.setProperty("--wf-journey-h", `${this.journeyEl.offsetHeight}px`);
+    };
     sizeVar();
     const ro = new ResizeObserver(() => { sizeVar(); this.applySplit(); this.map?.invalidateSize(); });
     ro.observe(this.mapEl);
+    ro.observe(this.journeyEl);
     this.register(() => ro.disconnect());
 
     // Popup anchors live inside Leaflet's DOM, outside Obsidian's link handling.
@@ -152,6 +161,7 @@ export class WayfarerView extends ItemView {
   async onClose(): Promise<void> {
     window.clearTimeout(this.hoverClose);
     this.plugin.detachView(this);
+    this.cameraRevision++;
     this.map?.remove();
     this.map = null;
   }
@@ -170,10 +180,19 @@ export class WayfarerView extends ItemView {
 
   private applySplit(): void {
     const open = this.listOpen();
+    this.contentEl.toggleClass("is-narrow", this.isNarrow());
+    this.contentEl.toggleClass("is-list", open);
+    const list = this.legendEl.querySelector(".wf-list-toggle");
+    list?.setAttribute("aria-pressed", String(open));
+    list?.toggleClass("is-active", open);
+    const map = this.legendEl.querySelector(".wf-map-toggle");
+    map?.setAttribute("aria-pressed", String(!open));
+    map?.toggleClass("is-active", !open);
     const body = this.contentEl.querySelector<HTMLElement>(".wf-body");
     const width = this.isNarrow() ? Math.min(this.plugin.settings.listWidth, this.contentEl.clientWidth - 64) : this.plugin.settings.listWidth;
     body?.style.setProperty("--wf-list-width", `${width}px`);
     this.stripEl.toggleClass("is-hidden", !open);
+    if (open && !this.stripEl.childElementCount && this.itinerary) this.drawStrip(this.itinerary);
     const divider = this.contentEl.querySelector(".wf-divider");
     divider?.toggleClass("is-closed", !open);
     const toggle = divider?.querySelector(".wf-divider-toggle");
@@ -204,9 +223,16 @@ export class WayfarerView extends ItemView {
     this.file = file;
     this.itinerary = itinerary;
     if (fileChanged) {
+      this.progress = readProgress(file ? this.app.loadLocalStorage(`wayfarer:progress:${file.path}`) : null);
+      this.journeyOpen = false;
       this.pinnedHeading = null;
       this.focused = null;
       this.userMoved = false;
+    }
+    const current = itinerary && resolveStop(itinerary, this.progress.current);
+    if (current && itinerary && this.progress.finished && nextStop(itinerary, current)) {
+      this.progress.finished = false;
+      this.saveProgress();
     }
     const pinned = this.pinnedHeading === null ? undefined : itinerary?.days.find((d) => d.headingLine === this.pinnedHeading);
     if (!pinned) this.pinnedHeading = null;
@@ -241,7 +267,7 @@ export class WayfarerView extends ItemView {
    * day only switches the emphasised day.
    */
   onCursor(line: number, day: number): void {
-    if (!this.itinerary || !this.map) return;
+    if (!this.itinerary || !this.map || this.isNarrow()) return;
     const lineChanged = line !== this.lastCursorLine;
     this.lastCursorLine = line;
     if (lineChanged) this.userMoved = false;
@@ -310,6 +336,7 @@ export class WayfarerView extends ItemView {
     }
     this.stripEl.empty();
     if (this.itinerary) this.drawStrip(this.itinerary);
+    this.drawJourney();
   }
 
   /** What the pane currently shows, as a string; `render` skips the rebuild when it has not changed. */
@@ -326,10 +353,12 @@ export class WayfarerView extends ItemView {
     this.markers.clear();
     this.legendEl.empty();
     this.stripEl.empty();
+    this.drawJourney();
     if (!this.itinerary || this.itinerary.stops.length === 0) return;
     for (const day of this.itinerary.days) this.drawDay(day);
     this.drawLegend(this.itinerary);
     this.drawStrip(this.itinerary);
+    this.applySplit();
   }
 
   private drawDay(day: Day): void {
@@ -367,9 +396,10 @@ export class WayfarerView extends ItemView {
     }
     day.stops.forEach((stop, i) => {
       const focus = stop === this.focused;
+      const current = this.itinerary && !this.progress.finished && resolveStop(this.itinerary, this.progress.current) === stop;
       const glyph = stop.emoji ?? CATEGORY_EMOJI[stop.category];
       const icon = L.divIcon({
-        className: `wf-pin ${cls}${focus ? " is-focus" : ""}`,
+        className: `wf-pin ${cls}${focus ? " is-focus" : ""}${current ? " is-current" : ""}`,
         html: `<span class="wf-pin-body" style="--wf-color:${color}"><span class="wf-pin-glyph">${glyph}</span><span class="wf-pin-n">${i + 1}</span></span>`,
         iconSize: [34, 34],
         iconAnchor: [17, 17],
@@ -385,7 +415,7 @@ export class WayfarerView extends ItemView {
       });
       // Hovering a pin shows its card; it goes away with the pointer unless the stop is the focused one.
       marker.on("mouseover", () => {
-        if (this.flying) return;
+        if (this.isNarrow() || Platform.isMobile || this.flying) return;
         window.clearTimeout(this.hoverClose);
         if (!marker.isPopupOpen()) this.openPopup(stop);
       });
@@ -422,7 +452,7 @@ export class WayfarerView extends ItemView {
     const warn = this.hoursWarning(stop, date);
     if (warn) body.createDiv({ cls: "wf-card-warn", text: `⚠ ${warn}` });
     if (stop.meta?.rating) facts.push(`★ ${stop.meta.rating.toFixed(1)}`);
-    const today = todayHours(stop.meta?.hours);
+    const today = date ? hoursForWeekday(stop.meta?.hours, date.getDay()) : null;
     if (today) facts.push(today.replace(/^[^:]+:\s*/, ""));
     if (facts.length) body.createDiv({ cls: "wf-card-facts", text: facts.join(" · ") });
     for (const n of stopNotes(stop)) body.createDiv({ cls: "wf-card-note", text: n });
@@ -443,6 +473,8 @@ export class WayfarerView extends ItemView {
     if (stop.meta?.website && /^https?:\/\//i.test(stop.meta.website)) actions.createEl("a", { cls: "wf-ext", text: t("website"), attr: { href: stop.meta.website } });
     const jump = actions.createEl("a", { text: t("to_line"), attr: { href: "#" } });
     jump.onclick = (e) => { e.preventDefault(); void this.jumpTo(stop); };
+    const here = actions.createEl("button", { cls: "wf-inline-action", text: t("journey_here") });
+    here.onclick = () => this.setCurrent(stop);
     return root;
   }
 
@@ -486,35 +518,55 @@ export class WayfarerView extends ItemView {
     }).addTo(this.arrows);
   }
 
+  private chooseDay(day: Day | null): void {
+    this.pinnedHeading = day?.headingLine ?? null;
+    this.pinnedDay = day?.index ?? -1;
+    this.activeDay = this.pinnedDay;
+    this.focused = null;
+    this.draw();
+    this.fitAll(day?.stops ?? this.itinerary?.stops ?? []);
+  }
+
   private drawLegend(it: Itinerary): void {
-    const all = this.legendEl.createEl("button", { cls: "wf-chip wf-chip-all", text: t("all") });
+    const dates = this.legendEl.createDiv({ cls: "wf-dates" });
+    const all = dates.createEl("button", { cls: "wf-chip wf-chip-all", text: t("all") });
     all.toggleClass("is-active", this.activeDay === -1);
-    all.onclick = () => {
-      this.pinnedHeading = null;
-      this.pinnedDay = -1;
-      this.activeDay = -1;
-      this.focused = null;
-      this.draw();
-      this.fitAll(it.stops);
-    };
+    all.setAttr("aria-pressed", String(this.activeDay === -1));
+    all.onclick = () => this.chooseDay(null);
     for (const day of it.days) {
-      const chip = this.legendEl.createEl("button", { cls: "wf-chip", text: day.label || (day.headingLine === -1 ? t("other") : t("day", { n: day.index + 1 })) });
+      const chip = dates.createEl("button", { cls: "wf-chip", text: day.label || t("day", { n: day.index + 1 }) });
       chip.style.setProperty("--wf-color", dayColor(day.index));
       chip.toggleClass("is-active", this.activeDay === day.index);
       chip.toggleClass("is-pinned", this.pinnedDay === day.index);
+      chip.setAttr("aria-pressed", String(this.activeDay === day.index));
       chip.setAttr("aria-label", `${day.title} (${day.stops.length})`);
-      chip.onclick = () => {
-        this.pinnedHeading = this.pinnedDay === day.index ? null : day.headingLine;
-        this.pinnedDay = this.pinnedHeading === null ? -1 : day.index;
-        this.activeDay = this.pinnedDay;
-        this.focused = null;
-        this.draw();
-        this.fitAll(this.pinnedDay >= 0 ? day.stops : it.stops);
-      };
+      chip.onclick = () => this.chooseDay(day);
     }
+    const dayControl = this.legendEl.createDiv({ cls: "wf-day-control" });
+    setIcon(dayControl.createSpan({ cls: "wf-day-chevron" }), "chevron-down");
+    const select = dayControl.createEl("select", { cls: "wf-day-select", attr: { "aria-label": t("choose_day") } });
+    select.createEl("option", { text: t("overview"), value: "-1" });
+    for (const day of it.days) select.createEl("option", { text: `${day.label || t("other")} · ${t("day", { n: day.index + 1 })}`, value: String(day.index), attr: { title: day.title } });
+    select.value = String(this.activeDay);
+    select.onchange = () => this.chooseDay(it.days.find((d) => d.index === Number(select.value)) ?? null);
     const right = this.legendEl.createDiv({ cls: "wf-legend-right" });
-    const follow = right.createEl("button", { cls: "wf-chip wf-chip-icon", text: "📍" });
+    const map = right.createEl("button", { cls: "wf-chip wf-chip-icon wf-map-toggle", attr: { "aria-label": t("view_map") } });
+    setIcon(map, "map-pin");
+    map.onclick = () => { this.narrowOpen = false; this.applySplit(); };
+    const list = right.createEl("button", { cls: "wf-chip wf-chip-icon wf-list-toggle", attr: { "aria-label": t("view_list") } });
+    setIcon(list, "list");
+    list.onclick = () => {
+      this.narrowOpen = true;
+      // The phone uses one surface at a time; desktop keeps its original floating timeline.
+      this.map?.closePopup();
+      this.applySplit();
+      this.stripEl.empty();
+      this.drawStrip(it);
+    };
+    const follow = right.createEl("button", { cls: "wf-chip wf-chip-icon wf-follow" });
+    setIcon(follow, "pin");
     follow.toggleClass("is-active", this.plugin.settings.followCursor);
+    follow.setAttr("aria-pressed", String(this.plugin.settings.followCursor));
     follow.setAttr("aria-label", this.plugin.settings.followCursor ? t("follow_on") : t("follow_off"));
     follow.onclick = () => {
       this.plugin.settings.followCursor = !this.plugin.settings.followCursor;
@@ -523,8 +575,109 @@ export class WayfarerView extends ItemView {
     };
   }
 
+  private currentStop(): Stop | null {
+    return this.itinerary ? resolveStop(this.itinerary, this.progress.current) : null;
+  }
+
+  private saveProgress(): void {
+    if (this.file) this.app.saveLocalStorage(`wayfarer:progress:${this.file.path}`, this.progress);
+  }
+
+  private setCurrent(stop: Stop): void {
+    if (!this.itinerary) return;
+    this.progress = { current: stopRef(this.itinerary, stop), finished: false };
+    this.saveProgress();
+    this.journeyOpen = true;
+    this.returnToCurrent();
+  }
+
+  private returnToCurrent(): void {
+    const stop = this.currentStop();
+    if (!stop || !this.itinerary) return;
+    this.pinnedHeading = this.itinerary.days.find((d) => d.index === stop.dayIndex)?.headingLine ?? null;
+    this.pinnedDay = this.activeDay = stop.dayIndex;
+    this.focused = stop;
+    this.narrowOpen = false;
+    this.draw();
+    this.flyToStop(stop);
+  }
+
+  private drawJourney(): void {
+    this.journeyEl.empty();
+    const it = this.itinerary;
+    if (!it?.stops.length) return;
+    const current = this.currentStop();
+    const finished = !!current && this.progress.finished && !nextStop(it, current);
+    const candidate = this.focused ?? it.days.find((d) => d.index === this.activeDay)?.stops[0] ?? it.stops[0];
+    const stop = current ?? candidate;
+    const next = current && !finished ? nextStop(it, current) : null;
+    const day = it.days.find((d) => d.index === stop.dayIndex)!;
+    this.journeyEl.toggleClass("is-expanded", this.journeyOpen);
+    const head = this.journeyEl.createDiv({ cls: "wf-journey-head", attr: { title: t("journey_manual") } });
+    const toggle = head.createEl("button", { cls: "wf-journey-toggle", attr: { "aria-expanded": String(this.journeyOpen), "aria-label": this.journeyOpen ? t("journey_collapse") : t("journey") } });
+    const icon = toggle.createSpan({ cls: "wf-journey-icon" });
+    setIcon(icon, "navigation");
+    toggle.createSpan({ cls: "wf-journey-summary", text: this.journeyOpen ? t("journey") : finished ? t("journey_done") : current ? `${t("journey_current")} · ${current.name}` : t("journey") });
+    setIcon(toggle.createSpan({ cls: "wf-journey-chevron" }), this.journeyOpen ? "chevron-down" : "chevron-up");
+    toggle.onclick = () => { this.journeyOpen = !this.journeyOpen; this.map?.closePopup(); this.drawJourney(); };
+    if (!this.journeyOpen) return;
+    const more = head.createEl("button", { cls: "wf-journey-more", attr: { "aria-label": t("journey_more") } });
+    setIcon(more, "ellipsis");
+    more.onclick = (event) => {
+      const menu = new Menu();
+      menu.addItem((item) => item.setTitle(t("journey_manual")).setDisabled(true));
+      menu.addItem((item) => item.setTitle(t("journey_reset")).setIcon("rotate-ccw").onClick(() => {
+        this.progress = { current: null, finished: false };
+        this.saveProgress();
+        this.draw();
+      }));
+      menu.showAtMouseEvent(event);
+    };
+    const content = this.journeyEl.createDiv({ cls: "wf-journey-content" });
+    content.createDiv({ cls: "wf-journey-context", text: `${this.file?.basename ?? ""} · ${day.label || t("day", { n: day.index + 1 })} · ${it.stops.indexOf(stop) + 1}/${it.stops.length}` });
+    if (finished) content.createDiv({ cls: "wf-journey-context", text: t("journey_done") });
+    if (!current) content.createDiv({ cls: "wf-journey-context", text: this.progress.current ? t("journey_missing") : t("journey_ready") });
+    const info = content.createEl("button", { cls: "wf-journey-stop", text: `${stop.time ? stop.time + " · " : ""}${stop.name}`, attr: { "aria-label": `${t("journey_info")}: ${stop.name}` } });
+    info.onclick = () => {
+      this.journeyOpen = false;
+      this.narrowOpen = false;
+      this.chooseDay(day);
+      this.setFocus(stop);
+      this.flyToStop(stop);
+      this.openPopup(stop);
+    };
+    if (next) {
+      const nextDay = it.days.find((d) => d.index === next.dayIndex)!;
+      content.createDiv({ cls: "wf-journey-next", text: `${t("journey_next")} · ${next.dayIndex !== stop.dayIndex ? nextDay.label + " · " : ""}${next.time ? next.time + " " : ""}${next.name}` });
+    }
+    const actions = content.createDiv({ cls: "wf-journey-actions" });
+    if (current) {
+      const previous = previousStop(it, current);
+      const back = actions.createEl("button", { cls: "wf-journey-previous", text: t("journey_previous") });
+      back.disabled = !previous;
+      back.onclick = () => { if (previous) this.setCurrent(previous); };
+    }
+    if (!finished) {
+      const destination = current ? next : candidate;
+      if (destination) {
+        const nav = actions.createEl("button", { cls: "wf-journey-nav", text: current ? t("journey_nav_short") : t("journey_nav_start"), attr: { "aria-label": current ? t("journey_nav") : t("journey_nav_start"), title: current ? t("journey_nav") : t("journey_nav_start") } });
+        nav.onclick = () => window.open(navigateUrl(destination, destination.transport));
+      }
+      const advance = actions.createEl("button", { cls: "wf-journey-advance", text: current ? next ? t("journey_next") + " →" : t("journey_finish") : t("journey_start") });
+      advance.onclick = () => {
+        if (!current || next) this.setCurrent(next ?? candidate);
+        else { this.progress.finished = true; this.saveProgress(); this.draw(); }
+      };
+    }
+    if (current && (this.activeDay !== current.dayIndex || this.focused !== current)) {
+      const back = content.createEl("button", { cls: "wf-inline-action", text: t("journey_return") });
+      back.onclick = () => this.returnToCurrent();
+    }
+  }
+
   /** The active day's stops as a vertical timeline in the left column; the whole trip when no day is active. */
   private drawStrip(it: Itinerary): void {
+    if (!this.listOpen()) return;
     const day = it.days.find((d) => d.index === this.activeDay);
     const days = day ? [day] : it.days;
     for (const d of days) {
@@ -539,6 +692,8 @@ export class WayfarerView extends ItemView {
         const card = this.stripEl.createEl("button", { cls: "wf-stop" });
         card.style.setProperty("--wf-color", color);
         card.toggleClass("is-focus", stop === this.focused);
+        const isCurrent = !this.progress.finished && this.currentStop() === stop;
+        card.toggleClass("is-current", isCurrent);
         const photo = this.plugin.photoFor(stop);
         if (photo) {
           const th = card.createEl("img", { cls: "wf-stop-thumb", attr: { alt: "" } });
@@ -548,6 +703,7 @@ export class WayfarerView extends ItemView {
         const body = card.createDiv({ cls: "wf-stop-body" });
         const top = body.createDiv({ cls: "wf-stop-top" });
         top.createSpan({ cls: "wf-stop-n", text: String(i + 1) });
+        if (isCurrent) top.createSpan({ cls: "wf-current-label", text: t("journey_current") });
         if (stop.time) top.createSpan({ cls: "wf-stop-time", text: stop.time });
         const main = body.createDiv({ cls: "wf-stop-main" });
         main.createSpan({ cls: "wf-stop-glyph", text: stop.emoji ?? CATEGORY_EMOJI[stop.category] });
@@ -584,6 +740,7 @@ export class WayfarerView extends ItemView {
           if (line !== undefined && path === (this.file?.path ?? "") && Number.isInteger(src) && src !== stop.line && this.itinerary?.stops.some((x) => x.line === src)) void this.plugin.moveStopLine(src, stop.line);
         };
         card.onclick = () => {
+          if (this.isNarrow()) { this.narrowOpen = false; this.journeyOpen = false; this.applySplit(); }
           this.focused = stop;
           this.userMoved = false;
           this.draw();
@@ -604,7 +761,7 @@ export class WayfarerView extends ItemView {
   private drawLegRow(leg: Leg, color: string): void {
     const conn = this.stripEl.createDiv({ cls: `wf-leg${leg.lateBy > 0 ? " is-late" : ""}${leg.mode ? "" : " is-unknown"}` });
     conn.style.setProperty("--wf-color", color);
-    const mode = conn.createEl("a", { cls: "wf-leg-mode", text: leg.mode ? TRANSPORT_EMOJI[leg.mode] : "?" });
+    const mode = conn.createEl("button", { cls: "wf-leg-mode", text: leg.mode ? TRANSPORT_EMOJI[leg.mode] : "?" });
     mode.setAttr("aria-label", t("via_hint"));
     mode.onclick = (e) => {
       e.stopPropagation();
@@ -618,21 +775,12 @@ export class WayfarerView extends ItemView {
   }
 
   private pickTransport(anchor: HTMLElement, leg: Leg): void {
-    this.popover(anchor, MODES.map((m) => ({ label: `${TRANSPORT_EMOJI[m]} ${t(`m_${m}` as const)}`, active: m === leg.mode, pick: () => this.plugin.setStopTransport(leg.to, m) })));
-  }
-
-  /** A small menu anchored under an element; one click picks and closes. */
-  private popover(anchor: HTMLElement, items: Array<{ label: string; active: boolean; pick: () => void }>): void {
-    this.contentEl.querySelector(".wf-popover")?.remove();
-    const pop = this.contentEl.createDiv({ cls: "wf-popover" });
-    for (const it of items) {
-      const b = pop.createEl("button", { cls: `wf-popover-item${it.active ? " is-active" : ""}`, text: it.label });
-      b.onclick = (e) => { e.stopPropagation(); pop.remove(); it.pick(); };
+    const menu = new Menu();
+    for (const mode of MODES) {
+      menu.addItem((item) => item.setTitle(`${TRANSPORT_EMOJI[mode]} ${t(`m_${mode}`)}`).setChecked(mode === leg.mode).onClick(() => this.plugin.setStopTransport(leg.to, mode)));
     }
-    const a = anchor.getBoundingClientRect();
-    const r = this.contentEl.getBoundingClientRect();
-    pop.style.left = `${Math.max(4, a.left - r.left)}px`;
-    pop.style.top = `${a.bottom - r.top + 4}px`;
+    const bounds = anchor.getBoundingClientRect();
+    menu.showAtPosition({ x: bounds.left, y: bounds.bottom });
   }
 
   /* ---------- camera ---------- */
@@ -645,7 +793,7 @@ export class WayfarerView extends ItemView {
   /** The map centre that puts `target` in the middle of the uncovered part of the map at `zoom`. */
   private centreFor(target: L.LatLng, zoom: number): L.LatLng {
     if (!this.map) return target;
-    return this.map.unproject(this.map.project(target, zoom).subtract([this.leftInset() / 2, 0]), zoom);
+    return this.map.unproject(this.map.project(target, zoom).subtract([this.leftInset() / 2, (this.topInset() - this.bottomInset()) / 2]), zoom);
   }
 
   private hoverClose = 0;
@@ -668,7 +816,7 @@ export class WayfarerView extends ItemView {
     if (!marker) return;
     const popup = marker.getPopup();
     // Room for the chip bar on top and the timeline on the left, so the card is never under either.
-    if (popup) L.setOptions(popup, { autoPanPaddingTopLeft: L.point(this.leftInset() + 12, this.topInset() + 12), autoPanPaddingBottomRight: L.point(12, 12) });
+    if (popup) L.setOptions(popup, { autoPanPaddingTopLeft: L.point(this.leftInset() + 12, this.topInset() + 12), autoPanPaddingBottomRight: L.point(12, this.bottomInset() + 12) });
     // While the camera is still moving, the pan the popup asks for would be undone by the flight; open it on arrival.
     if (this.flying && this.map) this.map.once("moveend", () => { if (this.markers.get(stop) === marker) marker.openPopup(); });
     else marker.openPopup();
@@ -676,11 +824,17 @@ export class WayfarerView extends ItemView {
 
   /** Height of the floating chip bar over the top of the map. */
   private topInset(): number {
-    return this.legendEl.offsetHeight;
+    return this.isNarrow() ? this.legendEl.offsetHeight + 20 : 0;
+  }
+
+  private bottomInset(): number {
+    return this.journeyEl.offsetHeight + 30;
   }
 
   private flyToStop(stop: Stop): void {
     if (!this.map) return;
+    this.cameraRevision++;
+    this.map.stop();
     this.map.invalidateSize(false);
     const size = this.map.getSize();
     if (size.x === 0 || size.y === 0) return;
@@ -690,8 +844,8 @@ export class WayfarerView extends ItemView {
     const visible = this.map.getBounds();
     const covered = this.map.containerPointToLatLng([this.leftInset(), 0]);
     const seen = L.latLngBounds(L.latLng(visible.getSouth(), covered.lng), visible.getNorthEast()).pad(-0.2);
-    if (seen.contains(target) && this.map.getZoom() >= 13) this.map.panTo(this.centreFor(target, this.map.getZoom()), { animate: true, duration: 0.4 });
-    else this.map.flyTo(this.centreFor(target, zoom), zoom, { duration: 0.6 });
+    if (seen.contains(target) && this.map.getZoom() >= 13) this.map.panTo(this.centreFor(target, this.map.getZoom()), { animate: !window.matchMedia("(prefers-reduced-motion: reduce)").matches, duration: 0.4 });
+    else this.map.flyTo(this.centreFor(target, zoom), zoom, { animate: !window.matchMedia("(prefers-reduced-motion: reduce)").matches, duration: 0.6 });
   }
 
   /**
@@ -699,12 +853,13 @@ export class WayfarerView extends ItemView {
    * the pane is still being laid out, so measure first and retry once the
    * container has a size.
    */
-  private fitAll(stops: Stop[], attempt = 0): void {
-    if (!this.map || stops.length === 0) return;
+  private fitAll(stops: Stop[], attempt = 0, revision = ++this.cameraRevision): void {
+    if (!this.map || stops.length === 0 || revision !== this.cameraRevision) return;
+    this.map.stop();
     this.map.invalidateSize(false);
     const size = this.map.getSize();
     if ((size.x === 0 || size.y === 0) && attempt < 20) {
-      window.setTimeout(() => this.fitAll(stops, attempt + 1), 50);
+      window.setTimeout(() => this.fitAll(stops, attempt + 1, revision), 50);
       return;
     }
     this.flying = true;
@@ -712,7 +867,7 @@ export class WayfarerView extends ItemView {
       this.map.setView(this.centreFor(L.latLng(stops[0].lat, stops[0].lng), 14), 14);
       return;
     }
-    this.map.fitBounds(L.latLngBounds(stops.map((s) => [s.lat, s.lng] as [number, number])), { paddingTopLeft: [this.leftInset() + 36, 36], paddingBottomRight: [36, 36], maxZoom: 15 });
+    this.map.fitBounds(L.latLngBounds(stops.map((s) => [s.lat, s.lng] as [number, number])), { paddingTopLeft: [this.leftInset() + 36, this.topInset() + 36], paddingBottomRight: [36, this.bottomInset() + 36], maxZoom: 15 });
   }
 
   private sameStop(s: Stop): Stop | null {
@@ -721,10 +876,11 @@ export class WayfarerView extends ItemView {
 
   /** Puts the editor cursor on the stop and scrolls it into view. */
   private async jumpTo(stop: Stop, focusEditor = true): Promise<void> {
-    if (!this.file) return;
+    if (!this.file || (!focusEditor && (this.isNarrow() || Platform.isMobile))) return;
     let view = this.plugin.app.workspace.getLeavesOfType("markdown")
       .map((l) => l.view)
       .find((v): v is MarkdownView => v instanceof MarkdownView && v.file?.path === this.file?.path);
+    if (!view && !focusEditor) return;
     if (!view) {
       const leaf = this.plugin.app.workspace.getLeaf(false);
       await leaf.openFile(this.file);

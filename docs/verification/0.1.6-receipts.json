@@ -1,0 +1,180 @@
+[
+  {
+    "progress": {
+      "firstDisabled": true,
+      "previous": true,
+      "unchanged": true,
+      "browsed": true,
+      "returned": true,
+      "advanced": true,
+      "persisted": true,
+      "destination": true,
+      "noOrigin": true
+    }
+  },
+  {
+    "restored": true
+  },
+  {
+    "desktopCamera": {
+      "zoom": 14,
+      "stop": "日光ステーションホテルクラシック"
+    }
+  },
+  {
+    "width": 390,
+    "height": 844,
+    "map": {
+      "x": 0,
+      "y": 0,
+      "w": 390,
+      "h": 844
+    },
+    "card": {
+      "x": 10,
+      "y": 626.609375,
+      "w": 370,
+      "h": 193.390625
+    },
+    "legend": {
+      "x": 10,
+      "y": 10,
+      "w": 370,
+      "h": 52
+    },
+    "controls": [
+      {
+        "x": 14,
+        "y": 14,
+        "w": 266,
+        "h": 44
+      },
+      {
+        "x": 286,
+        "y": 14,
+        "w": 44,
+        "h": 44
+      },
+      {
+        "x": 332,
+        "y": 14,
+        "w": 44,
+        "h": 44
+      },
+      {
+        "x": 11,
+        "y": 627.609375,
+        "w": 320,
+        "h": 44
+      },
+      {
+        "x": 331,
+        "y": 627.609375,
+        "w": 44,
+        "h": 44
+      },
+      {
+        "x": 23,
+        "y": 690.8046875,
+        "w": 203.671875,
+        "h": 44
+      },
+      {
+        "x": 23,
+        "y": 763,
+        "w": 66.796875,
+        "h": 44
+      },
+      {
+        "x": 95.796875,
+        "y": 763,
+        "w": 198.40625,
+        "h": 44
+      },
+      {
+        "x": 300.203125,
+        "y": 763,
+        "w": 66.796875,
+        "h": 44
+      }
+    ],
+    "overflow": false,
+    "small": false,
+    "pinVisible": true
+  },
+  {
+    "width": 390,
+    "list": {
+      "open": true,
+      "stops": 3,
+      "clear": true
+    }
+  },
+  {
+    "width": 320,
+    "height": 640,
+    "map": {
+      "x": 0,
+      "y": 0,
+      "w": 320,
+      "h": 640
+    },
+    "card": {
+      "x": 10,
+      "y": 570,
+      "w": 300,
+      "h": 46
+    },
+    "legend": {
+      "x": 10,
+      "y": 10,
+      "w": 300,
+      "h": 52
+    },
+    "controls": [
+      {
+        "x": 14,
+        "y": 14,
+        "w": 196,
+        "h": 44
+      },
+      {
+        "x": 216,
+        "y": 14,
+        "w": 44,
+        "h": 44
+      },
+      {
+        "x": 262,
+        "y": 14,
+        "w": 44,
+        "h": 44
+      },
+      {
+        "x": 11,
+        "y": 571,
+        "w": 298,
+        "h": 44
+      }
+    ],
+    "overflow": false,
+    "small": false,
+    "pinVisible": true
+  },
+  {
+    "width": 320,
+    "list": {
+      "open": true,
+      "stops": 3,
+      "clear": true
+    }
+  },
+  {
+    "finish": {
+      "crossed": true,
+      "crossedBack": true,
+      "finished": true,
+      "navHidden": true
+    }
+  }
+]

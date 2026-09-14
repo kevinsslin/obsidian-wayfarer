@@ -7,6 +7,14 @@ export type Locale = "en" | "zh-TW";
 
 const TABLE = {
   en: {
+    journey_previous: "← Previous", journey_nav_short: "Navigate ↗",
+    journey: "Current trip", journey_manual: "Manual progress · this device", journey_start: "Start here",
+    journey_next: "Next stop", journey_finish: "Finish trip", journey_done: "Trip complete",
+    journey_reset: "Reset progress", journey_here: "Set as current stop", journey_return: "Back to current stop",
+    journey_info: "Stop details", journey_nav: "Navigate to next", journey_nav_start: "Navigate here",
+    journey_missing: "Saved stop changed. Select a stop to continue.", journey_ready: "Ready to start", journey_current: "Current",
+    journey_more: "Progress options", journey_collapse: "Collapse current trip", view_map: "Map",
+    view_list: "List", choose_day: "Choose a day", overview: "Overview",
     all: "All", follow_on: "Map follows the cursor (click to stop)", follow_off: "Map stays put (click to follow the cursor)",
     min: "{n} min", hours: "{h} h", hours_min: "{h} h {m} min",
     from_prev: "from {name}", routed_by: "Google Routes", late_by: "{n} min late", late_vs: "{n} min after {t}",
@@ -18,6 +26,14 @@ const TABLE = {
     kml_written: "Wrote {f}. In Google My Maps: Create a new map → Import → pick this file. Re-export replaces it; delete the old layer there.",
   },
   "zh-TW": {
+    journey_previous: "← 上一站", journey_nav_short: "導航 ↗",
+    journey: "目前行程", journey_manual: "手動進度 · 僅此裝置", journey_start: "從這站開始",
+    journey_next: "下一站", journey_finish: "完成行程", journey_done: "行程已完成",
+    journey_reset: "重設進度", journey_here: "設為目前這站", journey_return: "回到目前這站",
+    journey_info: "地點資訊", journey_nav: "導航到下一站", journey_nav_start: "導航到這站",
+    journey_missing: "原本的站點已變更，請重新選站繼續。", journey_ready: "尚未開始", journey_current: "目前",
+    journey_more: "進度選項", journey_collapse: "收合目前行程", view_map: "地圖",
+    view_list: "清單", choose_day: "選擇日期", overview: "總覽",
     all: "全部", follow_on: "地圖跟著游標（點一下停止）", follow_off: "地圖不動（點一下開始跟隨）",
     min: "{n} 分", hours: "{h} 時", hours_min: "{h} 時 {m} 分",
     from_prev: "從 {name}", routed_by: "Google Routes 路線", late_by: "晚到 {n} 分", late_vs: "比 {t} 晚 {n} 分",

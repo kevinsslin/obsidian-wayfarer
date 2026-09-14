@@ -45,6 +45,18 @@ Run **Insert day headings for a trip** to get the headings, then paste links und
 
 <p align="center"><img src="docs/screenshots/reading.jpg" alt="Rating and hours chips after each link in Reading view" width="58%"> <img src="docs/screenshots/phone.jpg" alt="The same trip on a phone" width="38%"></p>
 
+## Following the trip
+
+On a phone, a compact date selector and map/list buttons float over the full map pane. The desktop keeps its day chips and floating timeline.
+
+Open **Current trip** at the bottom, then **Start here** to begin at the selected stop. The card shows the trip, day, current stop and next stop. **Previous** and **Next stop** move through the itinerary manually, including between days; **Navigate to next** opens Google Maps from your device's location without changing progress. Browse other dates freely and use **Back to current stop** to return. Tap a stop's name for details, or **Set as current stop** on a place card to correct progress. The card folds into a single small row.
+
+Progress is saved per note path on this device, separately from the Markdown plan. It is not GPS tracking and does not sync between devices. Renaming a note requires selecting the current stop again. The **…** menu resets progress.
+
+<p align="center"><img src="docs/screenshots/journey/mobile-390-collapsed.png" alt="Compact map with the current trip card collapsed, in a 390 px simulated phone pane" width="30%"> <img src="docs/screenshots/journey/mobile-390.png" alt="Current and next stop with separate navigation and advance buttons" width="30%"> <img src="docs/screenshots/journey/mobile-390-list.png" alt="The original floating timeline adapted to a phone-width pane" width="30%"></p>
+
+These are captures of the real Obsidian plugin renderer at phone dimensions, not iOS/Android device screenshots. [Desktop capture](docs/screenshots/journey/desktop.png) · [UX research and remaining proposals](docs/research/mobile-obsidian-best-practices.md).
+
 ## Planning with an AI assistant
 
 The repo ships a skill that teaches an agent to plan a trip the way this plugin expects: intake, research (hours, closed days, transport, coordinates), day structure, the note itself, and the planning notes behind it (constraints, bookings, the reasoning for each stretch with a backup, open questions). With it, Claude Code, Codex or any agent that reads skills produces a complete plan you then review on the map.

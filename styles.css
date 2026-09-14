@@ -1177,37 +1177,6 @@ svg.leaflet-image-layer.leaflet-interactive path {
 }
 .wayfarer-view .wf-leg.is-unknown .wf-leg-text { color: var(--text-accent); }
 
-.wayfarer-view .wf-popover {
-  position: absolute;
-  z-index: 1000;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  max-width: 260px;
-  padding: 6px;
-  border-radius: 12px;
-  background: var(--wf-glass-strong);
-  backdrop-filter: blur(16px);
-  border: 1px solid var(--wf-line);
-  box-shadow: 0 8px 24px rgb(0 0 0 / 20%);
-}
-
-.wayfarer-view .wf-popover-item {
-  font-size: var(--font-ui-smaller);
-  padding: 3px 9px;
-  height: auto;
-  box-shadow: none;
-  border-radius: 8px;
-  background: transparent;
-  border: 1px solid transparent;
-}
-.wayfarer-view .wf-popover-item:hover { background: var(--background-modifier-hover); }
-
-.wayfarer-view .wf-popover-item.is-active {
-  background: var(--interactive-accent);
-  color: var(--text-on-accent);
-}
-
 .wayfarer-view .wf-leg-late {
   color: var(--wf-late);
   font-weight: 600;
@@ -1462,4 +1431,290 @@ svg.leaflet-image-layer.leaflet-interactive path {
   content: "📍";
   font-size: 0.85em;
   margin-right: 2px;
+}
+
+/* Compact travel controls reuse the existing floating timeline's glass. */
+.wayfarer-view .wf-dates {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.wayfarer-view .wf-day-control,
+.wayfarer-view .wf-list-toggle,
+.wayfarer-view .wf-map-toggle { display: none; }
+
+.wayfarer-view .wf-follow svg {
+  width: 14px;
+  height: 14px;
+}
+
+.wayfarer-view .wf-journey {
+  position: absolute;
+  right: 10px;
+  bottom: 24px;
+  z-index: 500;
+  max-width: calc(100% - 20px);
+  border: 1px solid var(--wf-line);
+  border-radius: 14px;
+  background: var(--wf-glass);
+  backdrop-filter: blur(16px) saturate(1.3);
+  box-shadow: 0 6px 24px rgb(0 0 0 / 16%);
+  color: var(--text-normal);
+  font-size: var(--font-ui-small);
+}
+.wayfarer-view .wf-journey:empty { display: none; }
+.wayfarer-view .wf-journey.is-expanded { width: 300px; }
+.wayfarer-view.is-list:not(.is-narrow) .wf-journey { max-width: calc(100% - var(--wf-list-width) - 30px); }
+
+.wayfarer-view .wf-journey-head {
+  display: flex;
+  align-items: center;
+}
+
+.wayfarer-view .wf-journey-toggle,
+.wayfarer-view .wf-journey-more,
+.wayfarer-view .wf-journey-stop,
+.wayfarer-view .wf-inline-action {
+  height: auto;
+  box-shadow: none;
+  border: 0;
+  background: transparent;
+  color: var(--text-normal);
+  font-size: inherit;
+}
+
+.wayfarer-view .wf-journey-toggle {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+}
+
+.wayfarer-view .wf-journey-summary {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wayfarer-view .wf-journey-icon { color: var(--text-accent); }
+.wayfarer-view .wf-journey-chevron { margin-left: auto; }
+
+.wayfarer-view .wf-journey-head svg {
+  display: block;
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
+.wayfarer-view .wf-journey-more {
+  padding: 8px;
+  margin-right: 4px;
+}
+.wayfarer-view .wf-journey-content { padding: 0 12px 12px; }
+
+.wayfarer-view .wf-journey-context,
+.wayfarer-view .wf-journey-next {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.6;
+}
+
+.wayfarer-view .wf-journey-stop {
+  display: block;
+  padding: 3px 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  text-align: left;
+}
+
+.wayfarer-view .wf-journey-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 9px;
+}
+
+.wayfarer-view .wf-journey-actions button {
+  flex: 1;
+  height: auto;
+  min-height: 32px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--wf-line);
+  box-shadow: none;
+  background: color-mix(in srgb, var(--background-primary) 55%, transparent);
+  font-size: var(--font-ui-smaller);
+}
+.wayfarer-view .wf-journey-actions .wf-journey-advance { color: var(--text-accent); }
+
+.wayfarer-view .wf-inline-action {
+  color: var(--text-accent);
+  padding: 4px 0;
+  font-size: var(--font-ui-smaller);
+}
+
+.wayfarer-view .wf-current-label {
+  color: var(--text-accent);
+  font-size: var(--font-ui-smaller);
+}
+.wayfarer-view .wf-stop.is-current { border-color: var(--text-accent); }
+.wayfarer-view .wf-pin.is-current .wf-pin-body { box-shadow: 0 0 0 4px var(--text-accent), 0 2px 8px rgb(0 0 0 / 30%); }
+
+.wayfarer-view button:focus-visible, .wayfarer-view select:focus-visible, .wayfarer-view a:focus-visible {
+  outline: 2px solid var(--text-accent);
+  outline-offset: 2px;
+}
+
+/* Narrow panes get a single date selector; the map fills the whole pane. */
+.wayfarer-view.is-narrow .wf-legend {
+  position: absolute;
+  top: max(10px, env(safe-area-inset-top));
+  left: 10px;
+  right: 10px;
+  z-index: 510;
+  flex-wrap: nowrap;
+  padding: 3px;
+  border: 1px solid var(--wf-line);
+  border-radius: 12px;
+  background: var(--wf-glass);
+  backdrop-filter: blur(16px) saturate(1.3);
+  box-shadow: 0 2px 10px rgb(0 0 0 / 16%);
+}
+.wayfarer-view.is-narrow .wf-dates { display: none; }
+
+.wayfarer-view.is-narrow .wf-day-select {
+  display: block;
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  height: 44px;
+  padding-right: 28px;
+  appearance: none;
+  background-image: none;
+  border: 0;
+  box-shadow: none;
+  border-radius: 8px;
+  background-color: transparent;
+  font-size: var(--font-ui-small);
+  text-overflow: ellipsis;
+}
+
+.wayfarer-view.is-narrow .wf-list-toggle,
+.wayfarer-view.is-narrow .wf-map-toggle { display: inline-flex; }
+.wayfarer-view.is-narrow .wf-follow { display: none; }
+.wayfarer-view.is-narrow .wf-legend-right { gap: 2px; }
+
+.wayfarer-view.is-narrow .wf-chip-icon {
+  min-width: 44px;
+  min-height: 44px;
+  justify-content: center;
+  border: 0;
+}
+
+.wayfarer-view.is-narrow .wf-chip-icon svg {
+  width: 18px;
+  height: 18px;
+}
+.wayfarer-view.is-narrow .wf-divider { display: none; }
+.wayfarer-view.is-narrow .leaflet-top { top: 66px; }
+
+.wayfarer-view.is-narrow .leaflet-control-zoom a {
+  width: 44px;
+  height: 44px;
+  line-height: 44px;
+}
+
+.wayfarer-view.is-narrow .wf-strip {
+  top: 72px;
+  bottom: auto;
+  max-height: calc(100% - var(--wf-journey-h, 44px) - 106px - env(safe-area-inset-bottom));
+  width: calc(100% - 20px);
+}
+
+.wayfarer-view.is-narrow.is-list .leaflet-control-zoom,
+.wayfarer-view.is-narrow.has-popup .leaflet-control-zoom { visibility: hidden; }
+
+.wayfarer-view.is-narrow .wf-journey {
+  right: 10px;
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  max-width: calc(100% - 20px);
+}
+.wayfarer-view.is-narrow .wf-journey.is-expanded { width: calc(100% - 20px); }
+
+.wayfarer-view.is-narrow .wf-journey-actions button,
+.wayfarer-view.is-narrow .wf-journey-toggle,
+.wayfarer-view.is-narrow .wf-journey-more,
+.wayfarer-view.is-narrow .wf-journey-stop,
+.wayfarer-view.is-narrow .wf-inline-action { min-height: 44px; }
+
+.wayfarer-view.is-narrow .wf-leg-mode {
+  min-width: 44px;
+  min-height: 44px;
+}
+.wayfarer-view.is-narrow .wf-card { max-height: calc(var(--wf-map-h, 600px) - 210px); }
+
+.wayfarer-view.is-narrow .wf-card-actions a {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wayfarer-view .wf-chip,
+  .wayfarer-view .wf-stop,
+  .wayfarer-view .wf-pin-body { transition: none; }
+}
+
+/* Override the host's generic view-content padding only in our own view. */
+.workspace-leaf-content[data-type="wayfarer"] .view-content.wayfarer-view {
+  padding: 0 0 32px;
+  overflow: hidden;
+}
+
+.wayfarer-view.is-narrow .wf-journey-more {
+  min-width: 44px;
+}
+
+.workspace-leaf-content[data-type="wayfarer"] .view-content.wayfarer-view.is-narrow {
+  padding: 0;
+}
+
+.wayfarer-view.is-narrow .wf-day-control {
+  display: block;
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.wayfarer-view .wf-day-chevron {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: var(--text-muted);
+}
+
+.wayfarer-view .wf-day-chevron svg {
+  display: block;
+  width: 14px;
+  height: 14px;
+}
+
+.wayfarer-view .wf-journey-actions .wf-journey-previous,
+.wayfarer-view .wf-journey-actions .wf-journey-advance {
+  flex: 0 0 auto;
+}
+
+.wayfarer-view .wf-journey-actions button:disabled {
+  opacity: 0.4;
+  cursor: default;
 }

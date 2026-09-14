@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { directionsUrl, placeUrl, tripSkeleton } from "./gmaps-out";
+import { directionsUrl, navigateUrl, placeUrl, tripSkeleton } from "./gmaps-out";
+
+it("navigates from the device's position without claiming progress", () => {
+  const u = new URL(navigateUrl({ lat: 35, lng: 139 }, "walk"));
+  expect(u.searchParams.get("origin")).toBeNull();
+  expect(u.searchParams.get("destination")).toBe("35,139");
+  expect(u.searchParams.get("dir_action")).toBe("navigate");
+  expect(u.searchParams.get("travelmode")).toBe("walking");
+  expect(new URL(navigateUrl({ lat: 35, lng: 139 })).searchParams.has("travelmode")).toBe(false);
+});
 
 describe("directionsUrl", () => {
   it("returns null for no stops and a place link for one", () => {
