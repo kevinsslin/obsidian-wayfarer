@@ -69,7 +69,7 @@ export async function resolveMapsUrl(input: string, deps: ResolveDeps): Promise<
   );
 }
 
-function distanceM(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
+export function distanceM(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
   const toRad = (d: number) => (d * Math.PI) / 180;
   const dLat = toRad(b.lat - a.lat);
   const dLng = toRad(b.lng - a.lng);

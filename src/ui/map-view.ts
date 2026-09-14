@@ -181,9 +181,7 @@ export class WayfarerView extends ItemView {
 
     // A leaf change re-sends the same note. Rebuilding the pane then would swallow the click
     // that caused it (the chip under the pointer is replaced between mousedown and mouseup).
-    const sig = `${file?.path}|${this.activeDay}|${this.focused?.line ?? -1}|${signatureOf(itinerary)}`;
-    if (sig === this.lastSig) return;
-    this.lastSig = sig;
+    if (this.signature() === this.lastSig) return;
     this.draw();
     const stops = itinerary?.stops ?? [];
     this.emptyEl.toggleClass("is-hidden", stops.length > 0);
@@ -267,8 +265,13 @@ export class WayfarerView extends ItemView {
     if (this.itinerary) this.drawStrip(this.itinerary);
   }
 
+  /** What the pane currently shows, as a string; `render` skips the rebuild when it has not changed. */
+  private signature(): string {
+    return `${this.file?.path}|${this.activeDay}|${this.pinnedDay}|${this.focused?.line ?? -1}|${signatureOf(this.itinerary)}`;
+  }
+
   private draw(): void {
-    this.lastSig = "";
+    this.lastSig = this.signature();
     this.layer.clearLayers();
     this.markers.clear();
     this.legendEl.empty();

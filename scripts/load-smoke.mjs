@@ -131,10 +131,11 @@ assert(plugin.commands.some((c) => c.id === "convert-maps-link"), "convert comma
 assert(plugin.commands.some((c) => c.id === "convert-all-maps-links"), "convert-all command");
 assert(plugin.commands.some((c) => c.id === "new-trip"), "new-trip command");
 assert(plugin.commands.some((c) => c.id === "export-kml"), "export-kml command");
+assert(plugin.commands.some((c) => c.id === "fetch-details"), "fetch-details command");
 assert(plugin.ribbons.length === 1, "ribbon icon");
 assert(plugin.settingTabs.length === 1, "settings tab");
 assert(plugin.editorExtensions.length === 1, "editor extension");
 assert(plugin.postProcessors.length === 1, "post processor");
 assert(plugin.settings.dayHeadingLevel === 2, "default settings loaded");
 plugin.onunload();
-console.log("smoke: OK (view, 5 commands, ribbon, settings tab, editor extension, post processor)");
+console.log("smoke: OK (view, 6 commands, ribbon, settings tab, editor extension, post processor)");

@@ -4,6 +4,7 @@
 //   node scripts/cdp.mjs eval '<js expression>'      evaluate in the renderer (awaits promises)
 //   node scripts/cdp.mjs shot out.png                 screenshot the window
 //   node scripts/cdp.mjs targets                      list page targets
+//   node scripts/cdp.mjs click '<css selector>' ['<js to run first>']   real mouse click on an element
 //
 // Picks the page whose title contains OBSIDIAN_VAULT (default "test-vault").
 import { writeFileSync } from "node:fs";
@@ -61,6 +62,18 @@ if (cmd === "eval") {
   }
   const v = res.result?.result?.value;
   console.log(typeof v === "string" ? v : JSON.stringify(v, null, 2));
+} else if (cmd === "click") {
+  // Real mouse input at the centre of the first element matching the selector (after `pre` JS runs), so focus and leaf changes happen as for a user.
+  const [selector, pre = ""] = rest;
+  if (pre) await send("Runtime.evaluate", { expression: pre, awaitPromise: true });
+  const r = await send("Runtime.evaluate", { expression: `(()=>{const el=document.querySelector(${JSON.stringify(selector)}); if(!el) return null; const b=el.getBoundingClientRect(); return {x:b.left+b.width/2,y:b.top+b.height/2};})()`, returnByValue: true });
+  const pt = r.result?.result?.value;
+  if (!pt) { console.error("no element", selector); process.exit(1); }
+  for (const type of ["mouseMoved", "mousePressed", "mouseReleased"]) {
+    await send("Input.dispatchMouseEvent", { type, x: pt.x, y: pt.y, button: "left", clickCount: type === "mouseMoved" ? 0 : 1 });
+    await new Promise((r) => setTimeout(r, 40));
+  }
+  console.log("clicked", selector, pt);
 } else if (cmd === "shot") {
   const out = rest[0] ?? "shot.png";
   const res = await send("Page.captureScreenshot", { format: "png" });

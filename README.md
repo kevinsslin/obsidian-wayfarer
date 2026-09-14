@@ -87,6 +87,7 @@ The key is stored in this vault's `.obsidian/plugins/wayfarer/data.json`. It is 
 - **Convert Google Maps link on this line to a stop**
 - **Convert every Google Maps link in this note**
 - **Export to Google My Maps (KML)**
+- **Fetch Google details for stops without them**: for stops written as coordinates (by hand or by an assistant), asks Places once per stop for the place at that pin and saves rating, hours, address, website and photo. The pin never moves; a result more than 300 m away is not taken.
 
 ## Settings
 

@@ -2,7 +2,7 @@ import { MarkdownView, Notice, Platform, Plugin, TFile, debounce, type Editor, t
 import { isGoogleMapsUrl } from "./core/gmaps-url";
 import { dayAtLine, moveBlock, parseItinerary, patchLineMeta, setTransportOnLine, type Itinerary, type PlaceMeta, type Stop } from "./core/itinerary";
 import type { Transport } from "./core/category";
-import { ResolveError, resolveMapsUrl, type ResolveDeps } from "./core/resolve";
+import { ResolveError, distanceM, resolveMapsUrl, type ResolveDeps } from "./core/resolve";
 import { GoogleApiError, expandShortUrl, googlePlaces } from "./net";
 import { DEFAULT_SETTINGS, WayfarerSettingTab, type WayfarerSettings } from "./settings";
 import { findMapsUrl, metaDecorations, replaceUrlInEditor, stopText } from "./ui/editor";
@@ -90,6 +90,11 @@ export default class WayfarerPlugin extends Plugin {
       id: "convert-all-maps-links",
       name: "Convert every Google Maps link in this note",
       editorCallback: (editor) => void this.convertAll(editor),
+    });
+    this.addCommand({
+      id: "fetch-details",
+      name: "Fetch Google details for stops without them",
+      callback: () => void this.fetchDetails(),
     });
 
     this.registerEvent(this.app.workspace.on("editor-paste", (evt, editor) => this.onPaste(evt, editor)));
@@ -289,6 +294,38 @@ export default class WayfarerPlugin extends Plugin {
     if (!md) return;
     // The link must still be where the pane saw it; otherwise the note changed under us.
     void this.rewriteLine(md, stop.line, (text) => (/^\[[^\]]*\]\(geo:/.test(text.slice(stop.from, stop.to)) ? setTransportOnLine(text, stop, mode) : text));
+  }
+
+  /**
+   * Stops written by hand (or by an assistant) carry coordinates only. This
+   * asks Google Places once per such stop for the place at that pin, and saves
+   * rating, hours, address, website and photo on the line. The pin itself never
+   * moves, and a result more than 300 m from it is not taken.
+   */
+  private async fetchDetails(): Promise<void> {
+    const md = this.activeMarkdown();
+    const cur = this.current;
+    if (!md?.file || !cur || md.file.path !== cur.file.path) { new Notice(t("empty")); return; }
+    if (!this.settings.googleApiKey) { new Notice(`Wayfarer: ${t("key_needed")}`); return; }
+    const places = googlePlaces(this.settings.googleApiKey, this.settings.languageCode);
+    const todo = cur.itinerary.stops.filter((s) => !s.meta?.placeId);
+    if (todo.length === 0) { new Notice("Wayfarer: every stop already has its details"); return; }
+    let done = 0;
+    let missed = 0;
+    for (const stop of todo) {
+      try {
+        const p = await places.searchText(stop.name, stop);
+        if (!p?.meta || distanceM(p, stop) > 300) { missed++; continue; }
+        const { rating, hours, address, website, placeId, type, photo } = p.meta;
+        // Only when the same link is still on that line; the note may have changed while Google answered.
+        await this.rewriteLine(md, stop.line, (text) => (text.includes(`](geo:${stop.lat}`) || /\]\(geo:/.test(text.slice(stop.from, stop.to)) ? patchLineMeta(text, { rating, hours, address, website, placeId, type, photo }) : text));
+        done++;
+      } catch (e) {
+        if (e instanceof GoogleApiError) { this.googleRefused(e); return; }
+        missed++;
+      }
+    }
+    new Notice(`Wayfarer: details saved for ${done} stop${done === 1 ? "" : "s"}${missed ? `, ${missed} not found at the pin` : ""}`, 8000);
   }
 
   /** Moves the stop line at `from` to sit where `to` is (before it when moving up, after it when moving down). */
