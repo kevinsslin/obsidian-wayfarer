@@ -1,10 +1,12 @@
 # Wayfarer
 
-Plan in Markdown. Follow your trip on a map. An Obsidian plugin with an optional AI planning skill and a mobile companion view.
+**Plan with your AI agent in Markdown. Follow your trip on a map, right from your phone.**
+
+An Obsidian plugin with an optional AI planning skill and a mobile companion view.
 
 [Install from the Obsidian directory](https://community.obsidian.md/plugins/wayfarer) · [Latest release](https://github.com/kevinsslin/wayfarer/releases/latest) · [Try the sample note](test-vault/Nikko%20demo.md)
 
-![The sample note on the left, the map and timeline on the right](docs/screenshots/mobile-en/desktop.png)
+![The sample note on the left, the map and timeline on the right](docs/screenshots/mobile-navigation/desktop.png)
 
 ## Why
 
@@ -12,7 +14,7 @@ A trip plan is something you write together: with a friend, with the person you 
 
 Wayfarer keeps the plan as a plain Markdown note in your vault and treats the map as a view of that note. You, a friend, Claude Code or Codex can edit the same file. The bundled skill helps an AI assistant research a trip and write the itinerary, constraints, bookings and alternatives together.
 
-Saved place details and routed legs travel with the note as hidden metadata. Sync it using your existing vault workflow, then open it on your phone to see the current stop, move to the previous or next stop, or navigate with Google Maps. Companions need Obsidian and Wayfarer to use the same map view; no Wayfarer account or hosted website is required. Map tiles and Google photos still need network access, and photo references in the note are not offline images. To share outside Obsidian, export a KML file and import it manually into Google My Maps.
+Saved place details and routed legs travel with the note as hidden metadata. Sync it using your existing vault workflow, then open it on your phone to browse stops with Previous / Next or navigate to the selected place with Google Maps. Companions need Obsidian and Wayfarer to use the same map view; no Wayfarer account or hosted website is required. Map tiles and Google photos still need network access, and photo references in the note are not offline images. To share outside Obsidian, export a KML file and import it manually into Google My Maps.
 
 ## What it does
 
@@ -51,15 +53,15 @@ Run **Insert day headings for a trip** to get the headings, then paste links und
 
 ## Following the trip
 
-On a phone, a compact date selector and **Map / List** text buttons sit at the available top of the map pane. Controls leave room for Obsidian’s mobile header and bottom navigation. The desktop keeps its day chips and floating timeline.
+On a phone, the date selector and **map / list icons** sit at the available top of the pane. The selected icon is highlighted; both have accessible names and generous tap targets. Controls leave room for Obsidian’s mobile header and bottom navigation. The desktop keeps its day chips and floating timeline.
 
-Open **Current trip** at the bottom, then **Start here** to begin at the selected stop. The card shows the trip, day, current stop and next stop. **Previous** and **Next stop** move through the itinerary manually, including between days; **Navigate to next** opens Google Maps from your device's location without changing progress. Browse other dates freely and use **Back to current stop** to return. Tap a stop's name for details, or **Set as current stop** on a place card to correct progress. The card folds into a single small row. On a phone, List is a dedicated reading surface with progress collapsed; expanding progress switches back to the map. Transport legs show the mode and duration or distance; open a stop’s details to **Change transport**.
+The compact navigator shows the selected place, **Previous**, **Navigate** and **Next stop**. Previous and Next browse the note's stop order, including across days. Navigate opens Google Maps directions to the place you are looking at, from your device's location. Tap the place name for details. Selecting another date, map pin or list item changes what you browse; there is no separate current-trip progress, start/finish action or saved completion state.
 
-Progress is saved per note path on this device, separately from the Markdown plan. It is not GPS tracking and does not sync between devices. Renaming a note requires selecting the current stop again. The **…** menu resets progress.
+The phone list is a dedicated reading surface with the navigator hidden. Select a stop to return to the map and its details. Transport legs show mode and duration or distance; a stop’s details include **Change transport**.
 
-<p align="center"><img src="docs/screenshots/mobile-en/iphone-floating-map.png" alt="Compact map with the current trip card collapsed, with reconstructed mobile host chrome" width="30%"> <img src="docs/screenshots/mobile-en/iphone-floating-progress.png" alt="Current and next stop with separate navigation and advance buttons" width="30%"> <img src="docs/screenshots/mobile-en/iphone-floating-list.png" alt="A dedicated reading list on a phone" width="30%"></p>
+<p align="center"><img src="docs/screenshots/mobile-navigation/iphone-floating-navigation.png" alt="Selected place with Previous, Navigate and Next, plus map and list icons" width="42%"> <img src="docs/screenshots/mobile-navigation/iphone-floating-list.png" alt="A dedicated stop list without progress controls" width="42%"></p>
 
-These captures combine the real plugin renderer with reconstructed mobile host chrome using Obsidian’s CSS; they are not iOS/Android device screenshots. [Screenshot verification](docs/verification/public-screenshots.md). [Desktop capture](docs/screenshots/mobile-en/desktop.png) · [UX research and remaining proposals](docs/research/mobile-obsidian-best-practices.md).
+These captures combine the real plugin renderer with reconstructed mobile host chrome using Obsidian’s CSS; they are not iOS/Android device screenshots. [Verification](docs/verification/0.1.9.md). [Desktop capture](docs/screenshots/mobile-navigation/desktop.png).
 
 ## Planning with an AI assistant
 
@@ -81,8 +83,10 @@ Then open the vault in the agent and ask, for example: "Plan four days in Kyoto 
 |---|---|
 | Map and trip controls | Follow Obsidian. English and Traditional Chinese are available; Chinese locales use Traditional Chinese and other unsupported locales fall back to English. Choose explicitly in **Settings → Wayfarer → Language**. |
 | Settings, commands and some notices | Currently English; localization is not complete across the plugin. |
-| Google place names and opening hours | Default to `zh-TW`, independently of the interface. Change **Language for Google results** to `en`, `ja`, or another Google-supported code for future requests. Existing saved details are not automatically translated. Hours checks recognize a limited set of formats, so displaying another language does not guarantee its hours can be interpreted. |
+| Google place names and opening hours | Default to **Follow interface language**. With automatic interface language, Google requests follow Obsidian’s language, even if the map UI falls back to English. Choose English, Chinese, Japanese or another language independently under **Language for Google results** for future requests. Existing saved details are not automatically translated. Hours checks recognize a limited set of formats, so displaying another language does not guarantee its hours can be interpreted. |
 | AI-written notes | The skill follows your requested language, preserves the language of existing notes, and uses English when a new note has no apparent language preference. Dates, coordinates and metadata keep the same format. |
+
+Existing saved Google language preferences are preserved on upgrade, including the old `zh-TW` default. To opt in, select **Follow interface language**. Previous versions did not record whether a saved language was chosen explicitly.
 
 The skill instructions and this README are written in English. Language support for AI output comes from your chosen assistant, not a built-in translation engine.
 
@@ -103,7 +107,7 @@ In Obsidian, open **Settings → Community plugins → Browse**, search for **Wa
 
 For manual installation, download `main.js`, `manifest.json` and `styles.css` from the [latest release](https://github.com/kevinsslin/wayfarer/releases/latest) into `<vault>/.obsidian/plugins/wayfarer/` and enable it under **Settings → Community plugins**. [BRAT](https://github.com/TfTHacker/obsidian42-brat) with `kevinsslin/wayfarer` also works.
 
-Works on desktop and mobile. On a phone the map opens as its own tab and the timeline folds away until you tap for it. The one desktop-only feature is expanding `maps.app.goo.gl` short links, which needs Node's https; on a phone, paste the full link or let the conversion happen on the computer. Saved stops, routes and details can be read on desktop and mobile. Current-trip progress remains local to each device.
+Works on desktop and mobile. On a phone the map opens as its own tab and the timeline folds away until you tap for it. The one desktop-only feature is expanding `maps.app.goo.gl` short links, which needs Node's https; on a phone, paste the full link or let the conversion happen on the computer. Saved stops, routes and details can be read on desktop and mobile. Stop selection is for browsing and is not saved as travel progress.
 
 ## Commands
 

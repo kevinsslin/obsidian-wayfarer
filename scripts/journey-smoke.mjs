@@ -1,6 +1,6 @@
 // Developer QA against the running test-vault (Obsidian --remote-debugging-port=9222).
 // Uses the real plugin renderer; phone captures emulate pane dimensions, not iOS/Android.
-// Restores viewport, theme, plugin preferences and manual progress even on assertion failure.
+// Restores viewport, theme, plugin preferences and the original note selection even on assertion failure.
 import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -54,57 +54,56 @@ try {
     if (!v.itinerary?.stops.length) throw new Error("Open a populated test itinerary first");
     window.wfQA = { v, language: p.settings.uiLanguage, theme: document.body.className,
       storage: app.loadLocalStorage("wayfarer:progress:" + v.file.path), key: "wayfarer:progress:" + v.file.path,
-      open: window.open, current: v.progress, listOpen: p.settings.listOpen };
+      open: window.open, listOpen: p.settings.listOpen };
     p.settings.uiLanguage = ${JSON.stringify(locale)}; p.applyLocale();
     p.settings.listOpen = true;
-    v.progress = {current:null, finished:false};
     v.chooseDay(v.itinerary.days[0]);
-    v.journeyOpen = true; v.drawJourney();
+    v.drawJourney();
   })()`);
   await pause();
-  const progress = await evaluate(`(() => {
+  const navigation = await evaluate(`(() => {
     const {v} = window.wfQA;
     const click = s => { const el = v.contentEl.querySelector(s); if (!el) throw new Error("Missing " + s); el.click(); };
-    click(".wf-journey-advance");
-    const first = JSON.stringify(v.progress);
+    const first = v.itinerary.stops[0], second = v.itinerary.stops[1];
+    v.browseStop(first);
     const firstDisabled = v.contentEl.querySelector(".wf-journey-previous").disabled;
-    const next = v.itinerary.stops[1];
     let opened = null;
     window.open = url => {opened = url; return null;};
     try { click(".wf-journey-nav"); } finally { window.open = window.wfQA.open; }
     const nav = new URL(opened);
-    const unchanged = first === JSON.stringify(v.progress);
-    v.chooseDay(v.itinerary.days[v.itinerary.days.length-1]);
-    const browsed = first === JSON.stringify(v.progress);
-    click(".wf-inline-action");
-    const returned = v.activeDay === v.currentStop().dayIndex;
+    const unchanged = v.selectedStop() === first;
     click(".wf-journey-advance");
-    const advanced = v.currentStop() === next;
+    const advanced = v.selectedStop() === second;
     click(".wf-journey-previous");
-    const previous = first === JSON.stringify(v.progress);
-    click(".wf-journey-advance");
-    const stored = app.loadLocalStorage(window.wfQA.key);
-    return { firstDisabled, previous, unchanged, browsed, returned, advanced, persisted: JSON.stringify(stored) === JSON.stringify(v.progress), destination: nav.searchParams.get("destination") === next.lat + "," + next.lng, noOrigin: !nav.searchParams.has("origin") };
+    const previous = v.selectedStop() === first;
+    v.chooseDay(v.itinerary.days[1]);
+    const daySelection = v.selectedStop() === v.itinerary.days[1].stops[0];
+    v.chooseDay(v.itinerary.days[0]);
+    const otherDayStop = v.itinerary.days[1].stops[0];
+    v.markers.get(otherDayStop).fire("click");
+    const pinSelection = v.selectedStop() === otherDayStop && v.activeDay === otherDayStop.dayIndex;
+    v.browseStop(second);
+    return {firstDisabled,previous,unchanged,advanced,daySelection,pinSelection,
+      legacyProgressUntouched:JSON.stringify(app.loadLocalStorage(window.wfQA.key))===JSON.stringify(window.wfQA.storage),
+      noProgressControls:!v.contentEl.querySelector(".wf-journey-toggle,.wf-journey-more,.wf-current-label"),
+      destination:nav.searchParams.get("destination")===first.lat+","+first.lng,noOrigin:!nav.searchParams.has("origin")};
   })()`);
-  assert(Object.values(progress).every(Boolean), "Progress/nav/browse isolation: " + JSON.stringify(progress));
-  receipts.push({ progress });
-  const restored = await evaluate(`(async () => {
-    const q=window.wfQA, saved=JSON.stringify(q.v.progress);
+  assert(Object.values(navigation).every(Boolean), "Selection/navigation: " + JSON.stringify(navigation));
+  receipts.push({navigation});
+  await evaluate(`(async () => {
+    const q=window.wfQA;
     await app.plugins.disablePlugin("wayfarer");
     await app.plugins.enablePlugin("wayfarer");
     await app.plugins.plugins.wayfarer.openMap();
     q.v=app.workspace.getLeavesOfType("wayfarer")[0].view;
     const p=app.plugins.plugins.wayfarer;
     p.settings.uiLanguage=${JSON.stringify(locale)};p.settings.listOpen=true;p.applyLocale();
-    const same=saved===JSON.stringify(q.v.progress);
-    q.v.journeyOpen=true;q.v.returnToCurrent();
-    return same;
   })()`);
-  assert(restored,"Manual progress survives plugin reload");
-  receipts.push({restored});
   await pause();
-  const desktopCamera = await evaluate('(() => {const v=window.wfQA.v;v.returnToCurrent();return {zoom:v.map.getZoom(),stop:v.currentStop().name};})()');
-  assert(desktopCamera.zoom >= 14, "Current stop camera: " + JSON.stringify(desktopCamera));
+  await evaluate("window.wfQA.v.browseStop(window.wfQA.v.itinerary.stops[1])");
+  await pause();
+  const desktopCamera = await evaluate('(() => {const v=window.wfQA.v;return {zoom:v.map.getZoom(),stop:v.selectedStop().name};})()');
+  assert(desktopCamera.zoom >= 14, "Selected stop camera: " + JSON.stringify(desktopCamera));
   receipts.push({desktopCamera});
   await screenshot("desktop.png");
   // Isolate the existing real ItemView without mutating the workspace layout file.
@@ -121,14 +120,14 @@ try {
   for (const [width, height] of [[390, 844], [320, 640]]) {
     await rpc("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 2, mobile: false });
     await pause();
-    await evaluate(`(() => { const v=window.wfQA.v; v.narrowOpen=false; v.applySplit(); v.returnToCurrent(); })()`);
+    await evaluate(`(() => { const v=window.wfQA.v; v.narrowOpen=false; v.applySplit(); v.browseStop(v.itinerary.stops[1]); })()`);
     await pause();
     const layout = await evaluate(`(() => {
       const v=window.wfQA.v, root=v.contentEl.getBoundingClientRect();
       const rect = el => {const r=el.getBoundingClientRect();return {x:r.x-root.x,y:r.y-root.y,w:r.width,h:r.height};};
       const controls = [...v.legendEl.querySelectorAll("select,button"), ...v.journeyEl.querySelectorAll("button")].filter(e=>e.getBoundingClientRect().width>0).map(rect);
       const card=rect(v.journeyEl), legend=rect(v.legendEl), map=rect(v.mapEl);
-      const stop=v.currentStop(), point=v.map.latLngToContainerPoint([stop.lat,stop.lng]);
+      const stop=v.selectedStop(), point=v.map.latLngToContainerPoint([stop.lat,stop.lng]);
       return {width:root.width,height:root.height,map,card,legend,controls,
         overflow:controls.some(r=>r.x < -1 || r.x+r.w > root.width+1),
         small:controls.some(r=>r.h<43 || r.w<43),
@@ -137,22 +136,17 @@ try {
     assert(!layout.overflow && !layout.small && layout.pinVisible && layout.map.h === height, "Phone map layout: " + JSON.stringify(layout));
     receipts.push(layout);
     await screenshot(`mobile-${width}.png`);
-    if (width === 390) {
-      await evaluate('window.wfQA.v.contentEl.querySelector(".wf-journey-toggle").click()');
-      await screenshot("mobile-390-collapsed.png");
-      await evaluate('window.wfQA.v.contentEl.querySelector(".wf-journey-toggle").click()');
-    }
     await evaluate('window.wfQA.v.contentEl.querySelector(".wf-list-toggle").click()');
     await pause();
-    const list = await evaluate(`(() => {const v=window.wfQA.v, a=v.stripEl.getBoundingClientRect(), b=v.journeyEl.getBoundingClientRect();return {open:v.listOpen(),stops:v.stripEl.querySelectorAll(".wf-stop").length,clear:a.bottom<=b.top};})()`);
+    const list = await evaluate(`(() => {const v=window.wfQA.v;return {open:v.listOpen(),stops:v.stripEl.querySelectorAll(".wf-stop").length,clear:getComputedStyle(v.journeyEl).display==="none"};})()`);
     assert(list.open && list.stops > 0 && list.clear, "Phone list: " + JSON.stringify(list));
     receipts.push({ width, list });
     await screenshot(`mobile-${width}-list.png`);
     // Selecting a stop returns to the map without replacing it with the note.
     const select = await evaluate(`(() => {
-      const v=window.wfQA.v, before=JSON.stringify(v.progress), source=v.file.path;
+      const v=window.wfQA.v, source=v.file.path;
       v.stripEl.querySelector(".wf-stop").click();
-      return {map:!v.listOpen(),sameProgress:before===JSON.stringify(v.progress),sameSource:v.file.path===source};
+      return {map:!v.listOpen(),selected:v.selectedStop()===v.itinerary.days.find(d=>d.index===v.activeDay).stops[0],sameSource:v.file.path===source};
     })()`);
     assert(Object.values(select).every(Boolean), "List selection: " + JSON.stringify(select));
     await pause();
@@ -175,7 +169,7 @@ try {
     document.body.addClass("is-mobile","is-phone","is-ios","emulate-mobile");
     const style=document.body.createEl("style",{attr:{id:"wf-qa-host-style"}});
     style.textContent = '#wf-qa-status {position:fixed;top:0;left:0;right:0;height:114px;padding:20px 28px;background:var(--background-primary);z-index:10000;font-size:16px;} #wf-qa-host > .view-header {position:fixed;top:59px;left:12px;right:12px;width:auto;height:46px;margin:0;padding:0;display:flex;justify-content:space-between;z-index:10001;} #wf-qa-host > .view-header span {border-radius:50%;padding:12px;background:var(--background-secondary);} #wf-qa-host > .wf-qa-pane {top:var(--wf-qa-top,114px) !important;height:calc(100vh - var(--wf-qa-top,114px)) !important;} #wf-qa-navbar {z-index:10002;display:flex;position:fixed;box-shadow:0 0 1px var(--text-muted);} #wf-qa-navbar .mobile-navbar-action {display:flex;align-items:center;justify-content:center;font-size:28px;}';
-    q.v.journeyOpen=false;q.v.narrowOpen=false;q.v.returnToCurrent();
+    q.v.narrowOpen=false;q.v.browseStop(q.v.itinerary.stops[1]);
   })()`);
   for (const [name,width,height,floating,hidden,fontSize,paneTop=114] of [
     ["iphone-floating",402,874,true,false,16],
@@ -191,7 +185,7 @@ try {
       document.getElementById("wf-qa-host").style.setProperty("--font-ui-small","${fontSize * .937}px");
       document.getElementById("wf-qa-host").style.setProperty("--font-ui-smaller","${fontSize * .8}px");
       document.getElementById("wf-qa-host").style.setProperty("--wf-qa-top","${paneTop}px");
-      const v=window.wfQA.v;v.map.closePopup();v.journeyOpen=false;v.narrowOpen=false;v.applySplit();
+      const v=window.wfQA.v;v.map.closePopup();v.narrowOpen=false;v.applySplit();
     })()`);
     await pause();
     const layout=await evaluate(`(() => {
@@ -203,22 +197,20 @@ try {
     })()`);
     assert(layout.topGap>=Math.max(0,105-paneTop)+7 && layout.topGap<=Math.max(0,105-paneTop)+9 && layout.zoomGap>=8 && (hidden || layout.footerGap>=8), name+": chrome collision "+JSON.stringify(layout));
     await screenshot(name+"-map.png");
-    await evaluate('window.wfQA.v.contentEl.querySelector(".wf-journey-toggle").click()');
-    await pause();
     const expanded=await evaluate(`(() => {
       const v=window.wfQA.v,card=v.journeyEl.getBoundingClientRect(),nav=document.getElementById("wf-qa-navbar").getBoundingClientRect();
       const actions=[...v.journeyEl.querySelectorAll("button")].map(el=>el.getBoundingClientRect());
       return {clear:card.bottom<=nav.top-8,overflow:actions.some(r=>r.left<card.left || r.right>card.right+1)};
     })()`);
     assert((hidden || expanded.clear) && !expanded.overflow,name+": expanded card collision "+JSON.stringify(expanded));
-    await screenshot(name+"-progress.png");
+    await screenshot(name+"-navigation.png");
     await evaluate(`(() => {const v=window.wfQA.v;v.chooseDay(v.itinerary.days[1]);v.contentEl.querySelector(".wf-list-toggle").click();})()`);
     await pause();
     const list=await evaluate(`(() => {
-      const v=window.wfQA.v, list=v.stripEl.getBoundingClientRect(),legend=v.legendEl.getBoundingClientRect(),card=v.journeyEl.getBoundingClientRect();
-      return {clear:list.top>=legend.bottom+8 && list.bottom<=card.top-8,collapsed:!v.journeyOpen,mapHidden:getComputedStyle(v.mapEl).visibility==="hidden",transportButtons:v.stripEl.querySelectorAll(".wf-leg-mode").length,scrollHeight:v.stripEl.scrollHeight,height:v.stripEl.clientHeight};
+      const v=window.wfQA.v, list=v.stripEl.getBoundingClientRect(),legend=v.legendEl.getBoundingClientRect();
+      return {clear:list.top>=legend.bottom+8,footerHidden:getComputedStyle(v.journeyEl).display==="none",mapHidden:getComputedStyle(v.mapEl).visibility==="hidden",transportButtons:v.stripEl.querySelectorAll(".wf-leg-mode").length,scrollHeight:v.stripEl.scrollHeight,height:v.stripEl.clientHeight};
     })()`);
-    assert(list.clear && list.collapsed && list.mapHidden && list.transportButtons===0,name+": list reading surface "+JSON.stringify(list));
+    assert(list.clear && list.footerHidden && list.mapHidden && list.transportButtons===0,name+": list reading surface "+JSON.stringify(list));
     await screenshot(name+"-list.png");
     await evaluate('window.wfQA.v.stripEl.scrollTop=window.wfQA.v.stripEl.scrollHeight');
     const last=await evaluate(`(() => {const v=window.wfQA.v;const r=v.stripEl.lastElementChild.getBoundingClientRect();return r.bottom<=v.stripEl.getBoundingClientRect().bottom+1;})()`);
@@ -238,22 +230,23 @@ try {
     for(const id of ["wf-qa-host","wf-qa-status","wf-qa-navbar","wf-qa-host-style"])document.getElementById(id)?.remove();
     document.body.className=q.theme;
   })()`);
-  await evaluate(`(() => {const v=window.wfQA.v;v.map.closePopup();v.journeyOpen=true;v.returnToCurrent();document.body.removeClass("theme-dark");document.body.addClass("theme-light");})()`);
+  await evaluate(`(() => {const v=window.wfQA.v;v.map.closePopup();v.browseStop(v.itinerary.stops[1]);document.body.removeClass("theme-dark");document.body.addClass("theme-light");})()`);
   await screenshot("mobile-320-light.png");
-  const finish = await evaluate(`(() => {
+  const boundaries = await evaluate(`(() => {
     const v=window.wfQA.v;
-    const boundary = v.itinerary.days.find(d=>d.stops.length && v.itinerary.stops.indexOf(d.stops[d.stops.length-1])<v.itinerary.stops.length-1);
-    v.setCurrent(boundary.stops[boundary.stops.length-1]);
+    const boundary=v.itinerary.days.find(d=>d.stops.length && v.itinerary.stops.indexOf(d.stops[d.stops.length-1])<v.itinerary.stops.length-1);
+    v.browseStop(boundary.stops[boundary.stops.length-1]);
     v.contentEl.querySelector(".wf-journey-advance").click();
-    const crossed = v.currentStop().dayIndex !== boundary.index;
+    const crossed=v.selectedStop().dayIndex!==boundary.index;
     v.contentEl.querySelector(".wf-journey-previous").click();
-    const crossedBack = v.currentStop() === boundary.stops[boundary.stops.length-1];
-    v.setCurrent(v.itinerary.stops[v.itinerary.stops.length-1]);
-    v.contentEl.querySelector(".wf-journey-advance").click();
-    return {crossed,crossedBack,finished:v.progress.finished,navHidden:!v.contentEl.querySelector(".wf-journey-nav")};
+    const crossedBack=v.selectedStop()===boundary.stops[boundary.stops.length-1];
+    v.browseStop(v.itinerary.stops[v.itinerary.stops.length-1]);
+    return {crossed,crossedBack,lastDisabled:v.contentEl.querySelector(".wf-journey-advance").disabled,
+      navigationAvailable:!!v.contentEl.querySelector(".wf-journey-nav"),
+      legacyProgressUntouched:JSON.stringify(app.loadLocalStorage(window.wfQA.key))===JSON.stringify(window.wfQA.storage)};
   })()`);
-  assert(Object.values(finish).every(Boolean), "Day boundary and completion: " + JSON.stringify(finish));
-  receipts.push({finish});
+  assert(Object.values(boundaries).every(Boolean), "Day boundaries: " + JSON.stringify(boundaries));
+  receipts.push({boundaries});
   writeFileSync(resolve(output, "receipts.json"), JSON.stringify(receipts, null, 2));
   console.log("journey smoke: PASS; real Obsidian renderer, desktop + 390/320 px phone panes", output);
 } finally {
@@ -267,11 +260,9 @@ try {
     q.v.contentEl.removeClass("wf-qa-pane");
     if(q.parent) q.parent.insertBefore(q.v.contentEl,q.sibling);
     for(const id of ["wf-qa-host","wf-qa-status","wf-qa-navbar","wf-qa-host-style"])document.getElementById(id)?.remove();
-    app.saveLocalStorage(q.key,q.storage ?? null);
-    q.v.progress=q.current;
     const p=app.plugins.plugins.wayfarer;
     p.settings.uiLanguage=q.language;p.settings.listOpen=q.listOpen;p.applyLocale();
-    q.v.journeyOpen=false;q.v.narrowOpen=false;q.v.chooseDay(q.v.itinerary.days[0]);
+    q.v.narrowOpen=false;q.v.chooseDay(q.v.itinerary.days[0]);
     delete window.wfQA;
   })()`);
   ws.close();

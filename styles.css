@@ -1468,13 +1468,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 .wayfarer-view .wf-journey.is-expanded { width: 300px; }
 .wayfarer-view.is-list:not(.is-narrow) .wf-journey { max-width: calc(100% - var(--wf-list-width) - 30px); }
 
-.wayfarer-view .wf-journey-head {
-  display: flex;
-  align-items: center;
-}
 
-.wayfarer-view .wf-journey-toggle,
-.wayfarer-view .wf-journey-more,
 .wayfarer-view .wf-journey-stop,
 .wayfarer-view .wf-inline-action {
   height: auto;
@@ -1485,45 +1479,11 @@ svg.leaflet-image-layer.leaflet-interactive path {
   font-size: inherit;
 }
 
-.wayfarer-view .wf-journey-toggle {
-  display: flex;
-  flex: 1;
-  min-width: 0;
-  align-items: center;
-  gap: 8px;
-  padding: 9px 12px;
-}
 
-.wayfarer-view .wf-journey-summary {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.wayfarer-view .wf-journey-icon { color: var(--text-accent); }
-.wayfarer-view .wf-journey-chevron { margin-left: auto; }
 
-.wayfarer-view .wf-journey-head svg {
-  display: block;
-  width: 15px;
-  height: 15px;
-  flex-shrink: 0;
-}
 
-.wayfarer-view .wf-journey-more {
-  padding: 8px;
-  margin-right: 4px;
-}
-.wayfarer-view .wf-journey-content { padding: 0 12px 12px; }
+.wayfarer-view .wf-journey-content { padding: 8px 12px 12px; }
 
-.wayfarer-view .wf-journey-context,
-.wayfarer-view .wf-journey-next {
-  font-size: var(--font-ui-smaller);
-  color: var(--text-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  line-height: 1.6;
-}
 
 .wayfarer-view .wf-journey-stop {
   display: block;
@@ -1561,12 +1521,6 @@ svg.leaflet-image-layer.leaflet-interactive path {
   font-size: var(--font-ui-smaller);
 }
 
-.wayfarer-view .wf-current-label {
-  color: var(--text-accent);
-  font-size: var(--font-ui-smaller);
-}
-.wayfarer-view .wf-stop.is-current { border-color: var(--text-accent); }
-.wayfarer-view .wf-pin.is-current .wf-pin-body { box-shadow: 0 0 0 4px var(--text-accent), 0 2px 8px rgb(0 0 0 / 30%); }
 
 .wayfarer-view button:focus-visible, .wayfarer-view select:focus-visible, .wayfarer-view a:focus-visible {
   outline: 2px solid var(--text-accent);
@@ -1662,8 +1616,6 @@ svg.leaflet-image-layer.leaflet-interactive path {
 }
 
 .wayfarer-view.is-narrow .wf-journey-actions button,
-.wayfarer-view.is-narrow .wf-journey-toggle,
-.wayfarer-view.is-narrow .wf-journey-more,
 .wayfarer-view.is-narrow .wf-journey-stop,
 .wayfarer-view.is-narrow .wf-inline-action { min-height: 44px; }
 
@@ -1691,9 +1643,6 @@ svg.leaflet-image-layer.leaflet-interactive path {
   overflow: hidden;
 }
 
-.wayfarer-view.is-narrow .wf-journey-more {
-  min-width: 44px;
-}
 
 .workspace-leaf-content[data-type="wayfarer"] .view-content.wayfarer-view.is-narrow {
   padding: 0;
@@ -1766,7 +1715,6 @@ svg.leaflet-image-layer.leaflet-interactive path {
 }
 
 .wayfarer-view.is-narrow .wf-leg.is-unknown .wf-leg-text { color: var(--text-muted); }
-.wayfarer-view.is-narrow .wf-journey-context { white-space: normal; }
 
 .wayfarer-view.is-narrow .wf-journey.is-expanded {
   max-height: var(--wf-journey-max-h, 60%);
@@ -1774,7 +1722,6 @@ svg.leaflet-image-layer.leaflet-interactive path {
   flex-direction: column;
 }
 
-.wayfarer-view.is-narrow .wf-journey-head { flex: 0 0 auto; }
 
 .wayfarer-view.is-narrow .wf-journey-content {
   overflow-y: auto;

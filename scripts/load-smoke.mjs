@@ -64,12 +64,14 @@ class SettingStub {
   addToggle(cb) { cb(chain()); return this; } addDropdown(cb) { cb(chain()); return this; } addText(cb) { cb(chain()); return this; }
 }
 
+let obsidianLanguage = "en";
+const googleRequests = [];
 const obsidianStub = {
   Plugin: PluginStub,
   ItemView: ItemViewStub,
   PluginSettingTab: PluginSettingTabStub,
   Setting: SettingStub,
-  getLanguage: () => "en",
+  getLanguage: () => obsidianLanguage,
   Notice: class {},
   Modal: class { constructor(app) { this.app = app; this.contentEl = fakeEl(); } setTitle() {} open() {} close() {} },
   MarkdownView: class {},
@@ -77,7 +79,7 @@ const obsidianStub = {
   Platform: { isMobile: false, isDesktopApp: true },
   WorkspaceLeaf: class {},
   debounce: (fn) => fn,
-  requestUrl: async () => ({ status: 500, json: null, text: "" }),
+  requestUrl: async (request) => { googleRequests.push(request); return { status: 200, json: { places: [], routes: [] }, text: "" }; },
 };
 const codemirrorStateStub = { RangeSetBuilder: class { add() {} finish() { return {}; } } };
 const codemirrorViewStub = {
@@ -139,5 +141,23 @@ assert(plugin.settingTabs.length === 1, "settings tab");
 assert(plugin.editorExtensions.length === 1, "editor extension");
 assert(plugin.postProcessors.length === 1, "post processor");
 assert(plugin.settings.dayHeadingLevel === 2, "default settings loaded");
+assert(plugin.settings.languageCode === "auto", "new installs follow language automatically");
+assert(plugin.googleLanguageCode === "en", "automatic English Google content");
+obsidianLanguage = "ja";
+assert(plugin.googleLanguageCode === "ja", "automatic Google content follows untranslated Obsidian language");
+plugin.settings.googleApiKey = "smoke-key";
+await plugin.resolveDeps().places.searchText("Tokyo Station");
+assert(JSON.parse(googleRequests.at(-1).body).languageCode === "ja", "Places search receives resolved language");
+await plugin.resolveDeps().places.details("smoke-place");
+assert(new URL(googleRequests.at(-1).url).searchParams.get("languageCode") === "ja", "Places details receive resolved language");
+await plugin.router.fetch([{from:{lat:35.68,lng:139.76},to:{lat:35.69,lng:139.77},mode:"walk",key:"smoke",file:""}]);
+assert(JSON.parse(googleRequests.at(-1).body).languageCode === "ja", "Routes receive resolved language");
+plugin.loadData = async () => ({languageCode:"zh-TW", uiLanguage:"auto"});
+await plugin.loadSettings();
+assert(plugin.googleLanguageCode === "zh-TW", "existing language preference preserved");
+await plugin.settingTabs[0].setControlValue("languageCode", "auto");
+assert(plugin.googleLanguageCode === "ja", "existing users can opt into automatic language");
+plugin.settings.uiLanguage = "en";
+assert(plugin.googleLanguageCode === "en", "explicit interface language overrides Obsidian");
 plugin.onunload();
 console.log("smoke: OK (view, 6 commands, ribbon, settings tab, editor extension, post processor)");

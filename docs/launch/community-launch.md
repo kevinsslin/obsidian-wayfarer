@@ -4,7 +4,7 @@ Checked on 2026-09-14. Draft material only; no community messages have been post
 
 ## Positioning
 
-**Plan in Markdown. Follow your trip on a map.**
+**Plan with your AI agent in Markdown. Follow your trip on a map, right from your phone.**
 
 Start with people who already keep travel notes in Obsidian. Show one complete workflow: ask an assistant to plan, inspect and edit the note beside the map, then follow the same trip on a phone. Lead with the portable note and useful travel workflow. The AI skill is optional; basic maps need no Google API key.
 
@@ -30,11 +30,11 @@ A 30–45 second walkthrough is enough:
 
 1. A short travel request and the resulting Markdown note.
 2. Select a day or a stop and see it on the map.
-3. On the phone: open Current trip, Previous / Next stop, and Navigate.
+3. On the phone: select a place, browse Previous / Next stop, and Navigate.
 4. Switch to List to inspect the day, then return to the map.
 5. End with the install link and optional skill command.
 
-Use the English screenshots under `docs/screenshots/mobile-en/`. They show the real plugin in emulated phone panes with reconstructed host chrome; label them as mobile layout previews. Replace them with real device captures when available. Map tile labels remain in the tile provider's language. The [sample note](../../test-vault/Nikko%20demo.md) is illustrative and is not a verified travel schedule.
+Use the English screenshots under `docs/screenshots/mobile-navigation/`. They show the real plugin in emulated phone panes with reconstructed host chrome; label them as mobile layout previews. Replace them with real device captures when available. Map tile labels remain in the tile provider's language. The [sample note](../../test-vault/Nikko%20demo.md) is illustrative and is not a verified travel schedule.
 
 For the first week, ask for three kinds of feedback: first-install friction, phone layout problems (including device and text size), and whether the note format fits how someone already plans. Track concrete issues and completed trip-planning attempts before optimizing download counts. A small group of active travellers is more useful than a broad launch with no feedback.
 
@@ -44,11 +44,11 @@ For the first week, ask for three kinds of feedback: first-install friction, pho
 
 I built Wayfarer because I wanted my travel plan to stay in an ordinary Obsidian note while still being useful on a map and on my phone.
 
-Write days as headings and stops as links, or paste Google Maps place links. Wayfarer shows the itinerary beside the note, with day colours, stop details and a timeline. On a phone, you can switch between Map and List, keep track of the current stop, move to the previous or next stop, and open Google Maps directions.
+Write days as headings and stops as links, or paste Google Maps place links. Wayfarer shows the itinerary beside the note, with day colours, stop details and a timeline. On a phone, you can switch between Map and List, browse the previous or next stop and open Google Maps directions to the selected place.
 
 There is also an optional planning skill for Claude Code, Codex and other compatible agents. It helps research opening hours and transport, write the itinerary, and keep constraints, bookings and backup plans in the same note. You can use Wayfarer entirely without AI.
 
-Basic pins and straight-line distances work without a Google API key. Your own key enables supported routes, place details and photos. Saved details and routes travel with the note; current-stop progress is manual and local to each device. Map tiles and photos need a connection. Short Google Maps links are expanded on desktop.
+Basic pins and straight-line distances work without a Google API key. Your own key enables supported routes, place details and photos. Saved details and routes travel with the note. Browsing stops does not create a separate progress record. Map tiles and photos need a connection. Short Google Maps links are expanded on desktop.
 
 [Install Wayfarer](https://community.obsidian.md/plugins/wayfarer) · [Source, screenshots and sample note](https://github.com/kevinsslin/wayfarer)
 
@@ -64,4 +64,4 @@ If you already plan trips in Obsidian, I would love to hear where this fits or g
 
 ## Short Discord version
 
-I made **Wayfarer**, an Obsidian plugin for planning trips in Markdown and following them on a map. Desktop note + timeline, mobile Map / List, manual current-stop progress, Previous / Next and Google Maps navigation. Optional AI planning skill; basic maps work without a Google API key. Install and screenshots: https://community.obsidian.md/plugins/wayfarer
+I made **Wayfarer**, an Obsidian plugin for planning trips in Markdown and following them on a map. Desktop note + timeline, mobile Map / List, Previous / Next browsing and Google Maps navigation. Optional AI planning skill; basic maps work without a Google API key. Install and screenshots: https://community.obsidian.md/plugins/wayfarer

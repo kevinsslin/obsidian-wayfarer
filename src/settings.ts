@@ -1,11 +1,11 @@
 import { googlePlaces, googleRoute } from "./net";
-import { Notice, PluginSettingTab, Setting, type App, type SettingDefinitionItem } from "obsidian";
+import { Notice, PluginSettingTab, Setting, type App, type TextComponent, type SettingDefinitionItem } from "obsidian";
 import type WayfarerPlugin from "./main";
 
 export interface WayfarerSettings {
   /** Google API key with Places API (New) and Routes API enabled. Without it: pins from the link only, no routes, no photos. */
   googleApiKey: string;
-  /** BCP-47 language for place names and hours from Google, e.g. zh-TW, ja, en. */
+  /** "auto" follows the interface/Obsidian language; otherwise a Google-supported language code. */
   languageCode: string;
   /** Interface language: "auto" follows Obsidian. */
   uiLanguage: "auto" | "en" | "zh-TW";
@@ -32,7 +32,7 @@ export interface WayfarerSettings {
 
 export const DEFAULT_SETTINGS: WayfarerSettings = {
   googleApiKey: "",
-  languageCode: "zh-TW",
+  languageCode: "auto",
   uiLanguage: "auto",
   listWidth: 260,
   listOpen: true,
@@ -45,6 +45,12 @@ export const DEFAULT_SETTINGS: WayfarerSettings = {
   drawRoutes: true,
   autoOpen: true,
 };
+
+const GOOGLE_LANGUAGES: Record<string, string> = {
+  auto: "Follow interface language", en: "English", "zh-TW": "繁體中文", "zh-CN": "简体中文",
+  ja: "日本語", ko: "한국어", fr: "Français", de: "Deutsch", es: "Español",
+};
+const GOOGLE_LANGUAGE_DESC = "By default, follow your interface language (Obsidian when set to automatic). Override it for place names and opening hours. Applies to new Google requests; saved details and map tile labels are unchanged.";
 
 const KEY_DESC = "Your own key. It unlocks exact pins with ratings, opening hours and photos, and routes between stops (walking, cycling, driving and transit with line names). Without it the plugin still reads pins from pasted links, and legs show their distance only. Stored in this vault's plugin data, never in a note. ";
 const AGENT_DESC = "Teaches an AI coding agent to research a trip and write the note in the format this plugin reads, planning notes included. ";
@@ -88,7 +94,7 @@ export class WayfarerSettingTab extends PluginSettingTab {
         heading: "Google",
         items: [
           { name: "Google API key", desc: KEY_DESC, aliases: ["places", "routes", "photos"], render: (setting) => this.renderKey(setting, p.settings) },
-          { name: "Language for Google results", desc: "Language code for place names and opening hours, for example ja or en.", control: { type: "text", key: "languageCode" } },
+          { name: "Language for Google results", desc: GOOGLE_LANGUAGE_DESC, render: (setting) => this.renderGoogleLanguage(setting) },
         ],
       },
       {
@@ -118,11 +124,43 @@ export class WayfarerSettingTab extends PluginSettingTab {
     const s = this.plugin.settings as unknown as Record<string, unknown>;
     if (key === "dayHeadingLevel") s[key] = Number(value);
     else if (key === "tileUrl") s[key] = String(value).trim() || DEFAULT_SETTINGS.tileUrl;
-    else if (key === "languageCode") s[key] = String(value).trim() || "en";
+    else if (key === "languageCode") s[key] = String(value).trim() || "auto";
     else s[key] = value;
     await this.plugin.saveSettings();
     if (key === "uiLanguage") this.plugin.applyLocale();
     this.plugin.refresh();
+  }
+
+  private renderGoogleLanguage(setting: Setting): void {
+    const s = this.plugin.settings;
+    let custom: TextComponent;
+    const isPreset = Object.prototype.hasOwnProperty.call(GOOGLE_LANGUAGES, s.languageCode);
+    setting.setDesc(GOOGLE_LANGUAGE_DESC)
+      .addDropdown((d) => {
+        for (const [value, label] of Object.entries(GOOGLE_LANGUAGES)) d.addOption(value, label);
+        d.addOption("custom", "Other language…");
+        d.setValue(isPreset ? s.languageCode : "custom").onChange((value) => {
+          custom.inputEl.hidden = value !== "custom";
+          if (value === "custom") {
+            s.languageCode = custom.getValue().trim() || "auto";
+            void this.plugin.saveSettings();
+            custom.inputEl.focus();
+            return;
+          }
+          s.languageCode = value;
+          void this.plugin.saveSettings();
+        });
+      })
+      .addText((t) => {
+        custom = t;
+        t.setPlaceholder("Language code").setValue(isPreset ? "" : s.languageCode);
+        t.inputEl.setAttribute("aria-label", "Custom Google results language");
+        t.inputEl.hidden = isPreset;
+        t.onChange((value) => {
+          s.languageCode = value.trim() || "auto";
+          void this.plugin.saveSettings();
+        });
+      });
   }
 
   /** The key field and its test button, shared by both renderers. */
@@ -139,13 +177,13 @@ export class WayfarerSettingTab extends PluginSettingTab {
           b.setDisabled(true);
           const out: string[] = [];
           try {
-            const p = await googlePlaces(s.googleApiKey, s.languageCode).searchText("Tokyo Station");
+            const p = await googlePlaces(s.googleApiKey, this.plugin.googleLanguageCode).searchText("Tokyo Station");
             out.push(p ? `Places OK (${p.name})` : "Places: no result");
           } catch (e) {
             out.push(`Places refused: ${(e as Error).message}`);
           }
           try {
-            const r = await googleRoute(s.googleApiKey, s.languageCode, { lat: 35.6812, lng: 139.7671 }, { lat: 35.7101, lng: 139.8107 }, "WALK");
+            const r = await googleRoute(s.googleApiKey, this.plugin.googleLanguageCode, { lat: 35.6812, lng: 139.7671 }, { lat: 35.7101, lng: 139.8107 }, "WALK");
             out.push(r ? `Routes OK (${Math.round(r.distanceM / 100) / 10} km)` : "Routes: no result");
           } catch (e) {
             out.push(`Routes refused: ${(e as Error).message}`);
@@ -189,10 +227,7 @@ export class WayfarerSettingTab extends PluginSettingTab {
 
     new Setting(containerEl).setName("Google").setHeading();
     this.renderKey(new Setting(containerEl).setName("Google API key").setDesc(keyDesc()), s);
-    new Setting(containerEl)
-      .setName("Language for Google results")
-      .setDesc("Language code for place names and opening hours, for example ja or en.")
-      .addText((t) => t.setValue(s.languageCode).onChange((v) => { s.languageCode = v.trim() || "en"; save(); }));
+    this.renderGoogleLanguage(new Setting(containerEl).setName("Language for Google results"));
 
     new Setting(containerEl).setName("Plan with an AI agent").setHeading();
     new Setting(containerEl).setName("Trip planning skill").setDesc(agentDesc());

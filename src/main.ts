@@ -15,6 +15,7 @@ import { firstEmoji } from "./core/category";
 import { LegRouter } from "./routing";
 import { PhotoCache, photoFor, type StopPhoto } from "./photos";
 import { getLocale, localeFor, setLocale, t } from "./core/i18n";
+import { googleLanguageFor } from "./core/google-language";
 
 /**
  * Wayfarer: the note is the plan, the pane is the map.
@@ -26,7 +27,7 @@ export default class WayfarerPlugin extends Plugin {
   settings: WayfarerSettings = { ...DEFAULT_SETTINGS };
   private views = new Set<WayfarerView>();
   readonly router = new LegRouter(
-    () => this.settings,
+    () => ({ ...this.settings, languageCode: this.googleLanguageCode }),
     () => { for (const v of this.views) v.redraw(); },
     (to, leg, file) => { if (file === this.current?.file.path) this.setStopMeta(to, { leg }, true); },
     (e) => this.googleRefused(e),
@@ -120,6 +121,10 @@ export default class WayfarerPlugin extends Plugin {
   }
 
   /* ---------- settings ---------- */
+
+  get googleLanguageCode(): string {
+    return googleLanguageFor(this.settings.languageCode, this.settings.uiLanguage, getLanguage());
+  }
 
   applyLocale(): void {
     let code: string | null = this.settings.uiLanguage;
@@ -341,7 +346,7 @@ export default class WayfarerPlugin extends Plugin {
     const cur = this.current;
     if (!md?.file || !cur || md.file.path !== cur.file.path) { new Notice(t("empty")); return; }
     if (!this.settings.googleApiKey) { new Notice(`Wayfarer: ${t("key_needed")}`); return; }
-    const places = googlePlaces(this.settings.googleApiKey, this.settings.languageCode);
+    const places = googlePlaces(this.settings.googleApiKey, this.googleLanguageCode);
     const todo = cur.itinerary.stops.filter((s) => !s.meta?.placeId);
     if (todo.length === 0) { new Notice("Wayfarer: every stop already has its details"); return; }
     let done = 0;
@@ -423,7 +428,7 @@ export default class WayfarerPlugin extends Plugin {
   private resolveDeps(): ResolveDeps {
     return {
       expandShortUrl: Platform.isDesktop ? expandShortUrl : undefined,
-      places: this.settings.googleApiKey ? googlePlaces(this.settings.googleApiKey, this.settings.languageCode) : undefined,
+      places: this.settings.googleApiKey ? googlePlaces(this.settings.googleApiKey, this.googleLanguageCode) : undefined,
     };
   }
 

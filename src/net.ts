@@ -81,7 +81,7 @@ export function googlePlaces(apiKey: string, languageCode: string): NonNullable<
   return {
     async details(placeId) {
       const res = await requestUrl({
-        url: `https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}?languageCode=${languageCode}`,
+        url: `https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}?languageCode=${encodeURIComponent(languageCode)}`,
         headers: { ...headers, "X-Goog-FieldMask": PLACE_FIELDS },
         throw: false,
       });

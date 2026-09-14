@@ -25,7 +25,7 @@ The local skill validator checks metadata and structure. Passing it is not a cer
 |---|---|---|
 | Map UI | `uiLanguage: "auto"`; `localeFor()` maps `zh*` to `zh-TW`, everything else to `en` | English is the fallback, not a forced default for all users. Only English and Traditional Chinese UI dictionaries exist. |
 | Settings and commands | Several labels and notices are hardcoded English | The entire plugin is not localized end to end. |
-| Google content | `languageCode: "zh-TW"` by default, configurable independently | A fresh English user can still receive Chinese names/hours. Changing the code affects future requests; saved metadata is not translated. |
+| Google content (updated in 0.1.9) | `languageCode: "auto"`; follows an explicit interface language or the original Obsidian locale | Preserves supported Google languages beyond the two map UI dictionaries. A separate override is available; saved metadata is not translated. |
 | Opening-hour interpretation | Recognizes selected English, Chinese and Japanese weekday/status patterns | Google's ability to return another language does not imply complete hours-check support in that language. |
 | Generated note | English skill instructions; output-language rules above | Multilingual writing depends on the host model; note syntax is language-independent. |
 | Map tiles | Provider-supplied labels | Changing the plugin UI language does not translate labels embedded in tiles. |
@@ -34,4 +34,6 @@ Evidence: [settings](../../src/settings.ts), [locale selection](../../src/main.t
 
 ## Recommended product follow-up
 
-Keep the map UI following Obsidian, with English fallback. For a global launch, change the **new-install Google result default** to English (or derive it from the supported UI locale), preserving all explicitly saved preferences. That behavior change was not included in this documentation/screenshot update. Next, bring settings and commands into the existing dictionary; add another UI language when there is an actual translation and review path. Do not advertise “all languages supported.”
+Version 0.1.9 implements automatic Google result language, with explicit overrides and preservation of existing saved preferences. Old saved `zh-TW` values cannot be distinguished from a user choice, so upgrades keep them until the user selects **Follow interface language**. Map tile labels remain controlled by the tile provider.
+
+Next, bring settings and commands into the existing dictionary; add another UI language when there is an actual translation and review path. Do not advertise “all languages supported.”
