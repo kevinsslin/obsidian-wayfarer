@@ -3,17 +3,17 @@ import { RangeSetBuilder } from "@codemirror/state";
 import type { Editor } from "obsidian";
 import { isGoogleMapsUrl } from "../core/gmaps-url";
 import { CATEGORY_EMOJI, pickCategory } from "../core/category";
-import { formatStop, type PlaceMeta } from "../core/itinerary";
+import { formatStop, parseMeta, type PlaceMeta } from "../core/itinerary";
 import type { ResolvedPlace } from "../core/resolve";
 import { todayHours } from "./map-view";
 
-/** Finds a Google Maps URL in a line, returning its character span. */
-export function findMapsUrl(line: string): { url: string; from: number; to: number } | null {
+/** Finds a Google Maps URL in a line, returning its character span. Links in `skip` are passed over. */
+export function findMapsUrl(line: string, skip?: Set<string>): { url: string; from: number; to: number } | null {
   const re = /https?:\/\/\S+/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(line))) {
     const url = m[0].replace(/[),.;!?]+$/, "");
-    if (isGoogleMapsUrl(url)) return { url, from: m.index, to: m.index + url.length };
+    if (isGoogleMapsUrl(url) && !skip?.has(url)) return { url, from: m.index, to: m.index + url.length };
   }
   return null;
 }
@@ -36,6 +36,13 @@ export function replaceUrlInEditor(editor: Editor, line: number, url: string, re
     const text = editor.getLine(ln);
     const idx = text.indexOf(url);
     if (idx === -1) return false;
+    // `[label](url)`: the whole link goes, and the user's label stays as the stop's name.
+    const link = /\[([^\]]*)\]\($/.exec(text.slice(0, idx));
+    if (link && text[idx + url.length] === ")") {
+      const named = link[1] ? replacement.replace(/\[[^\]]*\]\(geo:/, `[${link[1].replace(/[[\]]/g, "")}](geo:`) : replacement;
+      editor.replaceRange(named, { line: ln, ch: idx - link[0].length }, { line: ln, ch: idx + url.length + 1 });
+      return true;
+    }
     editor.replaceRange(replacement, { line: ln, ch: idx }, { line: ln, ch: idx + url.length });
     return true;
   };
@@ -97,12 +104,8 @@ export const metaDecorations = ViewPlugin.fromClass(
           const start = from + m.index + m[0].length - m[4].length;
           const end = from + m.index + m[0].length;
           if (view.state.doc.lineAt(start).number === cursorLine) continue;
-          let meta: PlaceMeta;
-          try {
-            meta = JSON.parse(m[5]) as PlaceMeta;
-          } catch {
-            continue;
-          }
+          const meta = parseMeta(m[5]);
+          if (!meta) continue;
           b.add(start, end, Decoration.replace({ widget: new MetaWidget(meta) }));
         }
       }

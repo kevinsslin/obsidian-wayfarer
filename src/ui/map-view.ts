@@ -5,11 +5,12 @@ import { dayColor } from "../core/colors";
 import { directionsUrl, placeUrl } from "../core/gmaps-out";
 import { stopNotes, type Day, type Itinerary, type Stop } from "../core/itinerary";
 import { legText, type Leg } from "../core/legs";
-import { checkHours, describeHours } from "../core/schedule";
+import { checkHours, describeHours, hoursForWeekday } from "../core/schedule";
 import { minutesOf } from "../core/legs";
 import { dateForDay, routable } from "../routing";
 import { t } from "../core/i18n";
 import type WayfarerPlugin from "../main";
+import { attachPhoto } from "../photos";
 
 
 export const VIEW_TYPE_WAYFARER = "wayfarer";
@@ -60,6 +61,11 @@ export class WayfarerView extends ItemView {
     const root = this.contentEl;
     root.empty();
     root.addClass("wayfarer-view");
+    // A click anywhere outside an open transport popover closes it.
+    this.registerDomEvent(document, "mousedown", (e) => {
+      const pop = root.querySelector(".wf-popover");
+      if (pop && !pop.contains(e.target as Node)) pop.remove();
+    }, true);
     this.legendEl = root.createDiv({ cls: "wf-legend" });
     const body = root.createDiv({ cls: "wf-body" });
     this.stripEl = body.createDiv({ cls: "wf-strip" });
@@ -137,6 +143,7 @@ export class WayfarerView extends ItemView {
   }
 
   async onClose(): Promise<void> {
+    window.clearTimeout(this.hoverClose);
     this.plugin.detachView(this);
     this.map?.remove();
     this.map = null;
@@ -231,7 +238,7 @@ export class WayfarerView extends ItemView {
   /** Legs for a day plus the date read from its heading. */
   plan(day: Day): { legs: Leg[]; date: Date | null } {
     const date = dateForDay(day);
-    return { legs: this.plugin.router.legsFor(day, date), date };
+    return { legs: this.plugin.router.legsFor(day, date, this.file?.path ?? "", this.itinerary?.timezone), date };
   }
 
   /** Opening-hours problem for a stop with a written time, or null. */
@@ -267,7 +274,7 @@ export class WayfarerView extends ItemView {
 
   /** What the pane currently shows, as a string; `render` skips the rebuild when it has not changed. */
   private signature(): string {
-    return `${this.file?.path}|${this.activeDay}|${this.pinnedDay}|${this.focused?.line ?? -1}|${signatureOf(this.itinerary)}`;
+    return `${this.file?.path}|${this.plugin.settingsRev}|${this.activeDay}|${this.pinnedDay}|${this.focused?.line ?? -1}|${signatureOf(this.itinerary)}`;
   }
 
   private draw(): void {
@@ -356,15 +363,15 @@ export class WayfarerView extends ItemView {
     const photo = this.plugin.photoFor(stop);
     if (photo) {
       const wrap = root.createDiv({ cls: "wf-card-imgwrap" });
-      const el = wrap.createEl("img", { cls: "wf-card-img", attr: { src: photo.url, alt: "" } });
-      el.onerror = () => wrap.remove();
+      const el = wrap.createEl("img", { cls: "wf-card-img", attr: { alt: "" } });
+      attachPhoto(el, photo, () => wrap.remove());
       if (photo.credit) wrap.createSpan({ cls: "wf-card-credit", text: photo.credit });
     }
     const body = root.createDiv({ cls: "wf-card-body" });
     const title = body.createDiv({ cls: "wf-card-title" });
     title.createSpan({ text: `${stop.emoji ?? CATEGORY_EMOJI[stop.category]} ` });
     title.createSpan({ text: stop.name });
-    const sub = [day.label || `Day ${day.index + 1}`, `#${stop.index + 1}`];
+    const sub = [day.label || t("day", { n: day.index + 1 }), `#${stop.index + 1}`];
     if (stop.time) sub.push(stop.time);
     body.createDiv({ cls: "wf-card-sub", text: sub.join(" · ") });
     const { date } = this.plan(day);
@@ -385,7 +392,7 @@ export class WayfarerView extends ItemView {
       // One line for the leg: mode, where from, numbers. With a mode it is also the directions link.
       const t2 = body.createDiv({ cls: `wf-card-leg${leg.lateBy > 0 ? " is-late" : ""}` });
       const text = `${leg.mode ? TRANSPORT_EMOJI[leg.mode] + " " : ""}${t("from_prev", { name: prev.name })} · ${legText(leg)}${leg.lateBy ? " · " + t("late_by", { n: leg.lateBy }) : ""}`;
-      const url = leg.mode ? directionsUrl([prev, stop], leg.mode === "walk" ? "walking" : leg.mode === "car" || leg.mode === "taxi" ? "driving" : "transit") : null;
+      const url = leg.mode ? directionsUrl([prev, stop], leg.mode === "walk" ? "walking" : leg.mode === "bike" ? "bicycling" : leg.mode === "car" || leg.mode === "taxi" ? "driving" : "transit") : null;
       if (url) t2.createEl("a", { cls: "wf-ext", text: `${text} ↗`, attr: { href: url, "aria-label": t("from_prev_dir") } });
       else t2.setText(text);
       body.insertBefore(t2, actions);
@@ -476,8 +483,8 @@ export class WayfarerView extends ItemView {
         card.toggleClass("is-focus", stop === this.focused);
         const photo = this.plugin.photoFor(stop);
         if (photo) {
-          const th = card.createEl("img", { cls: "wf-stop-thumb", attr: { src: photo.url, alt: "", loading: "lazy" } });
-          th.onerror = () => { th.remove(); card.removeClass("has-thumb"); };
+          const th = card.createEl("img", { cls: "wf-stop-thumb", attr: { alt: "" } });
+          attachPhoto(th, photo, () => { th.remove(); card.removeClass("has-thumb"); });
           card.addClass("has-thumb");
         }
         const body = card.createDiv({ cls: "wf-stop-body" });
@@ -562,8 +569,6 @@ export class WayfarerView extends ItemView {
     const r = this.contentEl.getBoundingClientRect();
     pop.style.left = `${Math.max(4, a.left - r.left)}px`;
     pop.style.top = `${a.bottom - r.top + 4}px`;
-    const close = (e: MouseEvent) => { if (!pop.contains(e.target as Node)) { pop.remove(); document.removeEventListener("mousedown", close, true); } };
-    window.setTimeout(() => document.addEventListener("mousedown", close, true), 0);
   }
 
   /* ---------- camera ---------- */
@@ -687,23 +692,14 @@ function tipEl(text: string): HTMLElement {
 
 function legTooltip(leg: Leg): string {
   const bits = [`${leg.mode ? TRANSPORT_EMOJI[leg.mode] + " " : ""}${leg.from.name} → ${leg.to.name}`, legText(leg)];
-  if (leg.routed) bits.push("Google Routes");
+  if (leg.routed) bits.push(t("routed_by"));
   if (leg.lateBy) bits.push(t("late_vs", { t: leg.to.time ?? "", n: leg.lateBy }));
   return bits.join("\n");
 }
 
 /** Picks today's line from Google's weekdayDescriptions, e.g. "Wednesday: 9:00 AM – 5:00 PM". */
 export function todayHours(hours: string[] | undefined, now = new Date()): string | null {
-  if (!hours?.length) return null;
-  const names = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
-  const cjk = ["日", "一", "二", "三", "四", "五", "六"];
-  const d = now.getDay();
-  return (
-    hours.find((h) => h.toLowerCase().startsWith(names[d])) ??
-    hours.find((h) => h.startsWith(`星期${cjk[d]}`) || h.startsWith(`週${cjk[d]}`) || h.startsWith(`${cjk[d]}曜日`)) ??
-    hours[d] ??
-    null
-  );
+  return hoursForWeekday(hours, now.getDay());
 }
 
 /** Everything the pane draws from an itinerary, as a string, to skip a rebuild when nothing changed. */

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dayAtLine, dayDateEnd, dayLabel, formatStop, moveBlock, parseItinerary, patchLineMeta, setTransportOnLine } from "./itinerary";
+import { dayAtLine, dayDateEnd, dayLabel, formatStop, moveBlock, parseItinerary, parseMeta, patchLineMeta, setTransportOnLine, stopStillAt } from "./itinerary";
 
 const NOTE = `---
 locations:
@@ -213,5 +213,78 @@ describe("moveBlock", () => {
   it("leaves the lines alone for a no-op or bad index", () => {
     expect(moveBlock(lines, 3, 3)).toBe(lines);
     expect(moveBlock(lines, 3, 99)).toBe(lines);
+  });
+});
+
+describe("two stops on one line", () => {
+  const line = '- [A](geo:1,2) %%wf:{"rating":4}%% 到 🚌 [B](geo:3,4)';
+  it("patches the comment of the stop it was given", () => {
+    const [a, b] = parseItinerary(`## 2026-09-16\n${line}`).stops;
+    const outB = patchLineMeta(line, { placeId: "B_ID" }, b);
+    expect(outB).toBe('- [A](geo:1,2) %%wf:{"rating":4}%% 到 🚌 [B](geo:3,4) %%wf:{"placeId":"B_ID"}%%');
+    const outA = patchLineMeta(line, { placeId: "A_ID" }, a);
+    expect(outA).toBe('- [A](geo:1,2) %%wf:{"rating":4,"placeId":"A_ID"}%% 到 🚌 [B](geo:3,4)');
+    const again = parseItinerary(`## 2026-09-16\n${outB}`).stops;
+    expect(again[0].meta?.placeId).toBeUndefined();
+    expect(again[1].meta?.placeId).toBe("B_ID");
+  });
+  it("does not read an emoji inside the previous stop's saved address as transport", () => {
+    const l = '- [A](geo:1,2) %%wf:{"address":"🚆 駅前"}%% [B](geo:3,4)';
+    const [, b] = parseItinerary(`## 2026-09-16\n${l}`).stops;
+    expect(b.transport).toBeUndefined();
+    expect(setTransportOnLine(l, b, "walk")).toBe('- [A](geo:1,2) %%wf:{"address":"🚆 駅前"}%% 🚶 [B](geo:3,4)');
+  });
+  it("knows whether a stop's link is still at its offsets", () => {
+    const [a, b] = parseItinerary(`## 2026-09-16\n${line}`).stops;
+    expect(stopStillAt(line, a)).toBe(true);
+    expect(stopStillAt(line, b)).toBe(true);
+    expect(stopStillAt("- x " + line, b)).toBe(false);
+    expect(stopStillAt(line.replace("geo:3,4", "geo:3,5"), b)).toBe(false);
+  });
+});
+
+describe("time at line start", () => {
+  const timeOf = (l: string) => parseItinerary(`## 2026-09-16\n${l}`).stops[0].time;
+  it("is read after an emoji with a variation selector, a joined sequence or a task box", () => {
+    expect(timeOf("- ⛩️ 12:52 [A](geo:1,2)")).toBe("12:52");
+    expect(timeOf("- 🚶‍♀️ 12:52 [A](geo:1,2)")).toBe("12:52");
+    expect(timeOf("- [ ] 12:52 [A](geo:1,2)")).toBe("12:52");
+    expect(parseItinerary("## 2026-09-16\n- [ ] 12:52 [A](geo:1,2) 帶傘").stops[0].note).toBe("12:52 A 帶傘");
+  });
+});
+
+describe("what is not a stop", () => {
+  it("ignores headings inside fences when choosing the day level", () => {
+    const it = parseItinerary("# Day 1\n- [A](geo:1,2)\n```\n## example\n```\n# Day 2\n- [B](geo:3,4)");
+    expect(it.days.map((d) => d.title)).toEqual(["Day 1", "Day 2"]);
+  });
+  it("ignores links inside Obsidian comments", () => {
+    const it = parseItinerary("## 2026-09-16\n- [A](geo:1,2)\n%%\n- [B](geo:3,4)\n%%\n- [C](geo:5,6) %% [D](geo:7,8) %%");
+    expect(it.stops.map((s) => s.name)).toEqual(["A", "C"]);
+  });
+  it("keeps an indented geo link under a stop as that stop's note", () => {
+    const it = parseItinerary("## 2026-09-16\n- [A](geo:1,2)\n    備案 [B](geo:3,4)\n- [C](geo:5,6)");
+    expect(it.stops.map((s) => s.name)).toEqual(["A", "C"]);
+    expect(it.stops[0].notes).toEqual(["備案 [B](geo:3,4)"]);
+  });
+  it("reads the trip timezone from the frontmatter", () => {
+    expect(parseItinerary("---\ntimezone: Asia/Tokyo\n---\n## 2026-09-16\n- [A](geo:1,2)").timezone).toBe("Asia/Tokyo");
+    expect(parseItinerary("## 2026-09-16\n- [A](geo:1,2)").timezone).toBeUndefined();
+  });
+});
+
+describe("parseMeta", () => {
+  it("drops values of the wrong type instead of throwing later", () => {
+    expect(parseMeta('{"rating":"4.5","hours":"Mon","address":"x","leg":{"from":"1,2","via":"bus","s":"9","m":1}}')).toEqual({ address: "x" });
+    expect(parseMeta("[1]")).toBeUndefined();
+    expect(parseMeta("nope")).toBeUndefined();
+  });
+});
+
+describe("moveBlock onto its own notes", () => {
+  it("does nothing", () => {
+    const lines = ["## d", "- [A](geo:1,2)", "    note 1", "    note 2", "- [B](geo:3,4)"];
+    expect(moveBlock(lines, 1, 2)).toEqual(lines);
+    expect(moveBlock(lines, 1, 3)).toEqual(lines);
   });
 });

@@ -3,10 +3,11 @@
 ```markdown
 ---
 locations:
+timezone: Asia/Tokyo
 ---
 # 日本 2026 秋
 
-行前：[羽田機場](geo:35.5494,139.7798) 落地後直接搭京急到淺草。
+行前：落地後直接搭京急到淺草。
 
 ## 2026-09-16 週三 日光市區
 
@@ -46,13 +47,16 @@ locations:
 | Element | How the plugin reads it |
 |---|---|
 | `## 2026-09-17 週四 主題` | A day. One heading per day, the full `YYYY-MM-DD` first, then anything. Only a full date counts as a date; a heading without one is a day with no weekday or hours checks. Level is a setting (default `##`). |
-| `## 待辦` or any heading without a date | Once the note has dated headings, an undated section is notes: to-do checklists, research, candidate places. Links in it stay in the text but do not appear on the map. Keep everything about the trip in the one note. |
-| `## 2026-09-19 ~ 2026-09-26 東京` | A range: several days kept as one block, for a stretch not yet planned day by day. Two full dates joined by `~`, `～`, `to` or `到`. One chip (`9/19~9/26`), no weekday checks. Split it into day headings once the days are decided. |
+| `## 待辦` or any heading without a date | Once the note has dated headings, an undated section is notes: to-do checklists, research, candidate places. Links in it stay in the text but do not appear on the map. Text before the first heading is treated the same way. Keep everything about the trip in the one note. |
+| `timezone: Asia/Tokyo` in the frontmatter | The zone written times are in. Needed for transit departure times when the note is written from another zone. |
+| `## 2026-09-19 ~ 2026-09-26 東京` | A range: several days kept as one block, for a stretch not yet planned day by day. Two full dates joined by `~`, `～`, `-`, `to` or `到`. One chip (`9/19~9/26`), no weekday checks. Split it into day headings once the days are decided. |
 | `[Name](geo:lat,lng)` | A stop. Same format as the Map View plugin. |
 | `07:53` at line start | The stop's time. |
 | Transport emoji before the link | How you get there: 🚶 walk, 🚲 bike, 🚗 car, 🚕 taxi, 🚌 bus, 🚆 🚄 🚃 train, 🚇 metro / MRT, 🚊 tram / light rail, ⛴️ boat, ✈️ flight. Words are not read. Picking a transport on the arrow in the map pane writes this emoji before the link (replacing the one there). It is the only place the transport lives. |
 | `%%wf:{…}%%` after a link | Plugin metadata: Google details and the last routed leg (`leg`). Older notes may carry `via`; the emoji wins over it. Leave it as is; never author it by hand. |
-| Indented lines under a stop | The stop's notes, shown verbatim on its card and popup. No format inside them is interpreted. |
+| Indented lines under a stop | The stop's notes, shown verbatim on its card and popup. No format inside them is interpreted: a `geo:` link there is text, not another stop. |
+| `- [ ] 07:53 [Name](geo:…)` | A task line is a stop like any other; the box is not shown in the note text. |
+| `%% … %%` | An Obsidian comment. Links inside it are not stops. |
 | Emoji before the link | The pin's icon. Otherwise from the Google type or the name. Airports are 🛬 and ports ⚓ so they never read as a flight or boat leg. |
 | Rest of the line | Shown as the note in the stop's card. |
 | `![[img.jpg]]` or image URL on the line or the next | Photo in the card. |

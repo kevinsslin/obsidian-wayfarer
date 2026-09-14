@@ -1,6 +1,6 @@
 import { MarkdownView, Notice, Platform, Plugin, TFile, debounce, type Editor, type MarkdownFileInfo, type WorkspaceLeaf } from "obsidian";
 import { isGoogleMapsUrl } from "./core/gmaps-url";
-import { dayAtLine, moveBlock, parseItinerary, patchLineMeta, setTransportOnLine, type Itinerary, type PlaceMeta, type Stop } from "./core/itinerary";
+import { dayAtLine, moveBlock, parseItinerary, patchLineMeta, setTransportOnLine, stopStillAt, type Itinerary, type PlaceMeta, type Stop } from "./core/itinerary";
 import type { Transport } from "./core/category";
 import { ResolveError, distanceM, resolveMapsUrl, type ResolveDeps } from "./core/resolve";
 import { GoogleApiError, expandShortUrl, googlePlaces } from "./net";
@@ -13,7 +13,7 @@ import { tripSkeleton } from "./core/gmaps-out";
 import { tripKml } from "./core/kml";
 import { firstEmoji } from "./core/category";
 import { LegRouter } from "./routing";
-import { photoFor, type StopPhoto } from "./photos";
+import { PhotoCache, photoFor, type StopPhoto } from "./photos";
 import { getLocale, localeFor, setLocale, t } from "./core/i18n";
 
 /**
@@ -28,7 +28,7 @@ export default class WayfarerPlugin extends Plugin {
   readonly router = new LegRouter(
     () => this.settings,
     () => { for (const v of this.views) v.redraw(); },
-    (line, leg) => this.setStopMeta(line, { leg }, true),
+    (to, leg, file) => { if (file === this.current?.file.path) this.setStopMeta(to, { leg }, true); },
     (e) => this.googleRefused(e),
   );
   private refusals = new Set<string>();
@@ -39,8 +39,10 @@ export default class WayfarerPlugin extends Plugin {
     this.refusals.add(e.message);
     new Notice(`Wayfarer: Google refused the request (${e.status}). ${e.message}`, 15000);
   }
+  /** Google photos are downloaded once per session and shared by every card and popup, so a redraw costs no request. */
+  readonly photos = new PhotoCache(() => this.settings.googleApiKey);
   photoFor(stop: Stop): StopPhoto | null {
-    return photoFor(stop, this.settings, (link) => {
+    return photoFor(stop, this.settings, this.photos, (link) => {
       const from = this.current?.file.path ?? "";
       const f = this.app.metadataCache.getFirstLinkpathDest(link, from);
       return f ? this.app.vault.getResourcePath(f) : null;
@@ -108,7 +110,11 @@ export default class WayfarerPlugin extends Plugin {
     this.app.workspace.onLayoutReady(() => this.refresh());
   }
 
+  private unloaded = false;
   onunload(): void {
+    this.unloaded = true;
+    if (this.autoOpenTimer !== null) window.clearTimeout(this.autoOpenTimer);
+    this.photos.clear();
     this.views.clear();
   }
 
@@ -128,7 +134,10 @@ export default class WayfarerPlugin extends Plugin {
     const known = Object.fromEntries(Object.entries(data).filter(([k]) => k in DEFAULT_SETTINGS));
     this.settings = { ...DEFAULT_SETTINGS, ...known };
   }
+  /** Bumped on every save, so a pane whose note did not change still redraws for a changed setting. */
+  settingsRev = 0;
   async saveSettings(): Promise<void> {
+    this.settingsRev++;
     await this.saveData(this.settings);
   }
 
@@ -257,12 +266,18 @@ export default class WayfarerPlugin extends Plugin {
 
   /* ---------- state chosen on the map ---------- */
 
-  /** Merges `patch` into the `%%wf:{}%%` comment of the stop on `line`. */
-  setStopMeta(line: number, patch: Partial<PlaceMeta>, quiet = false): void {
+  /**
+   * Merges `patch` into the `%%wf:{}%%` comment of `stop`. The stop may have
+   * been parsed a while ago (a route arrives after the network call), so it
+   * is looked up again in the current parse and written only where its link
+   * still is.
+   */
+  setStopMeta(stop: Stop, patch: Partial<PlaceMeta>, quiet = false): void {
     const md = this.activeMarkdown();
-    if (!md || (quiet && md.file?.path !== this.current?.file.path)) return;
-    // A background write must land on the line it was computed for.
-    void this.rewriteLine(md, line, (text) => (quiet && !/\]\(geo:/.test(text) ? text : patchLineMeta(text, patch)));
+    if (!md?.file || !this.current || md.file.path !== this.current.file.path) return;
+    const live = this.current.itinerary.stops.find((s) => s.lat === stop.lat && s.lng === stop.lng && s.name === stop.name) ?? (quiet ? null : stop);
+    if (!live) return;
+    void this.rewriteLine(md, live.line, (text) => (stopStillAt(text, live) ? patchLineMeta(text, patch, live) : text));
   }
 
   /**
@@ -271,6 +286,8 @@ export default class WayfarerPlugin extends Plugin {
    * what is typed into it, so the change goes to the file instead.
    */
   private async rewriteLine(md: MarkdownView, line: number, fn: (text: string) => string): Promise<void> {
+    // A result that arrives after the plugin was disabled is dropped.
+    if (this.unloaded) return;
     if (md.getMode() === "preview" && md.file) {
       await this.app.vault.process(md.file, (data) => {
         const lines = data.split("\n");
@@ -281,6 +298,7 @@ export default class WayfarerPlugin extends Plugin {
         return lines.join("\n");
       });
     } else {
+      if (line >= md.editor.lineCount()) return;
       const text = md.editor.getLine(line);
       const next = fn(text);
       if (next !== text) md.editor.replaceRange(next, { line, ch: 0 }, { line, ch: text.length });
@@ -293,7 +311,7 @@ export default class WayfarerPlugin extends Plugin {
     const md = this.activeMarkdown();
     if (!md) return;
     // The link must still be where the pane saw it; otherwise the note changed under us.
-    void this.rewriteLine(md, stop.line, (text) => (/^\[[^\]]*\]\(geo:/.test(text.slice(stop.from, stop.to)) ? setTransportOnLine(text, stop, mode) : text));
+    void this.rewriteLine(md, stop.line, (text) => (stopStillAt(text, stop) ? setTransportOnLine(text, stop, mode) : text));
   }
 
   /**
@@ -318,7 +336,7 @@ export default class WayfarerPlugin extends Plugin {
         if (!p?.meta || distanceM(p, stop) > 300) { missed++; continue; }
         const { rating, hours, address, website, placeId, type, photo } = p.meta;
         // Only when the same link is still on that line; the note may have changed while Google answered.
-        await this.rewriteLine(md, stop.line, (text) => (text.includes(`](geo:${stop.lat}`) || /\]\(geo:/.test(text.slice(stop.from, stop.to)) ? patchLineMeta(text, { rating, hours, address, website, placeId, type, photo }) : text));
+        await this.rewriteLine(md, stop.line, (text) => (stopStillAt(text, stop) ? patchLineMeta(text, { rating, hours, address, website, placeId, type, photo }, stop) : text));
         done++;
       } catch (e) {
         if (e instanceof GoogleApiError) { this.googleRefused(e); return; }
@@ -331,7 +349,7 @@ export default class WayfarerPlugin extends Plugin {
   /** Moves the stop line at `from` to sit where `to` is (before it when moving up, after it when moving down). */
   async moveStopLine(from: number, to: number): Promise<void> {
     const md = this.activeMarkdown();
-    if (!md) return;
+    if (!md || this.unloaded) return;
     if (md.getMode() === "preview" && md.file) {
       // Reading view: the hidden editor is not saved, so reorder the file itself.
       await this.app.vault.process(md.file, (data) => moveBlock(data.split("\n"), from, to).join("\n"));
@@ -352,6 +370,8 @@ export default class WayfarerPlugin extends Plugin {
       return n;
     };
     const count = takeWith(from);
+    // Dropped onto one of its own notes: nowhere to go.
+    if (to > from && to < from + count) return;
     const lines = Array.from({ length: count }, (_, i) => editor.getLine(from + i));
     const total = editor.lineCount();
     const endLine = from + count;
@@ -389,27 +409,32 @@ export default class WayfarerPlugin extends Plugin {
     };
   }
 
-  private async convert(editor: Editor, line: number, url: string): Promise<void> {
+  /** Resolves one link and swaps it for a stop; true when the note was changed. */
+  private async convert(editor: Editor, line: number, url: string): Promise<boolean> {
     try {
       const place = await resolveMapsUrl(url, this.resolveDeps());
       const lineText = editor.getLine(line);
       const hasEmoji = firstEmoji(lineText.slice(0, Math.max(0, lineText.indexOf(url)))) !== null;
-      if (!replaceUrlInEditor(editor, line, url, stopText(place, this.settings.addEmoji && !hasEmoji))) {
-        new Notice(`Wayfarer: the link moved before it resolved. ${place.name} is at ${place.lat}, ${place.lng}.`);
-      }
+      if (replaceUrlInEditor(editor, line, url, stopText(place, this.settings.addEmoji && !hasEmoji))) return true;
+      new Notice(`Wayfarer: the link moved before it resolved. ${place.name} is at ${place.lat}, ${place.lng}.`);
     } catch (e) {
       const msg = e instanceof ResolveError ? e.message : `Could not resolve the link (${(e as Error).message ?? e})`;
       new Notice(`Wayfarer: ${msg}`, 8000);
     }
+    return false;
   }
 
   private async convertAll(editor: Editor): Promise<void> {
     let n = 0;
+    const failed = new Set<string>();
     for (let line = 0; line < editor.lineCount(); line++) {
-      const found = findMapsUrl(editor.getLine(line));
-      if (!found) continue;
-      await this.convert(editor, line, found.url);
-      n++;
+      // A line may hold several links; each conversion changes the line, so look again after each.
+      for (let guard = 0; guard < 20; guard++) {
+        const found = findMapsUrl(editor.getLine(line), failed);
+        if (!found) break;
+        if (await this.convert(editor, line, found.url)) n++;
+        else failed.add(found.url);
+      }
     }
     new Notice(n ? `Wayfarer: converted ${n} link${n === 1 ? "" : "s"}` : "Wayfarer: no Google Maps links in this note");
   }

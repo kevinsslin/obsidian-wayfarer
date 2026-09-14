@@ -99,6 +99,8 @@ export interface Itinerary {
   days: Day[];
   /** Every stop in document order. */
   stops: Stop[];
+  /** IANA zone from the frontmatter `timezone:` key, so written times mean local time at the destination. */
+  timezone?: string;
 }
 
 export interface ParseOptions {
@@ -116,38 +118,56 @@ const GEO_LINK = /\[([^\]]*)\]\(geo:(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)(?:[^)]*)
 const META = /%%wf:(\{.*?\})%%/;
 const HEADING = /^(#{1,6})\s+(.*?)\s*#*\s*$/;
 const FENCE = /^\s*(```|~~~)/;
-const TIME = /^\s*(?:[-*+]|\d+[.)])?\s*(?:\S\s+)?(\d{1,2}:\d{2})/u;
+// list marker, optional task box, optional emoji (with its variation selector or joined sequence), then the time
+const TIME = /^\s*(?:[-*+]|\d+[.)])?\s*(?:\[[ xX]\]\s*)?(?:\S(?:\uFE0F|\u200D\S)*\s+)?(\d{1,2}:\d{2})/u;
 const IMAGE = /!\[\[([^\]|]+)(?:\|[^\]]*)?\]\]|!\[[^\]]*\]\((\S+?)\)/;
 
 export function parseItinerary(markdown: string, opts: ParseOptions = {}): Itinerary {
   const maxLevel = opts.maxHeadingLevel ?? 2;
   const lines = markdown.split("\n");
-  const hasExact = lines.some((l) => { const h = HEADING.exec(l); return h && h[1].length === maxLevel; });
+  const hasExact = headingLevels(lines).has(maxLevel);
   const isDayHeading = (level: number) => (hasExact ? level === maxLevel : level <= maxLevel);
   const days: Day[] = [];
   let current: Day = { title: "", headingLine: -1, endLine: lines.length, stops: [], index: -1, label: "", date: null, dateEnd: null };
   let inFence = false;
+  let inComment = false;
   let inFrontmatter = lines[0] === "---";
+  let timezone: string | undefined;
+  // Indent of the last stop line; deeper lines right under it are its notes, whatever they contain.
+  let noteBase: number | null = null;
 
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
+    const raw = lines[i];
     if (inFrontmatter) {
-      if (i > 0 && line.trim() === "---") inFrontmatter = false;
+      if (i > 0 && raw.trim() === "---") inFrontmatter = false;
+      else {
+        const tz = /^timezone:\s*["']?([A-Za-z_]+\/[A-Za-z_+\-0-9]+(?:\/[A-Za-z_]+)?|UTC)["']?\s*$/.exec(raw);
+        if (tz) timezone = tz[1];
+      }
       continue;
     }
-    if (FENCE.test(line)) {
+    if (FENCE.test(raw)) {
       inFence = !inFence;
       continue;
     }
     if (inFence) continue;
+    // Obsidian comments are not part of the plan; the plugin's own `%%wf:{}%%` comments are kept.
+    const stripped = stripComments(raw, inComment);
+    inComment = stripped.inComment;
+    const line = stripped.text;
+    if (!raw.trim()) noteBase = null;
 
     const h = HEADING.exec(line);
     if (h && isDayHeading(h[1].length)) {
       current.endLine = i;
       days.push(current);
       current = { title: h[2], headingLine: i, endLine: lines.length, stops: [], index: -1, label: dayLabel(h[2]), date: dayDate(h[2]), dateEnd: dayDateEnd(h[2]) };
+      noteBase = null;
       continue;
     }
+    const indent = indentWidth(line);
+    if (noteBase !== null && indent > noteBase) continue;
+    noteBase = null;
 
     GEO_LINK.lastIndex = 0;
     let m: RegExpExecArray | null;
@@ -158,6 +178,7 @@ export function parseItinerary(markdown: string, opts: ParseOptions = {}): Itine
       const lat = Number(m[2]);
       const lng = Number(m[3]);
       if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+      noteBase = indent;
       const rest = line.slice(m.index + m[0].length);
       // metadata may sit anywhere after the link, before the next link
       const nextLink = rest.search(/\[[^\]]*\]\(geo:/);
@@ -165,13 +186,10 @@ export function parseItinerary(markdown: string, opts: ParseOptions = {}): Itine
       let meta: PlaceMeta | undefined;
       const mm = META.exec(scope);
       if (mm) {
-        try {
-          meta = JSON.parse(mm[1]) as PlaceMeta;
-        } catch {
-          meta = undefined;
-        }
+        meta = parseMeta(mm[1]);
       }
-      const before = line.slice(prevEnd, m.index);
+      // The previous stop's comment sits in this span too; its text (an address with an emoji) is not ours to read.
+      const before = maskMeta(line.slice(prevEnd, m.index));
       prevEnd = m.index + m[0].length;
       const name = m[1] || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
       const emojiBefore = firstEmoji(before.replace(/\d{1,2}:\d{2}/, ""));
@@ -207,7 +225,64 @@ export function parseItinerary(markdown: string, opts: ParseOptions = {}): Itine
     d.index = i;
     d.stops.forEach((s) => (s.dayIndex = i));
   });
-  return { days: withStops, stops: withStops.flatMap((d) => d.stops) };
+  return { days: withStops, stops: withStops.flatMap((d) => d.stops), timezone };
+}
+
+/** Blanks every `%%wf:{}%%` comment in `s`, keeping offsets, so emoji inside saved data are not read as the user's. */
+function maskMeta(s: string): string {
+  return s.replace(/%%wf:\{.*?\}%%/g, (m) => " ".repeat(m.length));
+}
+
+/**
+ * Blanks Obsidian `%%…%%` comments (keeping offsets) while leaving `%%wf:{}%%`
+ * intact. A comment left open at the end of the line continues on the next.
+ */
+export function stripComments(line: string, inComment: boolean): { text: string; inComment: boolean } {
+  let out = "";
+  let i = 0;
+  while (i < line.length) {
+    if (inComment) {
+      const close = line.indexOf("%%", i);
+      if (close === -1) { out += " ".repeat(line.length - i); i = line.length; break; }
+      out += " ".repeat(close + 2 - i);
+      i = close + 2;
+      inComment = false;
+      continue;
+    }
+    const open = line.indexOf("%%", i);
+    if (open === -1) { out += line.slice(i); break; }
+    if (line.startsWith("%%wf:", open)) {
+      const close = line.indexOf("%%", open + 5);
+      const end = close === -1 ? line.length : close + 2;
+      out += line.slice(i, end);
+      i = end;
+      continue;
+    }
+    out += line.slice(i, open) + "  ";
+    i = open + 2;
+    inComment = true;
+  }
+  return { text: out, inComment };
+}
+
+function indentWidth(l: string): number {
+  return (/^\s*/.exec(l) as RegExpExecArray)[0].replace(/\t/g, "    ").length;
+}
+
+/** Heading levels present outside fenced blocks and frontmatter. */
+function headingLevels(lines: string[]): Set<number> {
+  const out = new Set<number>();
+  let inFence = false;
+  let inFrontmatter = lines[0] === "---";
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i];
+    if (inFrontmatter) { if (i > 0 && l.trim() === "---") inFrontmatter = false; continue; }
+    if (FENCE.test(l)) { inFence = !inFence; continue; }
+    if (inFence) continue;
+    const h = HEADING.exec(l);
+    if (h) out.add(h[1].length);
+  }
+  return out;
 }
 
 /**
@@ -247,6 +322,7 @@ function imageBelow(lines: string[], line: number): RegExpExecArray | null {
 export function plainNote(line: string): string {
   return line
     .replace(/^\s*(?:[-*+]|\d+[.)])\s*/, "")
+    .replace(/^\[[ xX]\]\s*/, "")
     .replace(/%%wf:\{.*?\}%%/g, "")
     .replace(IMAGE, "")
     .replace(/\[([^\]]*)\]\(geo:[^)]*\)/g, "$1")
@@ -326,9 +402,9 @@ const TRANSPORT_TOKEN = /\p{Extended_Pictographic}(?:️|‍\p{Extended_Pictogra
  * one is inserted right before the link. A legacy `via` in the metadata is
  * dropped so the text is the only place the choice lives. Nothing else moves.
  */
-export function setTransportOnLine(line: string, stop: Pick<Stop, "from" | "beforeFrom">, mode: Transport): string {
+export function setTransportOnLine(line: string, stop: Pick<Stop, "from" | "to" | "beforeFrom">, mode: Transport): string {
   const emoji = TRANSPORT_EMOJI[mode];
-  const before = line.slice(stop.beforeFrom, stop.from);
+  const before = maskMeta(line.slice(stop.beforeFrom, stop.from));
   let out: string | null = null;
   for (const m of before.matchAll(TRANSPORT_TOKEN)) {
     if (!isTransportEmoji(m[0])) continue;
@@ -337,13 +413,31 @@ export function setTransportOnLine(line: string, stop: Pick<Stop, "from" | "befo
     break;
   }
   if (out === null) out = line.slice(0, stop.from) + emoji + " " + line.slice(stop.from);
+  // The edit sits before the link, so the link end moves by the size difference.
+  const at = { to: stop.to + (out.length - line.length) };
   // A route saved for another mode is stale now; drop it rather than leave it behind.
-  const mm = META.exec(out);
-  let savedVia: string | undefined;
-  if (mm) {
-    try { savedVia = (JSON.parse(mm[1]) as PlaceMeta).leg?.via; } catch { savedVia = undefined; }
-  }
-  return patchLineMeta(out, savedVia && savedVia !== mode ? { via: undefined, leg: undefined } : { via: undefined });
+  const savedVia = metaSpan(out, at.to)?.meta.leg?.via;
+  return patchLineMeta(out, savedVia && savedVia !== mode ? { via: undefined, leg: undefined } : { via: undefined }, at);
+}
+
+/** The `%%wf:{}%%` comment that belongs to the link ending at `linkEnd`: the first one before the next geo link. */
+function metaSpan(line: string, linkEnd: number): { start: number; end: number; meta: PlaceMeta } | null {
+  const rest = line.slice(linkEnd);
+  const nextLink = rest.search(/\[[^\]]*\]\(geo:/);
+  const scope = nextLink === -1 ? rest : rest.slice(0, nextLink);
+  const mm = META.exec(scope);
+  if (!mm) return null;
+  return { start: linkEnd + mm.index, end: linkEnd + mm.index + mm[0].length, meta: parseMeta(mm[1]) ?? {} };
+}
+
+/**
+ * True when the stop's geo link is still at the offsets the pane parsed it
+ * from, so a write computed earlier lands on the stop it was meant for.
+ */
+export function stopStillAt(line: string, stop: Pick<Stop, "from" | "to" | "lat" | "lng">): boolean {
+  const re = new RegExp(GEO_LINK.source);
+  const m = re.exec(line.slice(stop.from, stop.to));
+  return !!m && m.index === 0 && m[0].length === stop.to - stop.from && Number(m[2]) === stop.lat && Number(m[3]) === stop.lng;
 }
 
 /**
@@ -351,12 +445,15 @@ export function setTransportOnLine(line: string, stop: Pick<Stop, "from" | "befo
  * one after the link (and tags) when the line has none. Used when the user
  * changes transport in the timeline. Everything outside the comment is kept byte for byte.
  */
-export function patchLineMeta(line: string, patch: Partial<PlaceMeta>): string {
-  const mm = META.exec(line);
-  let meta: PlaceMeta = {};
-  if (mm) {
-    try { meta = JSON.parse(mm[1]) as PlaceMeta; } catch { meta = {}; }
+export function patchLineMeta(line: string, patch: Partial<PlaceMeta>, at?: Pick<Stop, "to">): string {
+  // With a stop given, only the comment that belongs to its link is touched; a line may hold several stops.
+  let mm: { start: number; end: number; meta: PlaceMeta } | null = null;
+  if (at) mm = metaSpan(line, at.to);
+  else {
+    const m = META.exec(line);
+    if (m) mm = { start: m.index, end: m.index + m[0].length, meta: parseMeta(m[1]) ?? {} };
   }
+  const meta: PlaceMeta = mm?.meta ?? {};
   for (const [k, v] of Object.entries(patch)) {
     if (v === undefined || v === null) delete (meta as Record<string, unknown>)[k];
     else (meta as Record<string, unknown>)[k] = v;
@@ -364,8 +461,7 @@ export function patchLineMeta(line: string, patch: Partial<PlaceMeta>): string {
   const text = Object.keys(meta).length ? `%%wf:${JSON.stringify(compactMeta(meta))}%%` : "";
   if (mm) {
     // Replace only the metadata span; when it goes away take one adjacent space with it.
-    let start = mm.index;
-    let end = mm.index + mm[0].length;
+    let { start, end } = mm;
     if (!text) {
       if (start > 0 && line[start - 1] === " ") start--;
       else if (line[end] === " ") end++;
@@ -373,14 +469,16 @@ export function patchLineMeta(line: string, patch: Partial<PlaceMeta>): string {
     return line.slice(0, start) + text + line.slice(end);
   }
   if (!text) return line;
-  GEO_LINK.lastIndex = 0;
-  let last: RegExpExecArray | null = null;
-  let m: RegExpExecArray | null;
-  while ((m = GEO_LINK.exec(line))) last = m;
-  if (!last) return line;
-  const after = last.index + last[0].length;
-  const at = after;
-  return `${line.slice(0, at)} ${text}${line.slice(at)}`;
+  let after = at?.to;
+  if (after === undefined) {
+    GEO_LINK.lastIndex = 0;
+    let last: RegExpExecArray | null = null;
+    let m: RegExpExecArray | null;
+    while ((m = GEO_LINK.exec(line))) last = m;
+    if (!last) return line;
+    after = last.index + last[0].length;
+  }
+  return `${line.slice(0, after)} ${text}${line.slice(after)}`;
 }
 
 /** Serialises a stop back to its inline form. */
@@ -388,6 +486,35 @@ export function formatStop(name: string, lat: number, lng: number, meta?: PlaceM
   const parts = [`${emoji ? emoji + " " : ""}[${name.replace(/[[\]]/g, "")}](geo:${round(lat)},${round(lng)})`];
   if (meta && Object.keys(meta).length > 0) parts.push(`%%wf:${JSON.stringify(compactMeta(meta))}%%`);
   return parts.join(" ");
+}
+
+/**
+ * Reads a `%%wf:{…}%%` payload. The note is the user's, so a hand-edited or
+ * foreign value of the wrong type is dropped rather than left to throw later
+ * (`rating.toFixed` inside the editor extension would disable every chip).
+ */
+export function parseMeta(json: string): PlaceMeta | undefined {
+  let raw: unknown;
+  try { raw = JSON.parse(json); } catch { return undefined; }
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const r = raw as Record<string, unknown>;
+  const out: PlaceMeta = {};
+  if (typeof r.rating === "number" && Number.isFinite(r.rating)) out.rating = r.rating;
+  if (Array.isArray(r.hours) && r.hours.every((h) => typeof h === "string")) out.hours = r.hours as string[];
+  for (const k of ["address", "website", "placeId", "type", "photo", "via"] as const) {
+    if (typeof r[k] === "string") (out as Record<string, unknown>)[k] = r[k];
+  }
+  const leg = r.leg;
+  if (leg && typeof leg === "object" && !Array.isArray(leg)) {
+    const l = leg as Record<string, unknown>;
+    if (typeof l.from === "string" && typeof l.via === "string" && typeof l.s === "number" && typeof l.m === "number") {
+      const saved: LegMeta = { from: l.from, via: l.via as Transport, s: l.s, m: l.m };
+      if (typeof l.line === "string") saved.line = l.line;
+      if (typeof l.p === "string") saved.p = l.p;
+      out.leg = saved;
+    }
+  }
+  return out;
 }
 
 function compactMeta(meta: PlaceMeta): PlaceMeta {
@@ -435,6 +562,8 @@ export function moveBlock(lines: string[], from: number, to: number): string[] {
   };
   if (from < 0 || from >= lines.length || to < 0 || to >= lines.length || from === to) return lines;
   const count = blockLen(lines, from);
+  // A target inside the block itself (one of the stop's own notes) is nowhere to go.
+  if (to > from && to < from + count) return lines;
   const block = lines.slice(from, from + count);
   const rest = [...lines.slice(0, from), ...lines.slice(from + count)];
   // Moving down: the target line has shifted up by the removed block; land after the target's own block.

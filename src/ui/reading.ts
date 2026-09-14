@@ -1,6 +1,6 @@
 import type { MarkdownPostProcessor } from "obsidian";
 import { todayHours } from "./map-view";
-import type { PlaceMeta } from "../core/itinerary";
+import { parseMeta, type PlaceMeta } from "../core/itinerary";
 
 /**
  * Reading view: `geo:` links open Google Maps (Obsidian has no handler for
@@ -41,9 +41,5 @@ function metaFor(source: string, name: string, lat: string, lng: string): PlaceM
   const re = new RegExp(`\\[${esc(name)}\\]\\(geo:${esc(lat)},${esc(lng)}[^)]*\\)\\s*%%wf:(\\{.*?\\})%%`);
   const m = re.exec(source);
   if (!m) return null;
-  try {
-    return JSON.parse(m[1]) as PlaceMeta;
-  } catch {
-    return null;
-  }
+  return parseMeta(m[1]) ?? null;
 }

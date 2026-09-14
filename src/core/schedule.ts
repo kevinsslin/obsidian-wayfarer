@@ -91,3 +91,30 @@ export function describeHours(s: HoursStatus): string | null {
     case "already-closed": return t("closed_at", { t: fmtMin(s.closedAt) });
   }
 }
+
+/** The instant at which a wall clock in `zone` reads the given date and time; null for an unknown zone. */
+export function zonedTime(y: number, month0: number, d: number, h: number, mi: number, zone: string): Date | null {
+  let fmt: Intl.DateTimeFormat;
+  try {
+    fmt = new Intl.DateTimeFormat("en-US", { timeZone: zone, hourCycle: "h23", year: "numeric", month: "numeric", day: "numeric", hour: "numeric", minute: "numeric" });
+  } catch {
+    return null;
+  }
+  const guess = Date.UTC(y, month0, d, h, mi);
+  const offsetAt = (t: number): number => {
+    const parts = Object.fromEntries(fmt.formatToParts(new Date(t)).map((p) => [p.type, Number(p.value)]));
+    return Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute) - t;
+  };
+  // Two rounds settle a guess that started on the far side of a DST change.
+  let t = guess - offsetAt(guess);
+  t = guess - offsetAt(t);
+  return new Date(t);
+}
+
+/**
+ * The calendar date of a day heading, or null when the heading has no full
+ * date or spans a range (then the weekday is unknown, so nothing is checked).
+ */
+export function dateForDay(day: { date: { year: number; month: number; day: number } | null; dateEnd?: { year: number; month: number; day: number } | null }): Date | null {
+  return day.date && !day.dateEnd ? new Date(day.date.year, day.date.month - 1, day.date.day) : null;
+}

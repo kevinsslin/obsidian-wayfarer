@@ -9,7 +9,7 @@ export function placeUrl(stop: Pick<Stop, "lat" | "lng">): string {
  * Directions through a day's stops in order. Google caps waypoints at 9 on the
  * URL API, so a longer day keeps the first, last and an even spread between.
  */
-export function directionsUrl(stops: Pick<Stop, "lat" | "lng">[], mode: "transit" | "walking" | "driving" = "transit"): string | null {
+export function directionsUrl(stops: Pick<Stop, "lat" | "lng">[], mode: "transit" | "walking" | "driving" | "bicycling" = "transit"): string | null {
   if (stops.length === 0) return null;
   if (stops.length === 1) return placeUrl(stops[0]);
   const pt = (s: Pick<Stop, "lat" | "lng">) => `${s.lat},${s.lng}`;
