@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [0.1.2] - 2026-09-14
 
 - No frontmatter needed. A written time is local time at that place: transit departures use the place's UTC offset from Google details (saved as `utc` in the stop's metadata), or a guess from the longitude, so a trip across countries needs no `timezone:` key and the new-trip skeleton no longer adds a `locations:` key. Repository renamed to `kevinsslin/wayfarer`.
 
