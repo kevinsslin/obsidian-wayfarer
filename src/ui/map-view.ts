@@ -199,9 +199,9 @@ export class WayfarerView extends ItemView {
   }
 
   /**
-   * A phone-width pane cannot show the timeline beside the map, so there it
-   * is an overlay, closed until asked for, and its state is not saved: the
-   * saved layout belongs to the desktop pane.
+   * Narrow panes use separate map/list surfaces on every platform. Width only
+   * controls layout; mobile interaction is determined by Platform.isMobile.
+   * The saved list preference belongs to the wide layout.
    */
   private isNarrow(): boolean {
     return this.contentEl.clientWidth > 0 && this.contentEl.clientWidth < 560;
@@ -322,7 +322,7 @@ export class WayfarerView extends ItemView {
    * day only switches the emphasised day.
    */
   onCursor(line: number, day: number): void {
-    if (!this.itinerary || !this.map || this.isNarrow()) return;
+    if (!this.itinerary || !this.map || Platform.isMobile) return;
     const lineChanged = line !== this.lastCursorLine;
     if (!lineChanged) return;
     this.lastCursorLine = line;
@@ -474,7 +474,7 @@ export class WayfarerView extends ItemView {
       });
       // Hovering a pin shows its card; it goes away with the pointer unless the stop is the focused one.
       marker.on("mouseover", () => {
-        if (this.isNarrow() || Platform.isMobile || this.flying) return;
+        if (Platform.isMobile || !window.matchMedia("(any-hover: hover)").matches || this.flying) return;
         window.clearTimeout(this.hoverClose);
         if (!marker.isPopupOpen()) this.openPopup(stop);
       });
@@ -892,7 +892,7 @@ export class WayfarerView extends ItemView {
 
   /** Puts the editor cursor on the stop and scrolls it into view. */
   private async jumpTo(stop: Stop, focusEditor = true): Promise<void> {
-    if (!this.file || (!focusEditor && (this.isNarrow() || Platform.isMobile))) return;
+    if (!this.file || (!focusEditor && Platform.isMobile)) return;
     let view = this.plugin.app.workspace.getLeavesOfType("markdown")
       .map((l) => l.view)
       .find((v): v is MarkdownView => v instanceof MarkdownView && v.file?.path === this.file?.path);
